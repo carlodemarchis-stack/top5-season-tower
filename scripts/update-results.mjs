@@ -32,7 +32,9 @@ const COMP = { ITA: 'SA', ENG: 'PL', ESP: 'PD', FRA: 'FL1', GER: 'BL1' }
 // football-data team name (or tla) -> our code, for clubs the auto-matcher can't resolve.
 // Fill these in after the first keyed run (the script prints exactly which teams need one).
 const OVERRIDES = {
-  ITA: {}, ENG: {}, ESP: {}, FRA: {}, GER: {},
+  ITA: {}, ENG: {},
+  ESP: { 'Real Racing Club de Santander': 'RAC', 'RC Deportivo La Coruña': 'RCD' },
+  FRA: {}, GER: {},
 }
 
 const norm = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
