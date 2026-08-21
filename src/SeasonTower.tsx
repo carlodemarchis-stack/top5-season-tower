@@ -68,6 +68,23 @@ const LEAGUES: { id: LeagueId; name: string; country: string }[] = [
   { id: 'FRA', name: 'Ligue 1', country: 'France' },
   { id: 'GER', name: 'Bundesliga', country: 'Germany' },
 ]
+// URL state (#league/season/week/layout) so a reload restores exactly where the user was.
+function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; layout?: 'towers' | 'rows' } {
+  const h = (typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '')
+  if (!h) return {}
+  const [lg, se, wk, ly] = h.split('/')
+  const out: any = {}
+  if (LEAGUES.some(l => l.id === lg)) out.league = lg
+  if (SEASONS.some(s => s.id === se)) out.season = se
+  if (wk != null && /^\d+$/.test(wk)) out.week = parseInt(wk, 10)
+  if (ly === 'towers' || ly === 'rows') out.layout = ly
+  return out
+}
+
+// The 2026/27 SIMULATION (filling unplayed fixtures with projected scores) is private:
+// only enabled with the secret ?sim=1 query param. Public sees unplayed matches as "to be played".
+const SIM = typeof location !== 'undefined' && new URLSearchParams(location.search).get('sim') === '1'
+
 // Vite statically globs every league/season data file that exists on disk.
 const SCHED_MODS = import.meta.glob('./data/schedule-*.js') as Record<string, () => Promise<any>>
 const RES_MODS = import.meta.glob('./data/results-*.js') as Record<string, () => Promise<any>>
@@ -90,10 +107,13 @@ export class SeasonTower extends React.Component<Props, State> {
   _pinBottom = true   // one-shot: scroll so the team row sits near the bottom (towers) / labels to the left (rows)
   _droppedW = 0       // reserved width left of the team column in rows mode (for the pin scroll)
 
+  _init: ReturnType<typeof parseHash> | null = parseHash()   // URL state to restore on first load
+  _wantWeek: number | null = parseHash().week ?? null        // scrub week from the URL; honored on mount, cleared on a user league/season change
+
   state: State = {
-    seasons: null, league: 'ITA', leagueOpen: false, season: this.props.season, seasonOpen: false, results: {}, cw: 1280, ch: 600,
+    seasons: null, league: this._init!.league || 'ITA', leagueOpen: false, season: this._init!.season || this.props.season, seasonOpen: false, results: {}, cw: 1280, ch: 600,
     pop: null, teamPop: null, throughWeek: null, playing: false, groupBy: 'table', rankBy: 'points',
-    layout: 'rows',   // open in the vertical (stacked-rows) view
+    layout: this._init!.layout || 'rows',   // open in the vertical (stacked-rows) view
   }
 
   componentDidMount() {
@@ -137,13 +157,18 @@ export class SeasonTower extends React.Component<Props, State> {
         let season = this.state.season
         if (!seasons![season].TEAMS) season = (SEASONS.find(x => seasons![x.id].TEAMS)?.id) || season
         this._pinBottom = true
-        this.setState({ league: id, seasons, season }, () => this.buildThrough(this.defaultWeek()))
+        this.setState({ league: id, seasons, season }, () => {
+          // honor the URL scrub week on mount (survives StrictMode's double loadLeague); cleared on user nav
+          const w = this._wantWeek != null ? Math.min(this._wantWeek, this.maxW()) : this.defaultWeek()
+          this.buildThrough(w)
+        })
       }).catch(err => console.error('league load failed', err))
   }
   pickLeague(id: LeagueId) {
     this.setState({ leagueOpen: false })
     if (id === this.state.league) return
     if (this._timer) { clearInterval(this._timer); this._timer = null }
+    this._wantWeek = null   // user navigation → drop the initial URL week
     this.setState({ playing: false, pop: null, teamPop: null, seasons: null })
     this.loadLeague(id)
   }
@@ -152,12 +177,13 @@ export class SeasonTower extends React.Component<Props, State> {
   maxW(): number { const s = this.state.seasons; return (s && s[this.state.season].md) || 38 }
   seasonHasData(id: SeasonId): boolean { const s = this.state.seasons; return !!(s && s[id].TEAMS) }
   seasonIsReal() { return (SEASONS.find(x => x.id === this.state.season) || SEASONS[0]).real }
-  defaultWeek() { return this.seasonIsReal() ? this.maxW() : 0 } // real season opens full; sim opens pre-season
-  setLayout(l: 'towers' | 'rows') { if (l === this.state.layout) return; this._pinBottom = true; this.setState({ layout: l, pop: null, teamPop: null }) }
+  defaultWeek() { return (this.seasonIsReal() || SIM) ? this.maxW() : 0 } // real & secret-sim open full; public 2026/27 opens with all matches to be played
+  syncUrl() { const s = this.state; const w = s.throughWeek == null ? 0 : s.throughWeek; try { history.replaceState(null, '', '#' + s.league + '/' + s.season + '/' + w + '/' + s.layout) } catch { /* ignore */ } }
+  setLayout(l: 'towers' | 'rows') { if (l === this.state.layout) return; this._pinBottom = true; this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
   pickSeason(id: SeasonId) {
     if (id === this.state.season) { this.setState({ seasonOpen: false }); return }
     if (this._timer) { clearInterval(this._timer); this._timer = null }
-    this._pinBottom = true
+    this._pinBottom = true; this._wantWeek = null
     this.setState({ season: id, seasonOpen: false, playing: false, pop: null, teamPop: null },
       () => this.buildThrough(this.defaultWeek()))
   }
@@ -197,13 +223,14 @@ export class SeasonTower extends React.Component<Props, State> {
         if (g.ha !== 'H' || g.w > n) continue
         const home = code, away = g.opp
         const real = REAL[g.id]   // real results are keyed by unique matchId
+        if (!real && !SIM) continue   // simulation is private (?sim=1); public sees unplayed games as "to be played"
         const hg = real ? real.hg : this.simulate(home, away, g.w).hg
         const ag = real ? real.ag : this.simulate(home, away, g.w).ag
         r[this.keyOf(home, g.id)] = { gf: hg, ga: ag, res: this.outcome(hg, ag) }
         r[this.keyOf(away, g.id)] = { gf: ag, ga: hg, res: this.outcome(ag, hg) }
       }
     }
-    this.setState({ results: r, throughWeek: n, pop: null })
+    this.setState({ results: r, throughWeek: n, pop: null }, () => this.syncUrl())
   }
 
   togglePlay() {
@@ -506,7 +533,7 @@ export class SeasonTower extends React.Component<Props, State> {
       seasonLabel: (SEASONS.find(x => x.id === S.season) || SEASONS[0]).label,
       seasonTag: isReal ? 'Real' : 'Simulated', seasonOpen: S.seasonOpen,
       onToggleSeason: () => this.setState(s => ({ seasonOpen: !s.seasonOpen, leagueOpen: false })),
-      seasonList: SEASONS.map(x => ({ id: x.id, label: x.label, tag: x.real ? 'Real' : 'Simulated', active: x.id === S.season, has: this.seasonHasData(x.id), onClick: () => this.pickSeason(x.id) })),
+      seasonList: SEASONS.map(x => ({ id: x.id, label: x.label, tag: x.real ? 'Real' : (SIM ? 'Simulated' : 'Upcoming'), active: x.id === S.season, has: this.seasonHasData(x.id), onClick: () => this.pickSeason(x.id) })),
     }
     if (!T) return { ...base, loading: true, teamsSorted: [], layout, colsWrapStyle: '', rowsWrapStyle: '', playedStr: '', leaderAbbr: '', leaderPts: '', pop: null, tm: null, noData: !!S.seasons }
 

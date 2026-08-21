@@ -7,7 +7,7 @@ import { SeasonTower } from './SeasonTower'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <SeasonTower
-      season="2025-26"
+      season="2026-27"
       colorMode="result"
       pendingMode="ceiling"
       lossReverse={true}
