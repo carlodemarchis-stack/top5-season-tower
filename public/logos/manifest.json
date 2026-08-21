@@ -1,0 +1,102 @@
+{
+ "ATA": {
+  "file": "ATA.png",
+  "team": "Atalanta",
+  "league": "Italian Serie A"
+ },
+ "BOL": {
+  "file": "BOL.png",
+  "team": "Bologna",
+  "league": "Italian Serie A"
+ },
+ "CAG": {
+  "file": "CAG.png",
+  "team": "Cagliari",
+  "league": "Italian Serie A"
+ },
+ "COM": {
+  "file": "COM.png",
+  "team": "Como",
+  "league": "Italian Serie A"
+ },
+ "FIO": {
+  "file": "FIO.png",
+  "team": "Fiorentina",
+  "league": "Italian Serie A"
+ },
+ "FRO": {
+  "file": "FRO.png",
+  "team": "Frosinone",
+  "league": "Italian Serie A"
+ },
+ "GEN": {
+  "file": "GEN.png",
+  "team": "Genoa",
+  "league": "Italian Serie A"
+ },
+ "INT": {
+  "file": "INT.png",
+  "team": "Inter Milan",
+  "league": "Italian Serie A"
+ },
+ "JUV": {
+  "file": "JUV.png",
+  "team": "Juventus",
+  "league": "Italian Serie A"
+ },
+ "LAZ": {
+  "file": "LAZ.png",
+  "team": "Lazio",
+  "league": "Italian Serie A"
+ },
+ "LEC": {
+  "file": "LEC.png",
+  "team": "Lecce",
+  "league": "Italian Serie A"
+ },
+ "MIL": {
+  "file": "MIL.png",
+  "team": "AC Milan",
+  "league": "Italian Serie A"
+ },
+ "MON": {
+  "file": "MON.png",
+  "team": "Monza",
+  "league": "Italian Serie A"
+ },
+ "NAP": {
+  "file": "NAP.png",
+  "team": "Napoli",
+  "league": "Italian Serie A"
+ },
+ "PAR": {
+  "file": "PAR.png",
+  "team": "Parma",
+  "league": "Italian Serie A"
+ },
+ "ROM": {
+  "file": "ROM.png",
+  "team": "Roma",
+  "league": "Italian Serie A"
+ },
+ "SAS": {
+  "file": "SAS.png",
+  "team": "Sassuolo",
+  "league": "Italian Serie A"
+ },
+ "TOR": {
+  "file": "TOR.png",
+  "team": "Torino",
+  "league": "Italian Serie A"
+ },
+ "UDI": {
+  "file": "UDI.png",
+  "team": "Udinese",
+  "league": "Italian Serie A"
+ },
+ "VEN": {
+  "file": "VEN.png",
+  "team": "Venezia",
+  "league": "Italian Serie A"
+ }
+}
