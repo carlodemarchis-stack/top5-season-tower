@@ -450,7 +450,10 @@ export class SeasonTower extends React.Component<Props, State> {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                     <div style={{ flex: 1, textAlign: 'center' }}>
-                      <div style={{ width: '34px', height: '34px', borderRadius: '9px', background: v.popHomeColor, margin: '0 auto 6px' }} />
+                      <div style={{ height: '42px', margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img src={`logos/${v.popHomeCode}.png`} alt="" onError={(e: any) => { e.currentTarget.style.display = 'none'; const s = e.currentTarget.nextElementSibling; if (s) s.style.display = 'block' }} style={{ maxWidth: '42px', maxHeight: '42px', objectFit: 'contain' }} />
+                        <div style={{ display: 'none', width: '34px', height: '34px', borderRadius: '9px', background: v.popHomeColor }} />
+                      </div>
                       <div style={{ fontSize: '13px', fontWeight: 800, color: '#15181d' }}>{v.popHomeName}</div>
                       <div style={{ fontSize: '9.5px', fontWeight: 700, color: '#9298a1', textTransform: 'uppercase', letterSpacing: '.4px' }}>Home</div>
                     </div>
@@ -458,7 +461,10 @@ export class SeasonTower extends React.Component<Props, State> {
                       <span style={v.popHomeDim}>{v.popScoreA}</span><span style={{ color: '#C7CBD1', fontSize: '20px' }}>–</span><span style={v.popAwayDim}>{v.popScoreB}</span>
                     </div>
                     <div style={{ flex: 1, textAlign: 'center' }}>
-                      <div style={{ width: '34px', height: '34px', borderRadius: '9px', background: v.popAwayColor, margin: '0 auto 6px' }} />
+                      <div style={{ height: '42px', margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img src={`logos/${v.popAwayCode}.png`} alt="" onError={(e: any) => { e.currentTarget.style.display = 'none'; const s = e.currentTarget.nextElementSibling; if (s) s.style.display = 'block' }} style={{ maxWidth: '42px', maxHeight: '42px', objectFit: 'contain' }} />
+                        <div style={{ display: 'none', width: '34px', height: '34px', borderRadius: '9px', background: v.popAwayColor }} />
+                      </div>
                       <div style={{ fontSize: '13px', fontWeight: 800, color: '#15181d' }}>{v.popAwayName}</div>
                       <div style={{ fontSize: '9.5px', fontWeight: 700, color: '#9298a1', textTransform: 'uppercase', letterSpacing: '.4px' }}>Away</div>
                     </div>
@@ -501,6 +507,14 @@ export class SeasonTower extends React.Component<Props, State> {
               </div>
             </div>
           )}
+
+          {/* ---------- credit ---------- */}
+          <div style={{ position: 'fixed', right: '14px', bottom: '9px', zIndex: 30, fontSize: '10px', fontWeight: 600, color: '#9298a1', letterSpacing: '.2px' }}>
+            Produced with passion by{' '}
+            <a href="https://dataviz.aguywithascarf.com" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>A Guy With A Scarf</a>
+            {' · '}
+            <a href="https://www.linkedin.com/in/carlodemarchis" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>Carlo Demarchis</a>
+          </div>
         </div>
       </div>
     )
@@ -728,11 +742,12 @@ export class SeasonTower extends React.Component<Props, State> {
     // match-detail modal
     const pop = S.pop
     let popWeek = '', popResBadge = '', popResStyleObj: React.CSSProperties = {}, popChips: Dict[] = []
-    let popHomeColor = '#8A8F98', popAwayColor = '#8A8F98', popHomeName = '', popAwayName = ''
+    let popHomeColor = '#8A8F98', popAwayColor = '#8A8F98', popHomeName = '', popAwayName = '', popHomeCode = '', popAwayCode = ''
     let popScoreA = '—', popScoreB = '—', popHomeDim: React.CSSProperties = {}, popAwayDim: React.CSSProperties = {}, popAccentStyle = '', popIsSim = false
     if (pop) {
       const home = pop.ha === 'H' ? pop.code : pop.opp
       const away = pop.ha === 'H' ? pop.opp : pop.code
+      popHomeCode = home; popAwayCode = away
       const hp = (T[home] && T[home].primary) || '#8A8F98', ap = (T[away] && T[away].primary) || '#8A8F98'
       popHomeColor = hp; popAwayColor = ap
       popHomeName = (T[home] && T[home].name) || home; popAwayName = (T[away] && T[away].name) || away
@@ -785,7 +800,7 @@ export class SeasonTower extends React.Component<Props, State> {
       colsWrapStyle: 'display:flex;flex-direction:row;gap:2px;align-items:flex-end;min-width:100%;min-height:100%;',
       rowsWrapStyle: `display:flex;flex-direction:column;gap:2px;width:max-content;min-width:100%;padding-right:${chartW}px;`,
       playedStr: `${decided} / ${mx * Math.floor(list.length / 2)}`, leaderAbbr: leader.code, leaderPts: leader.Pts,
-      pop, popWeek, popResBadge, popResStyleObj, popChips, popHomeColor, popAwayColor, popHomeName, popAwayName,
+      pop, popWeek, popResBadge, popResStyleObj, popChips, popHomeColor, popAwayColor, popHomeName, popAwayName, popHomeCode, popAwayCode,
       popScoreA, popScoreB, popHomeDim, popAwayDim, popAccentStyle, popIsSim,
       tm,
     }
