@@ -1,0 +1,66 @@
+name: Update results
+
+# Pulls finished 2026/27 matches from football-data.org, commits any new results,
+# and (only if something changed) rebuilds + redeploys GitHub Pages.
+on:
+  schedule:
+    - cron: '0 8,16,20,23 * * *'   # a few times a day (UTC); matches finish → next run picks them up
+  workflow_dispatch: {}            # allow a manual run from the Actions tab
+
+permissions:
+  contents: write   # push the updated result files
+  pages: write      # deploy
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false        # queue behind an in-flight Pages deploy rather than cancel it
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - name: Fetch results (football-data.org)
+        env:
+          FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
+        run: node scripts/update-results.mjs --season 2026-27
+
+      - name: Commit if changed
+        id: commit
+        run: |
+          git config user.name "results-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/results-*-2026-27.js
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No new results — nothing to deploy."
+          else
+            git commit -m "Auto: update 2026/27 results"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # deploy (only when results actually changed)
+      - name: Build
+        if: steps.commit.outputs.changed == 'true'
+        run: npm run build
+      - uses: actions/configure-pages@v5
+        if: steps.commit.outputs.changed == 'true'
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.commit.outputs.changed == 'true'
+        with:
+          path: dist
+      - name: Deploy
+        id: deployment
+        if: steps.commit.outputs.changed == 'true'
+        uses: actions/deploy-pages@v4
