@@ -747,7 +747,8 @@ export class SeasonTower extends React.Component<Props, State> {
     if (pop) {
       const home = pop.ha === 'H' ? pop.code : pop.opp
       const away = pop.ha === 'H' ? pop.opp : pop.code
-      popHomeCode = home; popAwayCode = away
+      const logoName = (c: string) => (S.league === 'FRA' && c === 'BRE') ? 'FRA_BRE' : c   // one cross-league code clash (Brest vs Brentford)
+      popHomeCode = logoName(home); popAwayCode = logoName(away)
       const hp = (T[home] && T[home].primary) || '#8A8F98', ap = (T[away] && T[away].primary) || '#8A8F98'
       popHomeColor = hp; popAwayColor = ap
       popHomeName = (T[home] && T[home].name) || home; popAwayName = (T[away] && T[away].name) || away
