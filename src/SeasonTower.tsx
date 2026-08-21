@@ -177,7 +177,8 @@ export class SeasonTower extends React.Component<Props, State> {
   maxW(): number { const s = this.state.seasons; return (s && s[this.state.season].md) || 38 }
   seasonHasData(id: SeasonId): boolean { const s = this.state.seasons; return !!(s && s[id].TEAMS) }
   seasonIsReal() { return (SEASONS.find(x => x.id === this.state.season) || SEASONS[0]).real }
-  defaultWeek() { return (this.seasonIsReal() || SIM) ? this.maxW() : 0 } // real & secret-sim open full; public 2026/27 opens with all matches to be played
+  latestPlayedWeek() { const R = this.activeReal(), T = this.activeTeams(); if (!T) return 0; let mx = 0; for (const c of Object.keys(T)) for (const g of T[c].games) if (R[g.id] && g.w > mx) mx = g.w; return mx }
+  defaultWeek() { return (this.seasonIsReal() || SIM) ? this.maxW() : this.latestPlayedWeek() } // real & secret-sim open full; public 2026/27 opens at the current matchday (latest with real results), else pre-season
   syncUrl() { const s = this.state; const w = s.throughWeek == null ? 0 : s.throughWeek; try { history.replaceState(null, '', '#' + s.league + '/' + s.season + '/' + w + '/' + s.layout) } catch { /* ignore */ } }
   setLayout(l: 'towers' | 'rows') { if (l === this.state.layout) return; this._pinBottom = true; this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
   pickSeason(id: SeasonId) {
