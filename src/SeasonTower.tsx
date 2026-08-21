@@ -513,7 +513,7 @@ export class SeasonTower extends React.Component<Props, State> {
             Produced with passion by{' '}
             <a href="https://dataviz.aguywithascarf.com" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>A Guy With A Scarf</a>
             {' · '}
-            <a href="https://www.linkedin.com/in/carlodemarchis" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>Carlo Demarchis</a>
+            <a href="https://www.linkedin.com/in/carlodemarchis" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>Carlo De Marchis</a>
           </div>
         </div>
       </div>
