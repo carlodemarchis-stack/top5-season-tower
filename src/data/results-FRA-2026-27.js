@@ -1,2 +1,2 @@
 // Real results, keyed by unique matchId -> {hg,ag}. Auto-updated by scripts/update-results.mjs.
-export const RESULTS = {"FL1-2026-0305":{"hg":4,"ag":0},"FL1-2026-0304":{"hg":5,"ag":2}}
+export const RESULTS = {"FL1-2026-0305":{"hg":4,"ag":0},"FL1-2026-0304":{"hg":5,"ag":2},"FL1-2026-0300":{"hg":2,"ag":2},"FL1-2026-0301":{"hg":0,"ag":0},"FL1-2026-0302":{"hg":0,"ag":0},"FL1-2026-0303":{"hg":0,"ag":2}}
