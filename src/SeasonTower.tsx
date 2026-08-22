@@ -52,6 +52,7 @@ interface State {
   groupBy: 'table' | 'zones'
   rankBy: 'points' | 'gd'
   layout: 'towers' | 'rows'   // vertical towers (portrait) vs horizontal rows (landscape)
+  helpOpen: boolean
 }
 
 // order shown in the switcher; `real` gates the simulation + the "simulated" wording.
@@ -100,6 +101,7 @@ function zoneOf(rank: number): { key: string; label: string; color: string } {
 
 export class SeasonTower extends React.Component<Props, State> {
   chartRef = React.createRef<HTMLDivElement>()
+  sliderRef = React.createRef<HTMLInputElement>()
   _measure!: () => void
   _ro?: ResizeObserver
   _mt: any = null
@@ -114,6 +116,7 @@ export class SeasonTower extends React.Component<Props, State> {
     seasons: null, league: this._init!.league || 'ITA', leagueOpen: false, season: this._init!.season || this.props.season, seasonOpen: false, results: {}, cw: 1280, ch: 600,
     pop: null, teamPop: null, throughWeek: null, playing: false, groupBy: 'table', rankBy: 'points',
     layout: this._init!.layout || 'rows',   // open in the vertical (stacked-rows) view
+    helpOpen: false,
   }
 
   componentDidMount() {
@@ -178,7 +181,8 @@ export class SeasonTower extends React.Component<Props, State> {
   seasonHasData(id: SeasonId): boolean { const s = this.state.seasons; return !!(s && s[id].TEAMS) }
   seasonIsReal() { return (SEASONS.find(x => x.id === this.state.season) || SEASONS[0]).real }
   latestPlayedWeek() { const R = this.activeReal(), T = this.activeTeams(); if (!T) return 0; let mx = 0; for (const c of Object.keys(T)) for (const g of T[c].games) if (R[g.id] && g.w > mx) mx = g.w; return mx }
-  defaultWeek() { return (this.seasonIsReal() || SIM) ? this.maxW() : this.latestPlayedWeek() } // real & secret-sim open full; public 2026/27 opens at the current matchday (latest with real results), else pre-season
+  scrubMax() { return (this.seasonIsReal() || SIM) ? this.maxW() : this.latestPlayedWeek() } // scrubber ceiling: full for completed/sim; live season stops at the last matchday with a game played
+  defaultWeek() { return this.scrubMax() } // open at the ceiling (full season, or the current matchday on the live one)
   syncUrl() { const s = this.state; const w = s.throughWeek == null ? 0 : s.throughWeek; try { history.replaceState(null, '', '#' + s.league + '/' + s.season + '/' + w + '/' + s.layout) } catch { /* ignore */ } }
   setLayout(l: 'towers' | 'rows') { if (l === this.state.layout) return; this._pinBottom = true; this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
   pickSeason(id: SeasonId) {
@@ -216,7 +220,7 @@ export class SeasonTower extends React.Component<Props, State> {
   // Reveal results through matchday n (real where available, else simulated).
   buildThrough(n: number) {
     const T = this.activeTeams(); if (!T) return
-    n = Math.max(0, Math.min(this.maxW(), n))
+    n = Math.max(0, Math.min(this.scrubMax(), n))
     const REAL = this.activeReal()
     const r: Dict = {}
     for (const code of Object.keys(T)) {
@@ -234,7 +238,10 @@ export class SeasonTower extends React.Component<Props, State> {
     this.setState({ results: r, throughWeek: n, pop: null }, () => this.syncUrl())
   }
 
+  playAvailable() { return SIM || this.seasonIsReal() }  // no auto-play on the live current season (2026/27)
+  toggleFullscreen() { const d: any = document; if (d.fullscreenElement) { d.exitFullscreen && d.exitFullscreen() } else { d.documentElement.requestFullscreen && d.documentElement.requestFullscreen() } }
   togglePlay() {
+    if (!this.playAvailable()) return
     if (this._timer) { clearInterval(this._timer); this._timer = null; this.setState({ playing: false }); return }
     const mx = this.maxW()
     if ((this.state.throughWeek || 0) >= mx) this.buildThrough(0)
@@ -265,6 +272,8 @@ export class SeasonTower extends React.Component<Props, State> {
     return m
   }
   componentDidUpdate(_pp: Props, ps: State, snap: Dict | null) {
+    // keep the range thumb pinned to the (clamped) matchday even when React skips the controlled update
+    if (this.sliderRef.current) this.sliderRef.current.value = String(this.state.throughWeek ?? 0)
     const layoutChanged = ps.layout !== this.state.layout
     // one-shot after load / season / layout change: towers → team row near the bottom;
     // rows → team column flush left (dropped games hidden off to the left).
@@ -321,16 +330,18 @@ export class SeasonTower extends React.Component<Props, State> {
     const mStop = (e: React.MouseEvent) => e.stopPropagation()
     const stepBtn = (disabled: boolean): React.CSSProperties => ({ width: '20px', height: '26px', borderRadius: '6px', border: 'none', background: 'transparent', color: '#22262d', fontSize: '16px', fontWeight: 700, lineHeight: 1, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.28 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontFamily: 'inherit' })
     const seg = (on: boolean): React.CSSProperties => ({ padding: '7px 11px', border: 'none', background: on ? '#15181d' : '#fff', color: on ? '#fff' : '#727781', fontSize: '12px', fontWeight: 700, cursor: 'pointer' })
+    const iconBtn: React.CSSProperties = { width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #D7DAE0', background: '#fff', color: '#22262d', fontSize: '15px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontFamily: 'inherit', lineHeight: 1 }
+    const showPlay = this.playAvailable()   // hide auto-play on the live current season
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#F5F6F4' }}>
 
         {/* ---------- minimized top bar: league · season · controls · match count ---------- */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '10px 16px', flexWrap: 'wrap', borderBottom: '1px solid #E7E9EC' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 14px', flexWrap: 'nowrap', borderBottom: '1px solid #E7E9EC' }}>
           {/* league + season selector */}
           <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '7px', fontSize: '19px', fontWeight: 900, letterSpacing: '-.3px', color: '#15181d' }}>
             {/* league dropdown */}
             <button onClick={v.onToggleLeague} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '19px', fontWeight: 900, letterSpacing: '-.3px', color: '#15181d', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
-              <span>{v.leagueName}</span><span style={{ fontSize: '11px', color: '#9298a1', display: 'inline-block', transform: `rotate(${v.leagueOpen ? 180 : 0}deg)` }}>▾</span>
+              <span>{v.leagueName}</span><span style={{ fontSize: '17px', color: '#15181d', lineHeight: 1, display: 'inline-block', transform: `rotate(${v.leagueOpen ? 180 : 0}deg)` }}>▾</span>
             </button>
             {v.leagueOpen && (
               <>
@@ -351,7 +362,7 @@ export class SeasonTower extends React.Component<Props, State> {
             )}
             {/* season dropdown */}
             <button onClick={v.onToggleSeason} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 800, color: '#fff', background: '#0B8A3D', border: 'none', borderRadius: '7px', padding: '3px 9px', cursor: 'pointer', fontFamily: 'inherit' }}>
-              <span>{v.seasonLabel}</span><span style={{ fontSize: '9px', opacity: .85, display: 'inline-block', transform: `rotate(${v.seasonOpen ? 180 : 0}deg)` }}>▾</span>
+              <span>{v.seasonLabel}</span><span style={{ fontSize: '14px', opacity: 1, lineHeight: 1, display: 'inline-block', transform: `rotate(${v.seasonOpen ? 180 : 0}deg)` }}>▾</span>
             </button>
             {v.seasonOpen && (
               <>
@@ -373,22 +384,26 @@ export class SeasonTower extends React.Component<Props, State> {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 12px', border: '1px solid #D7DAE0', borderRadius: '10px', background: '#fff' }}>
             <button onClick={() => this.reset()} title="Restart" aria-label="Restart" style={{ ...stepBtn(false), fontSize: '15px' }}>↺</button>
             <button onClick={() => this.stepWeek(-1)} disabled={v.stepBackDisabled} title="Previous matchday (←)" style={stepBtn(v.stepBackDisabled)}>‹</button>
-            <button onClick={() => this.togglePlay()} title="Play / pause" style={{ width: '26px', height: '26px', borderRadius: '6px', border: '1px solid #15181d', background: '#15181d', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{v.playLabel}</button>
+            {showPlay && <button onClick={() => this.togglePlay()} title="Play / pause" style={{ width: '26px', height: '26px', borderRadius: '6px', border: '1px solid #15181d', background: '#15181d', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{v.playLabel}</button>}
             <button onClick={() => this.stepWeek(1)} disabled={v.stepFwdDisabled} title="Next matchday (→)" style={stepBtn(v.stepFwdDisabled)}>›</button>
-            <div style={{ position: 'relative', width: '230px', height: '24px', display: 'flex', alignItems: 'center' }}>
-              <input className="mdslider" type="range" min={0} max={v.sliderMax} step={1} value={v.throughWeek} onChange={(e: any) => this.buildThrough(parseInt(e.target.value, 10) || 0)} />
-              <span style={{ position: 'absolute', left: `${12 + (v.throughWeek / v.sliderMax) * (230 - 24)}px`, top: '50%', transform: 'translate(-50%,-50%)', pointerEvents: 'none', fontSize: '10px', fontWeight: 800, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>{v.throughWeek}</span>
+            <div style={{ position: 'relative', width: '170px', height: '24px', display: 'flex', alignItems: 'center' }}>
+              <input ref={this.sliderRef} className="mdslider" type="range" min={0} max={v.sliderMax} step={1} value={v.throughWeek} onChange={(e: any) => { const n = Math.min(this.scrubMax(), parseInt(e.target.value, 10) || 0); e.target.value = String(n); this.buildThrough(n) }} />
+              <span style={{ position: 'absolute', left: `${12 + (v.throughWeek / (v.sliderMax || 1)) * (170 - 24)}px`, top: '50%', transform: 'translate(-50%,-50%)', pointerEvents: 'none', fontSize: '10px', fontWeight: 800, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>{v.throughWeek}</span>
             </div>
           </div>
 
+          {/* help + fullscreen */}
+          <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, marginLeft: 'auto', fontSize: '17px', fontWeight: 800 }}>?</button>
+          <button onClick={() => this.toggleFullscreen()} title="Fullscreen" aria-label="Fullscreen" style={iconBtn}>⛶</button>
+
           {/* layout toggle: vertical towers ↔ landscape rows */}
-          <div style={{ marginLeft: 'auto', display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
             <button onClick={() => this.setLayout('towers')} title="Vertical towers" style={{ padding: '6px 10px', border: 'none', background: v.layout === 'towers' ? '#15181d' : '#fff', color: v.layout === 'towers' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊤</button>
             <button onClick={() => this.setLayout('rows')} title="Landscape rows" style={{ padding: '6px 10px', border: 'none', background: v.layout === 'rows' ? '#15181d' : '#fff', color: v.layout === 'rows' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊢</button>
           </div>
 
           {/* match count */}
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#22262d', fontVariantNumeric: 'tabular-nums' }}>{v.playedStr}</span>
+          <span style={{ fontSize: '13px', fontWeight: 700, color: '#22262d', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>{v.playedStr}</span>
         </div>
 
         {v.loading && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', justifyContent: 'center', color: '#9298a1', fontSize: '14px' }}>
@@ -509,12 +524,33 @@ export class SeasonTower extends React.Component<Props, State> {
             </div>
           )}
 
+          {/* ---------- help ---------- */}
+          {v.helpOpen && (
+            <div onClick={() => this.setState({ helpOpen: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 95, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+              <div onClick={mStop} style={{ width: 'min(440px,94vw)', maxHeight: '86vh', overflow: 'auto', background: '#fff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(16,18,22,.32)', padding: '20px 22px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '17px', fontWeight: 900, color: '#15181d' }}>How to read the tower</span>
+                  <button onClick={() => this.setState({ helpOpen: false })} aria-label="Close" style={{ border: 'none', background: '#F1F2F4', borderRadius: '8px', width: '28px', height: '28px', fontSize: '15px', cursor: 'pointer', color: '#5c616b' }}>✕</button>
+                </div>
+                <div style={{ fontSize: '13px', lineHeight: 1.55, color: '#3a3f47', display: 'flex', flexDirection: 'column', gap: '9px' }}>
+                  <div>Each team is a <b>bar sized by its points</b>. From the team's baseline, <b>points won</b> grow one way (wins, then draws) and <b>points dropped</b> the other (losses, plus the draws again).</div>
+                  <div>Every cell is <b>one match, coloured by the opponent</b>. Wins &amp; won‑side ties sit on a <b>light opponent tint</b>; losses are <b>outlined on white</b> (the reverse side).</div>
+                  <div>Drag the <b>matchday slider</b> (or <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>‹</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>›</kbd>) to move through the season — it stops at the <b>last played matchday</b>.</div>
+                  <div>Switch <b>league &amp; season</b> with the dropdowns, flip <b>vertical towers / landscape rows</b> with ⊤ / ⊢, and go <b>fullscreen</b> with ⛶.</div>
+                  <div><b>Click a match</b> for the scoreline &amp; details, or a <b>team's label</b> for its full record.</div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ---------- credit ---------- */}
           <div style={{ position: 'fixed', right: '14px', bottom: '9px', zIndex: 30, fontSize: '10px', fontWeight: 600, color: '#9298a1', letterSpacing: '.2px' }}>
             Produced with passion by{' '}
             <a href="https://dataviz.aguywithascarf.com" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>A Guy With A Scarf</a>
             {' · '}
             <a href="https://www.linkedin.com/in/carlodemarchis" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>Carlo De Marchis</a>
+            {' · live data '}
+            <a href="https://www.football-data.org" target="_blank" rel="noopener noreferrer" style={{ color: '#9298a1', fontWeight: 600, textDecoration: 'none' }}>football-data.org</a>
           </div>
         </div>
       </div>
@@ -536,10 +572,12 @@ export class SeasonTower extends React.Component<Props, State> {
     const orient = orientProp === 'towers' ? 'v' : orientProp === 'rows' ? 'h' : ((S.cw || 1280) < 820 ? 'h' : 'v')
 
     const mx = this.maxW()
+    const smax = this.scrubMax()   // scrubber ceiling — stops at the last played matchday on the live season
     const leagueName = (LEAGUES.find(x => x.id === S.league) || LEAGUES[0]).name
     const base: Dict = {
+      helpOpen: S.helpOpen,
       playLabel: S.playing ? '❘❘' : '▶',
-      stepBackDisabled: tw <= 0, stepFwdDisabled: tw >= mx, sliderMax: mx,
+      stepBackDisabled: tw <= 0, stepFwdDisabled: tw >= smax, sliderMax: mx, scrubMax: smax,   // bar spans the FULL season; navigation is capped at the last played matchday
       throughWeek: tw, weekLabel: tw === 0 ? 'Pre-season' : (tw >= mx ? 'Full season' : ('Through MD ' + tw)),
       resultMode: colorMode !== 'opponent', oppMode: colorMode === 'opponent', zonesOn,
       leagueName, leagueOpen: S.leagueOpen,
