@@ -506,13 +506,16 @@ export class SeasonTower extends React.Component<Props, State> {
           {v.tm && (
             <div onClick={() => this.closeTeam()} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
               <div onClick={mStop} style={{ width: 'min(460px,94vw)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(16,18,22,.32)' }}>
-                <div style={{ padding: '16px 18px', ...v.tm.headStyleObj }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '9px' }}>
-                    <span style={{ fontSize: '18px', fontWeight: 900 }}>{v.tm.name}</span>
-                    <span style={{ fontSize: '12px', fontWeight: 700, opacity: .82 }}>{v.tm.rankLine}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '14px', marginTop: '9px', fontSize: '12px', fontWeight: 700 }}>
-                    <span>{v.tm.Pts} pts</span><span style={{ opacity: .8 }}>{v.tm.rec}</span><span style={{ opacity: .8 }}>{v.tm.goals}</span>
+                <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: '14px', ...v.tm.headStyleObj }}>
+                  <img src={`logos/${v.tm.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ flex: '0 0 auto', width: '46px', height: '46px', objectFit: 'contain', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,.35))' }} />
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '9px' }}>
+                      <span style={{ fontSize: '18px', fontWeight: 900 }}>{v.tm.name}</span>
+                      <span style={{ fontSize: '12px', fontWeight: 700, opacity: .82 }}>{v.tm.rankLine}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '14px', marginTop: '9px', fontSize: '12px', fontWeight: 700 }}>
+                      <span>{v.tm.Pts} pts</span><span style={{ opacity: .8 }}>{v.tm.rec}</span><span style={{ opacity: .8 }}>{v.tm.goals}</span>
+                    </div>
                   </div>
                 </div>
                 <div style={{ padding: '6px 10px 12px', overflowY: 'auto' }}>
@@ -520,6 +523,7 @@ export class SeasonTower extends React.Component<Props, State> {
                     <button key={row.id} onClick={row.onClick} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '8px 10px', border: 'none', borderRadius: '8px', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
                       <span style={{ fontSize: '10px', fontWeight: 700, color: '#B0B4BC', width: '26px', flex: '0 0 26px', fontVariantNumeric: 'tabular-nums' }}>{row.w}</span>
                       <span style={{ fontSize: '11px', fontWeight: 700, color: '#9298a1', width: '20px', flex: '0 0 20px' }}>{row.ha}</span>
+                      <img src={`logos/${row.oppCrest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ flex: '0 0 auto', width: '20px', height: '20px', objectFit: 'contain' }} />
                       <span style={{ fontSize: '13px', fontWeight: 700, color: '#15181d', flex: 1 }}>{row.opp}</span>
                       <span style={{ fontSize: '12px', fontWeight: 700, color: '#3a3f47', fontVariantNumeric: 'tabular-nums', width: '44px', textAlign: 'right' }}>{row.score}</span>
                       <span style={{ ...row.badgeStyleObj, flex: '0 0 24px', textAlign: 'center', fontSize: '10px', fontWeight: 800, borderRadius: '6px', padding: '3px 0' }}>{row.badge}</span>
@@ -846,18 +850,19 @@ export class SeasonTower extends React.Component<Props, State> {
       const code = S.teamPop, t = T[code]
       const idx = list.findIndex(e => e.code === code); const e = list[idx]; const rank = idx + 1
       const prim = t.primary, txt = this.contrast(prim)
+      const crestOf = (c: string) => (S.league === 'FRA' && c === 'BRE') ? 'FRA_BRE' : c   // one cross-league code clash (Brest vs Brentford)
       const rows = t.games.slice().sort((a: any, b: any) => a.w - b.w).map((g: any) => {
         const r = this.getRes(code, g.id); const res = r ? r.res : null
         const c = res === 'W' ? ['#E7F4EC', '#1F8A4C'] : res === 'L' ? ['#FBEAE9', '#C23A2E'] : res === 'D' ? ['#F2E4BC', '#7C6320'] : ['#F1F2F4', '#9298a1']
         return {
-          id: g.id, w: g.w, ha: g.ha === 'H' ? 'vs' : '→', opp: g.oppFull,
+          id: g.id, w: g.w, ha: g.ha === 'H' ? 'vs' : '→', opp: g.oppFull, oppCrest: crestOf(g.opp),
           score: r ? `${r.gf}–${r.ga}` : '—', badge: res || '·',
           badgeStyleObj: { color: c[1], background: c[0] } as React.CSSProperties,
           onClick: () => this.setState({ teamPop: null, pop: { code, id: g.id, w: g.w, opp: g.opp, oppFull: g.oppFull, ha: g.ha, venue: g.venue, city: g.city, net: g.net, et: g.et } }),
         }
       })
       tm = {
-        name: t.name, rankLine: `${rank}${rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th'} · ${zoneOf(rank).label || 'Mid-table'}`,
+        name: t.name, crest: crestOf(code), rankLine: `${rank}${rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th'} · ${zoneOf(rank).label || 'Mid-table'}`,
         Pts: e.Pts, rec: `${e.W}W · ${e.D}D · ${e.L}L`, goals: `${e.GF}:${e.GA} (${e.GD >= 0 ? '+' : ''}${e.GD})`,
         headStyleObj: { background: `linear-gradient(135deg,${prim} 0%,${this.mix(prim, '#000000', .25)} 100%)`, color: txt } as React.CSSProperties,
         rows,
