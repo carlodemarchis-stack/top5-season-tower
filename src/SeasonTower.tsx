@@ -523,7 +523,9 @@ export class SeasonTower extends React.Component<Props, State> {
                     <button key={row.id} onClick={row.onClick} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '8px 10px', border: 'none', borderRadius: '8px', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
                       <span style={{ fontSize: '10px', fontWeight: 700, color: '#B0B4BC', width: '26px', flex: '0 0 26px', fontVariantNumeric: 'tabular-nums' }}>{row.w}</span>
                       <span style={{ fontSize: '11px', fontWeight: 700, color: '#9298a1', width: '20px', flex: '0 0 20px' }}>{row.ha}</span>
-                      <img src={`logos/${row.oppCrest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ flex: '0 0 auto', width: '20px', height: '20px', objectFit: 'contain' }} />
+                      <span style={{ flex: '0 0 auto', width: '24px', height: '24px', borderRadius: '50%', background: '#DEE3E8', border: '1px solid #CBD1D8', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        <img src={`logos/${row.oppCrest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+                      </span>
                       <span style={{ fontSize: '13px', fontWeight: 700, color: '#15181d', flex: 1 }}>{row.opp}</span>
                       <span style={{ fontSize: '12px', fontWeight: 700, color: '#3a3f47', fontVariantNumeric: 'tabular-nums', width: '44px', textAlign: 'right' }}>{row.score}</span>
                       <span style={{ ...row.badgeStyleObj, flex: '0 0 24px', textAlign: 'center', fontSize: '10px', fontWeight: 800, borderRadius: '6px', padding: '3px 0' }}>{row.badge}</span>
