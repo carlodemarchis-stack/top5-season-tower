@@ -334,6 +334,8 @@ export class SeasonTower extends React.Component<Props, State> {
     const seg = (on: boolean): React.CSSProperties => ({ padding: '7px 11px', border: 'none', background: on ? '#15181d' : '#fff', color: on ? '#fff' : '#727781', fontSize: '12px', fontWeight: 700, cursor: 'pointer' })
     const iconBtn: React.CSSProperties = { width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #D7DAE0', background: '#fff', color: '#22262d', fontSize: '15px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontFamily: 'inherit', lineHeight: 1 }
     const showPlay = this.playAvailable()   // hide auto-play on the live current season
+    // faded club crest bleeding off the right edge of each team box — identity without stealing space
+    const crestWatermark: React.CSSProperties = { position: 'absolute', right: '-8px', top: '50%', transform: 'translateY(-50%)', height: '132%', width: 'auto', opacity: 0.26, objectFit: 'contain', pointerEvents: 'none', zIndex: 0, userSelect: 'none' }
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#F5F6F4' }}>
 
@@ -422,6 +424,7 @@ export class SeasonTower extends React.Component<Props, State> {
                 <div key={t.abbr} data-team={t.abbr} style={css(t.rowStyle)}>
                   <div style={css(t.droppedStyle)}>{t.dropped.map((c: any) => <Cell key={c.key} c={c} />)}</div>
                   <div style={css(t.labelStyle)} onClick={t.onLabel} title={t.labelTitle}>
+                    <img src={`logos/${t.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={crestWatermark} />
                     <div style={css(t.lblRowStyle)}>
                       <span style={css(t.rankStyle)}>{t.rank}</span>
                       <span style={css(t.teamStyle)}>{t.abbr}</span>
@@ -441,6 +444,7 @@ export class SeasonTower extends React.Component<Props, State> {
                 <div key={t.abbr} data-team={t.abbr} style={css(t.colStyle)}>
                   <div style={css(t.aboveStyle)}>{t.above.map((c: any) => <Cell key={c.key} c={c} />)}</div>
                   <div style={css(t.labelStyle)} onClick={t.onLabel} title={t.labelTitle}>
+                    <img src={`logos/${t.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={crestWatermark} />
                     <div style={css(t.lblRowStyle)}>
                       <span style={css(t.rankStyle)}>{t.rank}</span>
                       <span style={css(t.teamStyle)}>{t.abbr}</span>
@@ -762,8 +766,9 @@ export class SeasonTower extends React.Component<Props, State> {
       const teamStyle = `font-size:${narrowLbl ? 10 : 12}px;font-weight:900;color:${ink};letter-spacing:.2px;line-height:1;white-space:nowrap;`
       const wdlStyle = `font-size:${narrowLbl ? 6.5 : 7.5}px;font-weight:800;color:${ink};opacity:.78;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;`
       const ptsStyle = `font-size:${narrowLbl ? 8 : 9}px;font-weight:800;color:${ink};line-height:1;white-space:nowrap;`
-      const lblRowStyle = `display:flex;flex-direction:row;align-items:baseline;justify-content:space-between;width:100%;gap:3px;overflow:hidden;`
-      const base: Dict = { abbr: t.abbr, rank, wdlStr, ptsStr, labelTitle, onLabel: () => this.openTeam(t.abbr), rankStyle, teamStyle, wdlStyle, ptsStyle, lblRowStyle }
+      const lblRowStyle = `position:relative;z-index:1;display:flex;flex-direction:row;align-items:baseline;justify-content:space-between;width:100%;gap:3px;overflow:hidden;`
+      const crest = (S.league === 'FRA' && t.abbr === 'BRE') ? 'FRA_BRE' : t.abbr   // one cross-league code clash (Brest vs Brentford)
+      const base: Dict = { abbr: t.abbr, rank, wdlStr, ptsStr, labelTitle, crest, onLabel: () => this.openTeam(t.abbr), rankStyle, teamStyle, wdlStyle, ptsStyle, lblRowStyle }
 
       if (layout === 'rows') {
         // LANDSCAPE: team box in the middle. RIGHT of it = points won (wins 3u nearest the box →
