@@ -635,9 +635,9 @@ export class SeasonTower extends React.Component<Props, State> {
       // marks win/loss/draw; upcoming games are a faint outline.
       let bg: string, color: string, border: string, chipBg = '', chipText = ''
       if (type === 'pend') { bg = '#ffffff'; color = this.mix(oppPrim, '#ffffff', 0.15); border = '1px solid ' + this.mix(oppPrim, '#ffffff', 0.6) }
-      else if (type === 'draw') { bg = '#ffffff'; color = this.ink(oppPrim); border = '1.5px solid ' + oppPrim; chipBg = oppPrim; chipText = this.contrast(oppPrim) }   // won-side tie — same chip logic as wins
-      else if (type === 'loss' || type === 'drawlost') { bg = '#ffffff'; color = this.ink(oppPrim); border = '1.5px solid ' + oppPrim }   // reverse (below the line)
-      else { bg = '#ffffff'; color = this.ink(oppPrim); border = '1.5px solid ' + oppPrim; chipBg = oppPrim; chipText = this.contrast(oppPrim) }   // win — opponent on colour chip, score in colour on white
+      else if (type === 'draw') { bg = this.mix(oppPrim, '#ffffff', 0.90); color = this.ink(oppPrim); border = '1.5px solid ' + oppPrim; chipBg = oppPrim; chipText = this.contrast(oppPrim) }   // won-side tie — very light opponent tint
+      else if (type === 'loss' || type === 'drawlost') { bg = '#ffffff'; color = this.ink(oppPrim); border = '1.5px solid ' + oppPrim }   // reverse (below the line) — stays white
+      else { bg = this.mix(oppPrim, '#ffffff', 0.90); color = this.ink(oppPrim); border = '1.5px solid ' + oppPrim; chipBg = oppPrim; chipText = this.contrast(oppPrim) }   // win — opponent on colour chip, score on a very light opponent tint
 
       const h = type === 'draw' ? DRAWH : type === 'drawlost' ? DLOSTH : type === 'pend' ? PENDH : DECH
       const fs = type === 'draw' ? 7 : Math.max(8.5, Math.min(11, h * 0.42))
