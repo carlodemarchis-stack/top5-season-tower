@@ -53,6 +53,7 @@ interface State {
   rankBy: 'points' | 'gd'
   layout: 'towers' | 'rows'   // vertical towers (portrait) vs horizontal rows (landscape)
   helpOpen: boolean
+  creditsOpen: boolean
 }
 
 // order shown in the switcher; `real` gates the simulation + the "simulated" wording.
@@ -117,6 +118,7 @@ export class SeasonTower extends React.Component<Props, State> {
     pop: null, teamPop: null, throughWeek: null, playing: false, groupBy: 'table', rankBy: 'points',
     layout: this._init!.layout || 'rows',   // open in the vertical (stacked-rows) view
     helpOpen: false,
+    creditsOpen: false,
   }
 
   componentDidMount() {
@@ -535,9 +537,30 @@ export class SeasonTower extends React.Component<Props, State> {
                 <div style={{ fontSize: '13px', lineHeight: 1.55, color: '#3a3f47', display: 'flex', flexDirection: 'column', gap: '9px' }}>
                   <div>Each team is a <b>bar sized by its points</b>. From the team's baseline, <b>points won</b> grow one way (wins, then draws) and <b>points dropped</b> the other (losses, plus the draws again).</div>
                   <div>Every cell is <b>one match, coloured by the opponent</b>. Wins &amp; won‑side ties sit on a <b>light opponent tint</b>; losses are <b>outlined on white</b> (the reverse side).</div>
+                  <div>A <b>draw is deliberately shown twice</b> — once above the baseline and once below. It's the honest picture of a tie: <b>+1 point earned</b> (better than a loss), but also <b>2 points dropped</b> versus the win it could have been. Showing both sides is the whole idea — the tower isn't just where you stand, it's <b>the points you gathered and the points you let slip</b>. That's why the negatives are drawn at all: a team can sit on the same total from very different seasons, and only the down‑side reveals how many wins turned into draws or losses along the way.</div>
                   <div>Drag the <b>matchday slider</b> (or <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>‹</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>›</kbd>) to move through the season — it stops at the <b>last played matchday</b>.</div>
                   <div>Switch <b>league &amp; season</b> with the dropdowns, flip <b>vertical towers / landscape rows</b> with ⊤ / ⊢, and go <b>fullscreen</b> with ⛶.</div>
                   <div><b>Click a match</b> for the scoreline &amp; details, or a <b>team's label</b> for its full record.</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ---------- credits modal ---------- */}
+          {v.creditsOpen && (
+            <div onClick={() => this.setState({ creditsOpen: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 96, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+              <div onClick={mStop} style={{ width: 'min(460px,94vw)', maxHeight: '86vh', overflow: 'auto', background: '#fff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(16,18,22,.32)', padding: '20px 22px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '17px', fontWeight: 900, color: '#15181d' }}>Credits &amp; how it's built</span>
+                  <button onClick={() => this.setState({ creditsOpen: false })} aria-label="Close" style={{ border: 'none', background: '#F1F2F4', borderRadius: '8px', width: '28px', height: '28px', fontSize: '15px', cursor: 'pointer', color: '#5c616b' }}>✕</button>
+                </div>
+                <div style={{ fontSize: '13px', lineHeight: 1.6, color: '#3a3f47', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div>Made with passion by <a href="https://dataviz.aguywithascarf.com" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>A Guy With A Scarf</a> — <a href="https://www.linkedin.com/in/carlodemarchis" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>Carlo De Marchis</a>.</div>
+                  <div><b>The idea.</b> A league table tells you <i>where</i> a team stands. This tower tells you <i>how it got there</i>. It gives the <b>W‑D‑L shape of a season more prominence than the usual views</b> — every match is a coloured block, wins and won‑side draws stacking up, losses and dropped draws pulling down — so two teams on the same points can look completely different.</div>
+                  <div><b>Why draws sit on both sides.</b> A tie is <b>+1 point earned</b> yet <b>2 points let slip</b>, so it's drawn above <i>and</i> below the baseline — the honest cost of a result that's neither win nor loss.</div>
+                  <div><b>Data.</b> Final scores for all five leagues come from{' '}
+                    <a href="https://www.football-data.org" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>football-data.org</a>, refreshed automatically as matches finish. Club crests via TheSportsDB. The 2026/27 season shows only matches already played.</div>
+                  <div><b>Built with</b> React, TypeScript &amp; Vite — a single hand‑drawn view, no charting library.</div>
                 </div>
               </div>
             </div>
@@ -549,8 +572,8 @@ export class SeasonTower extends React.Component<Props, State> {
             <a href="https://dataviz.aguywithascarf.com" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>A Guy With A Scarf</a>
             {' · '}
             <a href="https://www.linkedin.com/in/carlodemarchis" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>Carlo De Marchis</a>
-            {' · live data '}
-            <a href="https://www.football-data.org" target="_blank" rel="noopener noreferrer" style={{ color: '#9298a1', fontWeight: 600, textDecoration: 'none' }}>football-data.org</a>
+            {' · '}
+            <button onClick={() => this.setState({ creditsOpen: true })} style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', color: '#9298a1', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: '2px', cursor: 'pointer' }}>Credits</button>
           </div>
         </div>
       </div>
@@ -576,6 +599,7 @@ export class SeasonTower extends React.Component<Props, State> {
     const leagueName = (LEAGUES.find(x => x.id === S.league) || LEAGUES[0]).name
     const base: Dict = {
       helpOpen: S.helpOpen,
+      creditsOpen: S.creditsOpen,
       playLabel: S.playing ? '❘❘' : '▶',
       stepBackDisabled: tw <= 0, stepFwdDisabled: tw >= smax, sliderMax: mx, scrubMax: smax,   // bar spans the FULL season; navigation is capped at the last played matchday
       throughWeek: tw, weekLabel: tw === 0 ? 'Pre-season' : (tw >= mx ? 'Full season' : ('Through MD ' + tw)),
