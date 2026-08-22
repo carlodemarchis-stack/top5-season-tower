@@ -335,7 +335,7 @@ export class SeasonTower extends React.Component<Props, State> {
     const iconBtn: React.CSSProperties = { width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #D7DAE0', background: '#fff', color: '#22262d', fontSize: '15px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontFamily: 'inherit', lineHeight: 1 }
     const showPlay = this.playAvailable()   // hide auto-play on the live current season
     // faded club crest bleeding off the right edge of each team box — identity without stealing space
-    const crestWatermark: React.CSSProperties = { position: 'absolute', right: '-8px', top: '50%', transform: 'translateY(-50%)', height: '132%', width: 'auto', opacity: 0.26, objectFit: 'contain', pointerEvents: 'none', zIndex: 0, userSelect: 'none' }
+    const crestWatermark: React.CSSProperties = { position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', height: '128%', width: 'auto', opacity: 0.26, objectFit: 'contain', pointerEvents: 'none', zIndex: 0, userSelect: 'none' }
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#F5F6F4' }}>
 
