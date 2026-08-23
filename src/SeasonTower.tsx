@@ -376,8 +376,9 @@ export class SeasonTower extends React.Component<Props, State> {
     const data: any[] = v.ovData
     if (!data) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9298a1', fontSize: '14px', minHeight: '200px' }}>Loading all five leagues…</div>
     const maxP = Math.max(10, ...data.map(d => (d.leader ? d.leader.Pts : 0)))
-    const crestOf = (c: string) => (c === 'BRE' ? 'BRE' : c) // (FRA/BRE clash only matters inside Ligue 1, handled per-league below)
     const GREEN = '#1f8a4c', GREY = '#c9cdd4', RED = '#d0454a'
+    // qualification zones by finishing position (indicative): top-4 CL, 5 EL, 6 Conference, bottom-3 relegation.
+    const zoneCol = (rank: number, n: number) => rank <= 4 ? '#0B4DA2' : rank === 5 ? '#E8820B' : rank === 6 ? '#0B8A3D' : rank > n - 3 ? '#C23A2E' : '#8b9098'
     return (
       <div style={{ display: 'flex', gap: '10px', height: '100%', minHeight: '420px', alignItems: 'stretch' }}>
         {data.map(lg => {
@@ -394,19 +395,20 @@ export class SeasonTower extends React.Component<Props, State> {
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B0B4BC', fontSize: '12px', fontWeight: 700, textAlign: 'center', minHeight: '160px' }}>Season not started yet</div>
               ) : (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: 800, marginBottom: '8px' }}>
-                    <span style={{ flex: '0 0 auto', width: '22px', height: '22px', borderRadius: '50%', background: '#DEE3E8', border: '1px solid #CBD1D8', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                      <img src={`logos/${leaderCrest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
-                    </span>
-                    <span style={{ color: '#15181d' }}>{lg.leader.code}</span>
-                    <span style={{ color: '#0B8A3D' }}>{lg.leader.Pts} pts</span>
-                    <span style={{ color: '#B0B4BC', fontWeight: 700, fontSize: '10px' }}>leader</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '9px' }}>
-                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px' }}>Played <b style={{ color: '#15181d' }}>{lg.played}</b></span>
-                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px' }}>Goals <b style={{ color: '#15181d' }}>{lg.goals}</b></span>
-                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px' }}>Avg <b style={{ color: '#15181d' }}>{lg.played ? (lg.goals / lg.played).toFixed(2) : '—'}</b></span>
-                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px' }}>W‑D <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.dSum}</b></span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '9px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: 800, flex: '0 0 auto' }}>
+                      <span style={{ flex: '0 0 auto', width: '22px', height: '22px', borderRadius: '50%', background: '#DEE3E8', border: '1px solid #CBD1D8', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        <img src={`logos/${leaderCrest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
+                      </span>
+                      <span style={{ color: '#15181d' }}>{lg.leader.code}</span>
+                      <span style={{ color: '#0B8A3D' }}>{lg.leader.Pts}</span>
+                    </div>
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '3px', flexWrap: 'nowrap', justifyContent: 'flex-end' }}>
+                      <span style={{ fontSize: '9px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '5px', padding: '2px 5px', whiteSpace: 'nowrap' }}>Played <b style={{ color: '#15181d' }}>{lg.played}</b></span>
+                      <span style={{ fontSize: '9px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '5px', padding: '2px 5px', whiteSpace: 'nowrap' }}>Goals <b style={{ color: '#15181d' }}>{lg.goals}</b></span>
+                      <span style={{ fontSize: '9px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '5px', padding: '2px 5px', whiteSpace: 'nowrap' }}>Avg <b style={{ color: '#15181d' }}>{lg.played ? (lg.goals / lg.played).toFixed(2) : '—'}</b></span>
+                      <span style={{ fontSize: '9px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '5px', padding: '2px 5px', whiteSpace: 'nowrap' }}>W‑D <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.dSum}</b></span>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', height: '7px', borderRadius: '4px', overflow: 'hidden', marginBottom: '11px', border: '1px solid #E7E9EC' }}>
                     <i style={{ width: `${100 * lg.wSum / tot}%`, background: GREEN }} />
@@ -423,7 +425,7 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div style={{ display: 'flex', gap: '2px', marginTop: '3px' }}>
                     {lg.clubs.map((c: any, i: number) => (
                       <div key={c.code} style={{ flex: '1 1 0', minWidth: 0, height: '26px', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
-                        <span style={{ fontSize: '8.5px', fontWeight: 800, letterSpacing: '.3px', color: i === 0 ? '#15181d' : '#9298a1', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>{c.abbr}</span>
+                        <span style={{ fontSize: '8.5px', fontWeight: 900, letterSpacing: '.3px', color: zoneCol(i + 1, lg.clubs.length), writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>{c.abbr}</span>
                       </div>
                     ))}
                   </div>
