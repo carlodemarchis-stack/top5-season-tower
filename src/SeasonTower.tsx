@@ -403,7 +403,7 @@ export class SeasonTower extends React.Component<Props, State> {
                       <span style={{ color: '#15181d' }}>{lg.leader.code}</span>
                       <span style={{ color: '#0B8A3D' }}>{lg.leader.Pts} pts</span>
                     </div>
-                    <span style={{ ...chip, marginLeft: 'auto' }}>Played <b style={{ color: '#15181d' }}>{lg.played}</b></span>
+                    <span style={{ ...chip, marginLeft: 'auto' }}>Played <b style={{ color: '#15181d' }}>{lg.played}/{Math.round(lg.totalMd * lg.clubs.length / 2)}</b></span>
                   </div>
                   {/* line 3: goals · avg · W-D */}
                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '11px' }}>
