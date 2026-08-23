@@ -54,6 +54,8 @@ interface State {
   layout: 'towers' | 'rows'   // vertical towers (portrait) vs horizontal rows (landscape)
   helpOpen: boolean
   creditsOpen: boolean
+  overview: boolean          // "All 5 leagues" points-board view
+  ovData: any[] | null       // per-league standings summary for the overview
 }
 
 // order shown in the switcher; `real` gates the simulation + the "simulated" wording.
@@ -71,11 +73,12 @@ const LEAGUES: { id: LeagueId; name: string; country: string }[] = [
   { id: 'GER', name: 'Bundesliga', country: 'Germany' },
 ]
 // URL state (#league/season/week/layout) so a reload restores exactly where the user was.
-function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; layout?: 'towers' | 'rows' } {
+function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; layout?: 'towers' | 'rows'; overview?: boolean } {
   const h = (typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '')
   if (!h) return {}
   const [lg, se, wk, ly] = h.split('/')
   const out: any = {}
+  if (lg === 'ALL') out.overview = true
   if (LEAGUES.some(l => l.id === lg)) out.league = lg
   if (SEASONS.some(s => s.id === se)) out.season = se
   if (wk != null && /^\d+$/.test(wk)) out.week = parseInt(wk, 10)
@@ -119,10 +122,13 @@ export class SeasonTower extends React.Component<Props, State> {
     layout: this._init!.layout || 'rows',   // open in the vertical (stacked-rows) view
     helpOpen: false,
     creditsOpen: false,
+    overview: !!this._init!.overview,
+    ovData: null,
   }
 
   componentDidMount() {
     this.loadLeague(this.state.league)
+    if (this.state.overview) this.loadOverview(this.state.season)
 
     this._measure = () => {
       const c = this.chartRef.current; if (!c) return
@@ -170,12 +176,49 @@ export class SeasonTower extends React.Component<Props, State> {
       }).catch(err => console.error('league load failed', err))
   }
   pickLeague(id: LeagueId) {
-    this.setState({ leagueOpen: false })
-    if (id === this.state.league) return
+    this.setState({ leagueOpen: false, overview: false })
+    if (id === this.state.league && !this.state.overview) return
     if (this._timer) { clearInterval(this._timer); this._timer = null }
     this._wantWeek = null   // user navigation → drop the initial URL week
+    if (id === this.state.league) { this.syncUrl(); return }   // drilling from overview into the already-loaded league
     this.setState({ playing: false, pop: null, teamPop: null, seasons: null })
     this.loadLeague(id)
+  }
+
+  // ---- overview ("All 5 leagues") --------------------------------------------
+  enterOverview() {
+    this.setState({ leagueOpen: false, overview: true, pop: null, teamPop: null, playing: false }, () => this.syncUrl())
+    this.loadOverview(this.state.season)
+  }
+  // Load every league's schedule + results for one season and reduce to a standings summary each.
+  loadOverview(season: SeasonId) {
+    const jobs = LEAGUES.map(lg => {
+      const sm = SCHED_MODS[`./data/schedule-${lg.id}-${season}.js`]
+      const rm = RES_MODS[`./data/results-${lg.id}-${season}.js`]
+      return Promise.all([sm ? sm() : Promise.resolve(null), rm ? rm() : Promise.resolve(null)])
+        .then(([s, r]: any[]) => this.summarizeLeague(lg, s?.TEAMS || null, (r && r.RESULTS) || {}, s?.MATCHDAYS || 38))
+    })
+    Promise.all(jobs).then(ovData => { if (this.state.overview) this.setState({ ovData }) })
+  }
+  summarizeLeague(lg: { id: LeagueId; name: string }, TEAMS: Dict | null, REAL: Dict, totalMd: number) {
+    if (!TEAMS) return { id: lg.id, name: lg.name, empty: true, clubs: [], leader: null, mw: 0, totalMd, played: 0, goals: 0, wSum: 0, dSum: 0, lSum: 0 }
+    const rows: Dict = {}
+    for (const code of Object.keys(TEAMS)) { const t = TEAMS[code]; rows[code] = { code, abbr: t.abbr || code, name: t.name || code, primary: t.primary || '#8A8F98', W: 0, D: 0, L: 0, GF: 0, GA: 0 } }
+    let matches = 0, goals = 0, mw = 0
+    for (const code of Object.keys(TEAMS)) for (const g of TEAMS[code].games) {
+      if (g.ha !== 'H') continue
+      const real = REAL[g.id]; if (!real) continue
+      const hg = real.hg, ag = real.ag, H = rows[code], A = rows[g.opp]; if (!H || !A) continue
+      matches++; goals += hg + ag; if (g.w > mw) mw = g.w
+      H.GF += hg; H.GA += ag; A.GF += ag; A.GA += hg
+      if (hg > ag) { H.W++; A.L++ } else if (hg < ag) { H.L++; A.W++ } else { H.D++; A.D++ }
+    }
+    const clubs = Object.keys(rows).map(k => rows[k]).map((r: any) => ({ ...r, Pts: r.W * 3 + r.D, GD: r.GF - r.GA, played: r.W + r.D + r.L }))
+    clubs.sort((x: any, y: any) => (y.Pts - x.Pts) || (y.GD - x.GD) || (y.GF - x.GF) || (x.code < y.code ? -1 : 1))
+    const wSum = clubs.reduce((a: number, c: any) => a + c.W, 0)
+    const dSum = clubs.reduce((a: number, c: any) => a + c.D, 0)
+    const lSum = clubs.reduce((a: number, c: any) => a + c.L, 0)
+    return { id: lg.id, name: lg.name, empty: matches === 0, clubs, leader: clubs[0], mw, totalMd, played: matches, goals, wSum, dSum, lSum }
   }
   activeTeams(): Dict | null { const s = this.state.seasons; return s ? s[this.state.season].TEAMS : null }
   activeReal(): Dict { const s = this.state.seasons; return s ? s[this.state.season].REAL : {} }
@@ -185,12 +228,13 @@ export class SeasonTower extends React.Component<Props, State> {
   latestPlayedWeek() { const R = this.activeReal(), T = this.activeTeams(); if (!T) return 0; let mx = 0; for (const c of Object.keys(T)) for (const g of T[c].games) if (R[g.id] && g.w > mx) mx = g.w; return mx }
   scrubMax() { return (this.seasonIsReal() || SIM) ? this.maxW() : this.latestPlayedWeek() } // scrubber ceiling: full for completed/sim; live season stops at the last matchday with a game played
   defaultWeek() { return this.scrubMax() } // open at the ceiling (full season, or the current matchday on the live one)
-  syncUrl() { const s = this.state; const w = s.throughWeek == null ? 0 : s.throughWeek; try { history.replaceState(null, '', '#' + s.league + '/' + s.season + '/' + w + '/' + s.layout) } catch { /* ignore */ } }
+  syncUrl() { const s = this.state; try { const hash = s.overview ? `#ALL/${s.season}` : `#${s.league}/${s.season}/${s.throughWeek == null ? 0 : s.throughWeek}/${s.layout}`; history.replaceState(null, '', hash) } catch { /* ignore */ } }
   setLayout(l: 'towers' | 'rows') { if (l === this.state.layout) return; this._pinBottom = true; this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
   pickSeason(id: SeasonId) {
     if (id === this.state.season) { this.setState({ seasonOpen: false }); return }
     if (this._timer) { clearInterval(this._timer); this._timer = null }
     this._pinBottom = true; this._wantWeek = null
+    if (this.state.overview) { this.setState({ season: id, seasonOpen: false, ovData: null }, () => { this.syncUrl(); this.loadOverview(id) }); return }
     this.setState({ season: id, seasonOpen: false, playing: false, pop: null, teamPop: null },
       () => this.buildThrough(this.defaultWeek()))
   }
@@ -327,6 +371,70 @@ export class SeasonTower extends React.Component<Props, State> {
     return { W, D, L, GF, GA, GD: gd, Pts: pts, played }
   }
 
+  // "All 5 leagues" points board — one comparable column per league.
+  renderOverview(v: Dict) {
+    const data: any[] = v.ovData
+    if (!data) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9298a1', fontSize: '14px', minHeight: '200px' }}>Loading all five leagues…</div>
+    const maxP = Math.max(10, ...data.map(d => (d.leader ? d.leader.Pts : 0)))
+    const crestOf = (c: string) => (c === 'BRE' ? 'BRE' : c) // (FRA/BRE clash only matters inside Ligue 1, handled per-league below)
+    const GREEN = '#1f8a4c', GREY = '#c9cdd4', RED = '#d0454a'
+    return (
+      <div style={{ display: 'flex', gap: '10px', height: '100%', minHeight: '420px', alignItems: 'stretch' }}>
+        {data.map(lg => {
+          const relFrom = lg.clubs.length - 3   // bottom 3 = relegation (basic zone hint)
+          const leaderCrest = (lg.id === 'FRA' && lg.leader && lg.leader.code === 'BRE') ? 'FRA_BRE' : (lg.leader && lg.leader.code)
+          const tot = Math.max(1, lg.wSum + lg.dSum + lg.lSum)
+          return (
+            <div key={lg.id} onClick={() => this.pickLeague(lg.id)} title={`Open ${lg.name}`} style={{ flex: '1 1 0', minWidth: '176px', display: 'flex', flexDirection: 'column', background: '#fff', border: '1px solid #E7E9EC', borderRadius: '14px', padding: '12px 12px 10px', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 900, letterSpacing: '-.2px', color: '#15181d' }}>{lg.name}</span>
+                <span style={{ marginLeft: 'auto', fontSize: '10px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px', whiteSpace: 'nowrap' }}>{lg.empty ? 'not started' : `MD ${lg.mw}/${lg.totalMd}`}</span>
+              </div>
+              {lg.empty ? (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B0B4BC', fontSize: '12px', fontWeight: 700, textAlign: 'center', minHeight: '160px' }}>Season not started yet</div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: 800, marginBottom: '8px' }}>
+                    <span style={{ flex: '0 0 auto', width: '22px', height: '22px', borderRadius: '50%', background: '#DEE3E8', border: '1px solid #CBD1D8', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                      <img src={`logos/${leaderCrest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
+                    </span>
+                    <span style={{ color: '#15181d' }}>{lg.leader.code}</span>
+                    <span style={{ color: '#0B8A3D' }}>{lg.leader.Pts} pts</span>
+                    <span style={{ color: '#B0B4BC', fontWeight: 700, fontSize: '10px' }}>leader</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '9px' }}>
+                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px' }}>Played <b style={{ color: '#15181d' }}>{lg.played}</b></span>
+                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px' }}>Goals <b style={{ color: '#15181d' }}>{lg.goals}</b></span>
+                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px' }}>W‑D‑L <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.dSum}·{lg.lSum}</b></span>
+                  </div>
+                  <div style={{ display: 'flex', height: '7px', borderRadius: '4px', overflow: 'hidden', marginBottom: '11px', border: '1px solid #E7E9EC' }}>
+                    <i style={{ width: `${100 * lg.wSum / tot}%`, background: GREEN }} />
+                    <i style={{ width: `${100 * lg.dSum / tot}%`, background: GREY }} />
+                    <i style={{ width: `${100 * lg.lSum / tot}%`, background: RED }} />
+                  </div>
+                  <div style={{ flex: '1 1 0', minHeight: '120px', display: 'flex', alignItems: 'flex-end', gap: '2px', borderBottom: '1px solid #E7E9EC' }}>
+                    {lg.clubs.map((c: any, i: number) => (
+                      <div key={c.code} style={{ flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} title={`${c.abbr} · ${c.Pts} pts · ${c.W}W-${c.D}D-${c.L}L`}>
+                        <div style={{ width: '100%', height: `${100 * c.Pts / maxP}%`, minHeight: '2px', borderRadius: '3px 3px 0 0', background: c.primary, opacity: i >= relFrom ? 0.4 : 1, outline: i === 0 ? '2px solid #0B8A3D' : 'none', outlineOffset: '1px' }} />
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: '2px', marginTop: '3px' }}>
+                    {lg.clubs.map((c: any, i: number) => (
+                      <div key={c.code} style={{ flex: '1 1 0', minWidth: 0, height: '26px', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+                        <span style={{ fontSize: '8.5px', fontWeight: 800, letterSpacing: '.3px', color: i === 0 ? '#15181d' : '#9298a1', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>{c.abbr}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   render() {
     const v = this.renderVals()
     const mStop = (e: React.MouseEvent) => e.stopPropagation()
@@ -352,6 +460,14 @@ export class SeasonTower extends React.Component<Props, State> {
                 <div onClick={v.onToggleLeague} style={{ position: 'fixed', inset: 0, zIndex: 70 }} />
                 <div style={{ position: 'absolute', top: 'calc(100% + 7px)', left: '0', zIndex: 80, minWidth: '210px', background: '#fff', border: '1px solid #E4E7EB', borderRadius: '12px', boxShadow: '0 14px 36px rgba(20,22,28,.17)', padding: '5px' }}>
                   <div style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '.6px', textTransform: 'uppercase', color: '#9298a1', padding: '5px 10px 7px' }}>League</div>
+                  <button onClick={v.onOverview} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '9px 12px', border: 'none', borderRadius: '8px', background: v.overviewActive ? '#F1F3F5' : '#fff', color: '#15181d', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'inherit' }}>
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                      <span style={{ fontSize: '13.5px', fontWeight: v.overviewActive ? 800 : 700 }}>🏆 All 5 leagues</span>
+                      <span style={{ fontSize: '10px', color: '#9298a1', fontWeight: 600 }}>Season progress · points board</span>
+                    </span>
+                    <span style={{ color: '#0B8A3D', fontWeight: 900, fontSize: '13px' }}>{v.overviewActive ? '✓' : ''}</span>
+                  </button>
+                  <div style={{ height: '1px', background: '#EDEFF2', margin: '5px 8px' }} />
                   {v.leagueList.map((l: any) => (
                     <button key={l.id} onClick={l.onClick} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '9px 12px', border: 'none', borderRadius: '8px', background: l.active ? '#F1F3F5' : '#fff', color: '#15181d', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'inherit' }}>
                       <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
@@ -385,7 +501,7 @@ export class SeasonTower extends React.Component<Props, State> {
           </div>
 
           {/* control bar: restart · prev · play · next · scrubber (matchday number in the dot) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 12px', border: '1px solid #D7DAE0', borderRadius: '10px', background: '#fff' }}>
+          {!v.overview && <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 12px', border: '1px solid #D7DAE0', borderRadius: '10px', background: '#fff' }}>
             <button onClick={() => this.reset()} title="Restart" aria-label="Restart" style={{ ...stepBtn(false), fontSize: '15px' }}>↺</button>
             <button onClick={() => this.stepWeek(-1)} disabled={v.stepBackDisabled} title="Previous matchday (←)" style={stepBtn(v.stepBackDisabled)}>‹</button>
             {showPlay && <button onClick={() => this.togglePlay()} title="Play / pause" style={{ width: '26px', height: '26px', borderRadius: '6px', border: '1px solid #15181d', background: '#15181d', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{v.playLabel}</button>}
@@ -394,23 +510,23 @@ export class SeasonTower extends React.Component<Props, State> {
               <input ref={this.sliderRef} className="mdslider" type="range" min={0} max={v.sliderMax} step={1} value={v.throughWeek} onChange={(e: any) => { const n = Math.min(this.scrubMax(), parseInt(e.target.value, 10) || 0); e.target.value = String(n); this.buildThrough(n) }} />
               <span style={{ position: 'absolute', left: `${12 + (v.throughWeek / (v.sliderMax || 1)) * (170 - 24)}px`, top: '50%', transform: 'translate(-50%,-50%)', pointerEvents: 'none', fontSize: '10px', fontWeight: 800, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>{v.throughWeek}</span>
             </div>
-          </div>
+          </div>}
 
           {/* help + fullscreen */}
           <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, marginLeft: 'auto', fontSize: '17px', fontWeight: 800 }}>?</button>
           <button onClick={() => this.toggleFullscreen()} title="Fullscreen" aria-label="Fullscreen" style={iconBtn}>⛶</button>
 
           {/* layout toggle: vertical towers ↔ landscape rows */}
-          <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
+          {!v.overview && <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
             <button onClick={() => this.setLayout('towers')} title="Vertical towers" style={{ padding: '6px 10px', border: 'none', background: v.layout === 'towers' ? '#15181d' : '#fff', color: v.layout === 'towers' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊤</button>
             <button onClick={() => this.setLayout('rows')} title="Landscape rows" style={{ padding: '6px 10px', border: 'none', background: v.layout === 'rows' ? '#15181d' : '#fff', color: v.layout === 'rows' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊢</button>
-          </div>
+          </div>}
 
           {/* match count */}
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#22262d', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>{v.playedStr}</span>
+          {!v.overview && <span style={{ fontSize: '13px', fontWeight: 700, color: '#22262d', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>{v.playedStr}</span>}
         </div>
 
-        {v.loading && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', justifyContent: 'center', color: '#9298a1', fontSize: '14px' }}>
+        {!v.overview && v.loading && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', justifyContent: 'center', color: '#9298a1', fontSize: '14px' }}>
           {v.noData
             ? <><div style={{ fontSize: '15px', fontWeight: 700, color: '#5c616b' }}>No data yet for {v.leagueName} · {v.seasonLabel}</div><div>Drop the JSON in ~/Downloads and re-run the generator.</div></>
             : <div>Loading {v.leagueName}…</div>}
@@ -418,7 +534,7 @@ export class SeasonTower extends React.Component<Props, State> {
 
         {/* ---------- chart ---------- */}
         <div ref={this.chartRef} style={{ position: 'relative', flex: '1 1 0', minHeight: 0, overflow: 'auto', padding: '6px 16px 14px' }}>
-          {v.layout === 'rows' ? (
+          {v.overview ? this.renderOverview(v) : v.layout === 'rows' ? (
             <div style={css(v.rowsWrapStyle)}>
               {v.teamsSorted.map((t: any) => (
                 <div key={t.abbr} data-team={t.abbr} style={css(t.rowStyle)}>
@@ -606,17 +722,19 @@ export class SeasonTower extends React.Component<Props, State> {
 
     const mx = this.maxW()
     const smax = this.scrubMax()   // scrubber ceiling — stops at the last played matchday on the live season
-    const leagueName = (LEAGUES.find(x => x.id === S.league) || LEAGUES[0]).name
+    const leagueName = S.overview ? 'All 5 leagues' : (LEAGUES.find(x => x.id === S.league) || LEAGUES[0]).name
     const base: Dict = {
       helpOpen: S.helpOpen,
       creditsOpen: S.creditsOpen,
+      overview: S.overview, ovData: S.ovData,
       playLabel: S.playing ? '❘❘' : '▶',
       stepBackDisabled: tw <= 0, stepFwdDisabled: tw >= smax, sliderMax: mx, scrubMax: smax,   // bar spans the FULL season; navigation is capped at the last played matchday
       throughWeek: tw, weekLabel: tw === 0 ? 'Pre-season' : (tw >= mx ? 'Full season' : ('Through MD ' + tw)),
       resultMode: colorMode !== 'opponent', oppMode: colorMode === 'opponent', zonesOn,
       leagueName, leagueOpen: S.leagueOpen,
       onToggleLeague: () => this.setState(s => ({ leagueOpen: !s.leagueOpen, seasonOpen: false })),
-      leagueList: LEAGUES.map(x => ({ id: x.id, name: x.name, country: x.country, active: x.id === S.league, has: SEASONS.some(s => !!SCHED_MODS[`./data/schedule-${x.id}-${s.id}.js`]), onClick: () => this.pickLeague(x.id) })),
+      overviewActive: S.overview, onOverview: () => this.enterOverview(),
+      leagueList: LEAGUES.map(x => ({ id: x.id, name: x.name, country: x.country, active: !S.overview && x.id === S.league, has: SEASONS.some(s => !!SCHED_MODS[`./data/schedule-${x.id}-${s.id}.js`]), onClick: () => this.pickLeague(x.id) })),
       seasonLabel: (SEASONS.find(x => x.id === S.season) || SEASONS[0]).label,
       seasonTag: isReal ? 'Real' : 'Simulated', seasonOpen: S.seasonOpen,
       onToggleSeason: () => this.setState(s => ({ seasonOpen: !s.seasonOpen, leagueOpen: false })),
