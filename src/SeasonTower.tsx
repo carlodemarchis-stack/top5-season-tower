@@ -405,7 +405,8 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '9px' }}>
                     <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px' }}>Played <b style={{ color: '#15181d' }}>{lg.played}</b></span>
                     <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px' }}>Goals <b style={{ color: '#15181d' }}>{lg.goals}</b></span>
-                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px' }}>W‑D‑L <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.dSum}·{lg.lSum}</b></span>
+                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px' }}>Avg/match <b style={{ color: '#15181d' }}>{lg.played ? (lg.goals / lg.played).toFixed(2) : '—'}</b></span>
+                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px' }}>W‑L <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.lSum}</b></span>
                   </div>
                   <div style={{ display: 'flex', height: '7px', borderRadius: '4px', overflow: 'hidden', marginBottom: '11px', border: '1px solid #E7E9EC' }}>
                     <i style={{ width: `${100 * lg.wSum / tot}%`, background: GREEN }} />
