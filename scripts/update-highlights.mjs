@@ -117,9 +117,10 @@ async function run() {
       if (!home || !away) { skipped++; console.log(`    UNMATCHED ${lg}: ${title}`); continue }
       const mid = homeFixtureId(TEAMS, home, away)
       if (!mid) { skipped++; console.log(`    NO FIXTURE ${lg}: ${home} vs ${away}`); continue }
+      // ENGLISH cut only — the Italian ("SERIE A ENILIVE") uploads are geo-restricted in some regions.
       const isEnglish = /serie a\s+\d{4}\/\d{2}/i.test(title) && !/enilive/i.test(title)
-      // prefer English; only overwrite an existing entry when the new one is the English cut
-      if (!(mid in HL) || isEnglish) { if (HL[mid] !== id) { HL[mid] = id; added++ } }
+      if (!isEnglish) continue
+      if (HL[mid] !== id) { HL[mid] = id; added++ }
     }
     console.log(`  ${lg}: ${added} highlight links (${skipped} skipped), total ${Object.keys(HL).length}`)
     if (!DRY && added) { writeHighlights(lg, HL); wroteAny = true }
