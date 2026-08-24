@@ -1,0 +1,2 @@
+// Official YouTube highlights, keyed by matchId -> videoId. Auto-updated by scripts/update-highlights.mjs.
+export const HIGHLIGHTS = {"48a4a03799a54fcfa786527ed54d723b":"A4Q8SBNo_lM","44127a94657a4a11832c118eed9e9421":"Mb92KLexsJ8","e4fe3e637d6e496fb6a905a0b183ed1c":"0lCAEmRmSPo","87efe7bc3660456ca4b7c9426ad0fa85":"jmFr9JzaI-U","160ddffa5500412baf2c48c2ea255675":"bYgRVR5ZfoQ","5e0f7484954c4f8c823ff624cc0ab888":"YkTXrMMcs1U","50b79ed0dfd04af4804eb12f69123766":"Qr97RQl-Uto","1cc7b922e8d44f93a52fb4bf8858e454":"VPeRIi8FYT0"}

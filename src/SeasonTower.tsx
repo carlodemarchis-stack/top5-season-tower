@@ -37,7 +37,7 @@ interface Props {
 }
 
 interface State {
-  seasons: Record<SeasonId, { TEAMS: Dict | null; REAL: Dict; md: number }> | null
+  seasons: Record<SeasonId, { TEAMS: Dict | null; REAL: Dict; md: number; HL: Dict }> | null
   league: LeagueId
   leagueOpen: boolean
   season: SeasonId
@@ -93,6 +93,7 @@ const SIM = typeof location !== 'undefined' && new URLSearchParams(location.sear
 // Vite statically globs every league/season data file that exists on disk.
 const SCHED_MODS = import.meta.glob('./data/schedule-*.js') as Record<string, () => Promise<any>>
 const RES_MODS = import.meta.glob('./data/results-*.js') as Record<string, () => Promise<any>>
+const HL_MODS = import.meta.glob('./data/highlights-*.js') as Record<string, () => Promise<any>>
 
 // European / relegation bands by finishing position (1-based rank).
 function zoneOf(rank: number): { key: string; label: string; color: string } {
@@ -153,16 +154,16 @@ export class SeasonTower extends React.Component<Props, State> {
   // ---- league / season accessors --------------------------------------------
   // Load a league's two seasons via the file globs (missing files → empty season, "no data").
   loadLeague(id: LeagueId) {
-    const one = (kind: 'schedule' | 'results', s: SeasonId) => {
+    const one = (kind: 'schedule' | 'results' | 'highlights', s: SeasonId) => {
       const key = `./data/${kind}-${id}-${s}.js`
-      const mod = (kind === 'schedule' ? SCHED_MODS : RES_MODS)[key]
+      const mod = (kind === 'schedule' ? SCHED_MODS : kind === 'results' ? RES_MODS : HL_MODS)[key]
       return mod ? mod() : Promise.resolve(null)
     }
-    Promise.all([one('schedule', '2025-26'), one('results', '2025-26'), one('schedule', '2026-27'), one('results', '2026-27')])
-      .then(([s25, r25, s26, r26]: any[]) => {
+    Promise.all([one('schedule', '2025-26'), one('results', '2025-26'), one('schedule', '2026-27'), one('results', '2026-27'), one('highlights', '2025-26'), one('highlights', '2026-27')])
+      .then(([s25, r25, s26, r26, h25, h26]: any[]) => {
         const seasons = {
-          '2025-26': { TEAMS: s25?.TEAMS || null, REAL: (r25 && r25.RESULTS) || {}, md: s25?.MATCHDAYS || 38 },
-          '2026-27': { TEAMS: s26?.TEAMS || null, REAL: (r26 && r26.RESULTS) || {}, md: s26?.MATCHDAYS || 38 },
+          '2025-26': { TEAMS: s25?.TEAMS || null, REAL: (r25 && r25.RESULTS) || {}, md: s25?.MATCHDAYS || 38, HL: (h25 && h25.HIGHLIGHTS) || {} },
+          '2026-27': { TEAMS: s26?.TEAMS || null, REAL: (r26 && r26.RESULTS) || {}, md: s26?.MATCHDAYS || 38, HL: (h26 && h26.HIGHLIGHTS) || {} },
         } as State['seasons']
         // open on a season that actually has data (prefer the current one)
         let season = this.state.season
@@ -611,6 +612,20 @@ export class SeasonTower extends React.Component<Props, State> {
                       {v.popChips.map((c: any, i: number) => <span key={i} style={{ fontSize: '11px', fontWeight: 600, color: '#5c616b', background: '#F1F2F4', borderRadius: '7px', padding: '5px 10px' }}>{c.v}</span>)}
                     </div>
                   )}
+                  {v.popHighlight && (
+                    <a href={`https://www.youtube.com/watch?v=${v.popHighlight}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: '16px', borderRadius: '12px', overflow: 'hidden', textDecoration: 'none', border: '1px solid #E7E9EC' }}>
+                      <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: '#000' }}>
+                        <img src={`https://i.ytimg.com/vi/${v.popHighlight}/hqdefault.jpg`} alt="Match highlights" onError={(e) => { const a = (e.currentTarget.closest('a') as HTMLElement); if (a) a.style.display = 'none' }} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '58px', height: '40px', borderRadius: '11px', background: 'rgba(0,0,0,.62)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ width: 0, height: 0, borderStyle: 'solid', borderWidth: '8px 0 8px 15px', borderColor: 'transparent transparent transparent #fff', marginLeft: '3px' }} />
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 10px', background: '#fff', fontSize: '11.5px', fontWeight: 800, color: '#FF0033' }}>
+                        <span style={{ display: 'inline-flex', width: '17px', height: '12px', borderRadius: '3px', background: '#FF0033', alignItems: 'center', justifyContent: 'center' }}><span style={{ width: 0, height: 0, borderStyle: 'solid', borderWidth: '3px 0 3px 5px', borderColor: 'transparent transparent transparent #fff' }} /></span>
+                        Watch official highlights
+                      </div>
+                    </a>
+                  )}
                   {v.popIsSim && <div style={{ marginTop: '12px', fontSize: '10.5px', color: '#B0B4BC', textAlign: 'center' }}>Simulated scoreline — 2026/27 not yet played.</div>}
                 </div>
               </div>
@@ -935,7 +950,9 @@ export class SeasonTower extends React.Component<Props, State> {
     let popWeek = '', popResBadge = '', popResStyleObj: React.CSSProperties = {}, popChips: Dict[] = []
     let popHomeColor = '#8A8F98', popAwayColor = '#8A8F98', popHomeName = '', popAwayName = '', popHomeCode = '', popAwayCode = ''
     let popScoreA = '—', popScoreB = '—', popHomeDim: React.CSSProperties = {}, popAwayDim: React.CSSProperties = {}, popAccentStyle = '', popIsSim = false
+    let popHighlight = ''
     if (pop) {
+      popHighlight = (S.seasons && S.seasons[S.season].HL && S.seasons[S.season].HL[pop.id]) || ''
       const home = pop.ha === 'H' ? pop.code : pop.opp
       const away = pop.ha === 'H' ? pop.opp : pop.code
       const logoName = (c: string) => (S.league === 'FRA' && c === 'BRE') ? 'FRA_BRE' : c   // one cross-league code clash (Brest vs Brentford)
@@ -994,7 +1011,7 @@ export class SeasonTower extends React.Component<Props, State> {
       rowsWrapStyle: `display:flex;flex-direction:column;gap:2px;width:max-content;min-width:100%;padding-right:${chartW}px;`,
       playedStr: `${decided} / ${mx * Math.floor(list.length / 2)}`, leaderAbbr: leader.code, leaderPts: leader.Pts,
       pop, popWeek, popResBadge, popResStyleObj, popChips, popHomeColor, popAwayColor, popHomeName, popAwayName, popHomeCode, popAwayCode,
-      popScoreA, popScoreB, popHomeDim, popAwayDim, popAccentStyle, popIsSim,
+      popScoreA, popScoreB, popHomeDim, popAwayDim, popAccentStyle, popIsSim, popHighlight,
       tm,
     }
   }

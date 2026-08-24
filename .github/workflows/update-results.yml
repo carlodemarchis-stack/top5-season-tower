@@ -35,12 +35,15 @@ jobs:
           FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
         run: node scripts/update-results.mjs --season 2026-27
 
+      - name: Fetch highlights (official YouTube RSS, keyless)
+        run: node scripts/update-highlights.mjs --season 2026-27 || true
+
       - name: Commit if changed
         id: commit
         run: |
           git config user.name "results-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/data/results-*-2026-27.js
+          git add src/data/results-*-2026-27.js src/data/highlights-*-2026-27.js
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No new results — nothing to deploy."
