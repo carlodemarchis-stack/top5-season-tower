@@ -304,13 +304,13 @@ export class SeasonTower extends React.Component<Props, State> {
     this.buildThrough(cur + delta)
   }
   reset() { if (this._timer) { clearInterval(this._timer); this._timer = null } this.buildThrough(0); this.setState({ playing: false, pop: null, teamPop: null }) }
-  // cycle through the leagues (wraps around), following the dropdown order
+  // cycle through the overview + the leagues (wraps around), following the dropdown order
   stepLeague(delta: number) {
-    if (this.state.overview) return
-    const ids = LEAGUES.map(l => l.id)
-    const i = ids.indexOf(this.state.league)
-    const next = ids[(i + delta + ids.length) % ids.length]
-    if (next !== this.state.league) this.pickLeague(next)
+    const seq = ['ALL', ...LEAGUES.map(l => l.id)]
+    const cur = this.state.overview ? 'ALL' : this.state.league
+    const next = seq[(seq.indexOf(cur) + delta + seq.length) % seq.length]
+    if (next === 'ALL') { if (!this.state.overview) this.enterOverview() }
+    else this.pickLeague(next as LeagueId)
   }
   // ← / → change league · ↑ / ↓ step the matchweek (↑ forward)
   onKey = (e: KeyboardEvent) => {
