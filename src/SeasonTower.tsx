@@ -304,12 +304,25 @@ export class SeasonTower extends React.Component<Props, State> {
     this.buildThrough(cur + delta)
   }
   reset() { if (this._timer) { clearInterval(this._timer); this._timer = null } this.buildThrough(0); this.setState({ playing: false, pop: null, teamPop: null }) }
+  // cycle through the leagues (wraps around), following the dropdown order
+  stepLeague(delta: number) {
+    if (this.state.overview) return
+    const ids = LEAGUES.map(l => l.id)
+    const i = ids.indexOf(this.state.league)
+    const next = ids[(i + delta + ids.length) % ids.length]
+    if (next !== this.state.league) this.pickLeague(next)
+  }
+  // ← / → change league · ↑ / ↓ step the matchweek (↑ forward)
   onKey = (e: KeyboardEvent) => {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
     const t = e.target as HTMLElement | null; const tag = t && t.tagName
     if (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) return
     if (this.state.pop || this.state.teamPop) return
-    e.preventDefault(); this.stepWeek(e.key === 'ArrowRight' ? 1 : -1)
+    e.preventDefault()
+    if (e.key === 'ArrowLeft') this.stepLeague(-1)
+    else if (e.key === 'ArrowRight') this.stepLeague(1)
+    else if (this.state.overview) return              // no single matchweek in the overview
+    else this.stepWeek(e.key === 'ArrowUp' ? 1 : -1)
   }
 
   // ---- FLIP re-sort (unchanged from the NFL sibling) ------------------------
@@ -503,9 +516,9 @@ export class SeasonTower extends React.Component<Props, State> {
           {/* control bar: restart · prev · play · next · scrubber (matchday number in the dot) */}
           {!v.overview && <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 12px', border: '1px solid #D7DAE0', borderRadius: '10px', background: '#fff' }}>
             <button onClick={() => this.reset()} title="Restart" aria-label="Restart" style={{ ...stepBtn(false), fontSize: '15px' }}>↺</button>
-            <button onClick={() => this.stepWeek(-1)} disabled={v.stepBackDisabled} title="Previous matchday (←)" style={stepBtn(v.stepBackDisabled)}>‹</button>
+            <button onClick={() => this.stepWeek(-1)} disabled={v.stepBackDisabled} title="Previous matchday (↓)" style={stepBtn(v.stepBackDisabled)}>‹</button>
             {showPlay && <button onClick={() => this.togglePlay()} title="Play / pause" style={{ width: '26px', height: '26px', borderRadius: '6px', border: '1px solid #15181d', background: '#15181d', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{v.playLabel}</button>}
-            <button onClick={() => this.stepWeek(1)} disabled={v.stepFwdDisabled} title="Next matchday (→)" style={stepBtn(v.stepFwdDisabled)}>›</button>
+            <button onClick={() => this.stepWeek(1)} disabled={v.stepFwdDisabled} title="Next matchday (↑)" style={stepBtn(v.stepFwdDisabled)}>›</button>
             <div style={{ position: 'relative', width: '170px', height: '24px', display: 'flex', alignItems: 'center' }}>
               <input ref={this.sliderRef} className="mdslider" type="range" min={0} max={v.sliderMax} step={1} value={v.throughWeek} onChange={(e: any) => { const n = Math.min(this.scrubMax(), parseInt(e.target.value, 10) || 0); e.target.value = String(n); this.buildThrough(n) }} />
               <span style={{ position: 'absolute', left: `${12 + (v.throughWeek / (v.sliderMax || 1)) * (170 - 24)}px`, top: '50%', transform: 'translate(-50%,-50%)', pointerEvents: 'none', fontSize: '10px', fontWeight: 800, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>{v.throughWeek}</span>
@@ -680,6 +693,7 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div>A <b>draw is deliberately shown twice</b> — once above the baseline and once below. It's the honest picture of a tie: <b>+1 point earned</b> (better than a loss), but also <b>2 points dropped</b> versus the win it could have been. Showing both sides is the whole idea — the tower isn't just where you stand, it's <b>the points you gathered and the points you let slip</b>. That's why the negatives are drawn at all: a team can sit on the same total from very different seasons, and only the down‑side reveals how many wins turned into draws or losses along the way.</div>
                   <div>Drag the <b>matchday slider</b> (or <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>‹</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>›</kbd>) to move through the season — it stops at the <b>last played matchday</b>.</div>
                   <div>Switch <b>league &amp; season</b> with the dropdowns, flip <b>vertical towers / landscape rows</b> with ⊤ / ⊢, and go <b>fullscreen</b> with ⛶.</div>
+                  <div><b>Keyboard:</b> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>←</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>→</kbd> change league, <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>↑</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>↓</kbd> step the matchday.</div>
                   <div><b>Click a match</b> for the scoreline &amp; details, or a <b>team's label</b> for its full record.</div>
                 </div>
               </div>
