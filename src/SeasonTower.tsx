@@ -625,19 +625,25 @@ export class SeasonTower extends React.Component<Props, State> {
                       {v.popChips.map((c: any, i: number) => <span key={i} style={{ fontSize: '11px', fontWeight: 600, color: '#5c616b', background: '#F1F2F4', borderRadius: '7px', padding: '5px 10px' }}>{c.v}</span>)}
                     </div>
                   )}
-                  {v.popHighlight && (
-                    <a href={`https://www.youtube.com/watch?v=${v.popHighlight}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: '16px', borderRadius: '12px', overflow: 'hidden', textDecoration: 'none', border: '1px solid #E7E9EC' }}>
-                      <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: '#000' }}>
-                        <img src={`https://i.ytimg.com/vi/${v.popHighlight}/hqdefault.jpg`} alt="Match highlights" onError={(e) => { const a = (e.currentTarget.closest('a') as HTMLElement); if (a) a.style.display = 'none' }} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                        <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '58px', height: '40px', borderRadius: '11px', background: 'rgba(0,0,0,.62)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <span style={{ width: 0, height: 0, borderStyle: 'solid', borderWidth: '8px 0 8px 15px', borderColor: 'transparent transparent transparent #fff', marginLeft: '3px' }} />
-                        </span>
+                  {v.popHighlights.length > 0 && (
+                    <div style={{ marginTop: '16px' }}>
+                      <a href={`https://www.youtube.com/watch?v=${v.popHighlights[0].id}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', borderRadius: '12px 12px 0 0', overflow: 'hidden', textDecoration: 'none', border: '1px solid #E7E9EC', borderBottom: 'none' }}>
+                        <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: '#000' }}>
+                          <img src={`https://i.ytimg.com/vi/${v.popHighlights[0].id}/hqdefault.jpg`} alt="Match highlights" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                          <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '58px', height: '40px', borderRadius: '11px', background: 'rgba(0,0,0,.62)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ width: 0, height: 0, borderStyle: 'solid', borderWidth: '8px 0 8px 15px', borderColor: 'transparent transparent transparent #fff', marginLeft: '3px' }} />
+                          </span>
+                        </div>
+                      </a>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 10px', border: '1px solid #E7E9EC', borderTop: 'none', borderRadius: '0 0 12px 12px' }}>
+                        {v.popHighlights.map((h: any, i: number) => (
+                          <a key={h.lang || i} href={`https://www.youtube.com/watch?v=${h.id}`} target="_blank" rel="noopener noreferrer" title={`Watch highlights — ${h.label}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '7px', fontSize: '11px', fontWeight: 800, textDecoration: 'none', background: i === 0 ? '#FF0033' : '#F1F2F4', color: i === 0 ? '#fff' : '#3a3f47' }}>
+                            <span>{h.flag}</span>{h.label}
+                          </a>
+                        ))}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 10px', background: '#fff', fontSize: '11.5px', fontWeight: 800, color: '#FF0033' }}>
-                        <span style={{ display: 'inline-flex', width: '17px', height: '12px', borderRadius: '3px', background: '#FF0033', alignItems: 'center', justifyContent: 'center' }}><span style={{ width: 0, height: 0, borderStyle: 'solid', borderWidth: '3px 0 3px 5px', borderColor: 'transparent transparent transparent #fff' }} /></span>
-                        Watch official highlights
-                      </div>
-                    </a>
+                      {v.popHighlights.length > 1 && <div style={{ marginTop: '6px', fontSize: '10px', color: '#9298a1', textAlign: 'center' }}>Versions are region‑locked — open the one available where you are.</div>}
+                    </div>
                   )}
                   {v.popIsSim && <div style={{ marginTop: '12px', fontSize: '10.5px', color: '#B0B4BC', textAlign: 'center' }}>Simulated scoreline — 2026/27 not yet played.</div>}
                 </div>
@@ -964,9 +970,20 @@ export class SeasonTower extends React.Component<Props, State> {
     let popWeek = '', popResBadge = '', popResStyleObj: React.CSSProperties = {}, popChips: Dict[] = []
     let popHomeColor = '#8A8F98', popAwayColor = '#8A8F98', popHomeName = '', popAwayName = '', popHomeCode = '', popAwayCode = ''
     let popScoreA = '—', popScoreB = '—', popHomeDim: React.CSSProperties = {}, popAwayDim: React.CSSProperties = {}, popAccentStyle = '', popIsSim = false
-    let popHighlight = ''
+    let popHighlights: { lang: string; id: string; label: string; flag: string }[] = []
     if (pop) {
-      popHighlight = (S.seasons && S.seasons[S.season].HL && S.seasons[S.season].HL[pop.id]) || ''
+      // highlights entry can be a legacy string (one video) or a { lang: videoId } map (e.g. Serie A en+it).
+      const raw = (S.seasons && S.seasons[S.season].HL && S.seasons[S.season].HL[pop.id])
+      const META: Record<string, { label: string; flag: string }> = { en: { label: 'English', flag: '🇬🇧' }, it: { label: 'Italiano', flag: '🇮🇹' }, es: { label: 'Español', flag: '🇪🇸' }, fr: { label: 'Français', flag: '🇫🇷' } }
+      if (typeof raw === 'string' && raw) {
+        popHighlights = [{ lang: '', id: raw, label: 'Watch highlights', flag: '▶' }]
+      } else if (raw && typeof raw === 'object') {
+        const vlang = (typeof navigator !== 'undefined' ? (navigator.language || '') : '').slice(0, 2).toLowerCase()
+        const order = ['en', 'it', 'es', 'fr']
+        popHighlights = Object.keys(raw).filter(k => raw[k])
+          .sort((a, b) => (a === vlang ? -1 : b === vlang ? 1 : (order.indexOf(a) + 99 * (order.indexOf(a) < 0 ? 1 : 0)) - (order.indexOf(b) + 99 * (order.indexOf(b) < 0 ? 1 : 0))))
+          .map(k => ({ lang: k, id: raw[k], label: (META[k] || { label: k.toUpperCase() }).label, flag: (META[k] || { flag: '▶' }).flag }))
+      }
       const home = pop.ha === 'H' ? pop.code : pop.opp
       const away = pop.ha === 'H' ? pop.opp : pop.code
       const logoName = (c: string) => (S.league === 'FRA' && c === 'BRE') ? 'FRA_BRE' : c   // one cross-league code clash (Brest vs Brentford)
@@ -1025,7 +1042,7 @@ export class SeasonTower extends React.Component<Props, State> {
       rowsWrapStyle: `display:flex;flex-direction:column;gap:2px;width:max-content;min-width:100%;padding-right:${chartW}px;`,
       playedStr: `${decided} / ${mx * Math.floor(list.length / 2)}`, leaderAbbr: leader.code, leaderPts: leader.Pts,
       pop, popWeek, popResBadge, popResStyleObj, popChips, popHomeColor, popAwayColor, popHomeName, popAwayName, popHomeCode, popAwayCode,
-      popScoreA, popScoreB, popHomeDim, popAwayDim, popAccentStyle, popIsSim, popHighlight,
+      popScoreA, popScoreB, popHomeDim, popAwayDim, popAccentStyle, popIsSim, popHighlights,
       tm,
     }
   }

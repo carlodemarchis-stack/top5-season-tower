@@ -28,17 +28,20 @@ const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] 
 const SEASON = opt('--season', '2026-27')
 const DRY = has('--dry-run')
 
-// ── per-league title parsers (return null → not a match highlight) ───────────
-// Serie A: "… | HOME-AWAY | HIGHLIGHTS | Serie A 2026/27" (ENGLISH cut only — Italian "ENILIVE" is geo-restricted).
+// ── per-league title parsers (return null → not a match highlight; else { lang, pairs }) ──
+// Serie A: BOTH cuts are captured — English "… | HOME-AWAY | HIGHLIGHTS | Serie A 2026/27" AND
+// Italian "… | HOME-AWAY | HIGHLIGHTS | SERIE A ENILIVE 2026/27" (they're reciprocally geo-blocked,
+// so we keep both and the app offers the one that plays in the viewer's country).
 function parseITA(title) {
   if (!/highlights/i.test(title)) return null
-  if (!(/serie a\s+\d{4}\/\d{2}/i.test(title) && !/enilive/i.test(title))) return null
+  const lang = /enilive/i.test(title) ? 'it' : (/serie a\s+\d{4}\/\d{2}/i.test(title) ? 'en' : null)
+  if (!lang) return null
   const pairs = []
   for (const p of title.split('|').map(s => s.trim())) {
     if (/highlight|serie a|matchday|giornata/i.test(p)) continue
     const m = p.match(/^(.+?)\s*-\s*(.+?)$/); if (m) pairs.push({ home: m[1], away: m[2] })
   }
-  return pairs.length ? pairs : null
+  return pairs.length ? { lang, pairs } : null
 }
 // La Liga: "HOME x - y AWAY | RESUMEN LALIGA EA SPORTS" (Spanish; score sits between the two clubs).
 function parseESP(title) {
@@ -46,13 +49,13 @@ function parseESP(title) {
   if (/rueda|previa|\bvs\b/i.test(title)) return null
   const seg = title.split('|')[0].trim()              // "ELCHE CF 0 - 5 FC BARCELONA"
   const m = seg.match(/^(.+?)\s+\d{1,2}\s*-\s*\d{1,2}\s+(.+?)$/)
-  return m ? [{ home: m[1], away: m[2] }] : null
+  return m ? { lang: 'es', pairs: [{ home: m[1], away: m[2] }] } : null
 }
 
-// LeagueId -> { official channel id, title parser, YT-name→code overrides }
+// LeagueId -> { official channel id, title parser, YT-name→code overrides, legacyLang for old string entries }
 const FEEDS = {
-  ITA: { channel: 'UCBJeMCIeLQos7wacox4hmLQ', parse: parseITA, overrides: {} },   // "Serie A" @seriea
-  ESP: { channel: 'UCTv-XvfzLX3i4IGWAm4sbmA', parse: parseESP, overrides: {} },   // "LALIGA EA SPORTS" @LaLiga
+  ITA: { channel: 'UCBJeMCIeLQos7wacox4hmLQ', parse: parseITA, overrides: {}, legacyLang: 'en' },   // "Serie A" @seriea
+  ESP: { channel: 'UCTv-XvfzLX3i4IGWAm4sbmA', parse: parseESP, overrides: {}, legacyLang: 'es' },   // "LALIGA EA SPORTS" @LaLiga
 }
 
 const norm = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -120,13 +123,19 @@ async function run() {
     const HL = loadHighlights(lg)
     let added = 0, skipped = 0
     for (const { id, title } of parseFeed(xml)) {
-      const pairs = cfg.parse(title); if (!pairs || !pairs.length) continue
+      const parsed = cfg.parse(title); if (!parsed) continue
+      const { lang, pairs } = parsed
       let home = null, away = null
       for (const p of pairs) { const h = resolve(p.home), a = resolve(p.away); if (h && a) { home = h; away = a; break } }
       if (!home || !away) { skipped++; console.log(`    UNMATCHED ${lg}: ${title}`); continue }
       const mid = homeFixtureId(TEAMS, home, away)
       if (!mid) { skipped++; console.log(`    NO FIXTURE ${lg}: ${home} vs ${away} — ${title}`); continue }
-      if (HL[mid] !== id) { HL[mid] = id; added++ }
+      // { lang: videoId } map per match; migrate a legacy plain-string entry to its language first
+      let cur = HL[mid]
+      if (typeof cur === 'string') cur = { [cfg.legacyLang]: cur }
+      if (!cur || typeof cur !== 'object') cur = {}
+      if (cur[lang] !== id) { cur[lang] = id; added++ }
+      HL[mid] = cur
     }
     console.log(`  ${lg}: ${added} highlight links (${skipped} skipped), total ${Object.keys(HL).length}`)
     if (!DRY && added) { writeHighlights(lg, HL); wroteAny = true }
