@@ -627,18 +627,19 @@ export class SeasonTower extends React.Component<Props, State> {
                   )}
                   {v.popHighlights.length > 0 && (
                     <div style={{ marginTop: '16px' }}>
-                      <a href={`https://www.youtube.com/watch?v=${v.popHighlights[0].id}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', borderRadius: '12px 12px 0 0', overflow: 'hidden', textDecoration: 'none', border: '1px solid #E7E9EC', borderBottom: 'none' }}>
-                        <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: '#000' }}>
-                          <img src={`https://i.ytimg.com/vi/${v.popHighlights[0].id}/hqdefault.jpg`} alt="Match highlights" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                          <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '58px', height: '40px', borderRadius: '11px', background: 'rgba(0,0,0,.62)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ width: 0, height: 0, borderStyle: 'solid', borderWidth: '8px 0 8px 15px', borderColor: 'transparent transparent transparent #fff', marginLeft: '3px' }} />
-                          </span>
-                        </div>
-                      </a>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 10px', border: '1px solid #E7E9EC', borderTop: 'none', borderRadius: '0 0 12px 12px' }}>
+                      {/* one clickable thumbnail per available language — both cuts shown side by side */}
+                      <div style={{ display: 'flex', gap: '8px' }}>
                         {v.popHighlights.map((h: any, i: number) => (
-                          <a key={h.lang || i} href={`https://www.youtube.com/watch?v=${h.id}`} target="_blank" rel="noopener noreferrer" title={`Watch highlights — ${h.label}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '7px', fontSize: '11px', fontWeight: 800, textDecoration: 'none', background: i === 0 ? '#FF0033' : '#F1F2F4', color: i === 0 ? '#fff' : '#3a3f47' }}>
-                            <span>{h.flag}</span>{h.label}
+                          <a key={h.lang || i} href={`https://www.youtube.com/watch?v=${h.id}`} target="_blank" rel="noopener noreferrer" title={`Watch highlights — ${h.label}`} style={{ flex: '1 1 0', minWidth: 0, display: 'block', textDecoration: 'none', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${i === 0 ? '#FF0033' : '#E7E9EC'}` }}>
+                            <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: '#000' }}>
+                              <img src={`https://i.ytimg.com/vi/${h.id}/hqdefault.jpg`} alt={`${h.label} highlights`} onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.background = '#15181d' }} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                              <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '48px', height: '34px', borderRadius: '9px', background: 'rgba(0,0,0,.62)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ width: 0, height: 0, borderStyle: 'solid', borderWidth: '7px 0 7px 13px', borderColor: 'transparent transparent transparent #fff', marginLeft: '3px' }} />
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '6px 8px', fontSize: '11px', fontWeight: 800, background: '#fff', color: i === 0 ? '#FF0033' : '#3a3f47' }}>
+                              <span>{h.flag}</span>{h.label}
+                            </div>
                           </a>
                         ))}
                       </div>
