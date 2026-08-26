@@ -385,6 +385,22 @@ export class SeasonTower extends React.Component<Props, State> {
     return { W, D, L, GF, GA, GD: gd, Pts: pts, played }
   }
 
+  // Normalize a highlights entry (legacy string OR { lang: videoId }) into an ordered link list;
+  // the viewer's browser language floats to the front, but every available language is kept.
+  normHighlights(raw: any): { lang: string; id: string; label: string; flag: string }[] {
+    const META: Record<string, { label: string; flag: string }> = { en: { label: 'English', flag: '🇬🇧' }, it: { label: 'Italiano', flag: '🇮🇹' }, es: { label: 'Español', flag: '🇪🇸' }, fr: { label: 'Français', flag: '🇫🇷' } }
+    if (typeof raw === 'string' && raw) return [{ lang: '', id: raw, label: 'Watch highlights', flag: '▶' }]
+    if (raw && typeof raw === 'object') {
+      const vlang = (typeof navigator !== 'undefined' ? (navigator.language || '') : '').slice(0, 2).toLowerCase()
+      const order = ['en', 'it', 'es', 'fr']
+      const rk = (k: string) => order.indexOf(k) < 0 ? 99 : order.indexOf(k)
+      return Object.keys(raw).filter(k => raw[k])
+        .sort((a, b) => a === vlang ? -1 : b === vlang ? 1 : rk(a) - rk(b))
+        .map(k => ({ lang: k, id: raw[k], label: (META[k] || { label: k.toUpperCase() }).label, flag: (META[k] || { flag: '▶' }).flag }))
+    }
+    return []
+  }
+
   // "All 5 leagues" points board — one comparable column per league.
   renderOverview(v: Dict) {
     const data: any[] = v.ovData
@@ -670,16 +686,25 @@ export class SeasonTower extends React.Component<Props, State> {
                 </div>
                 <div style={{ padding: '6px 10px 12px', overflowY: 'auto' }}>
                   {v.tm.rows.map((row: any) => (
-                    <button key={row.id} onClick={row.onClick} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '8px 10px', border: 'none', borderRadius: '8px', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#B0B4BC', width: '26px', flex: '0 0 26px', fontVariantNumeric: 'tabular-nums' }}>{row.w}</span>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#9298a1', width: '20px', flex: '0 0 20px' }}>{row.ha}</span>
-                      <span style={{ flex: '0 0 auto', width: '24px', height: '24px', borderRadius: '50%', background: '#DEE3E8', border: '1px solid #CBD1D8', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        <img src={`logos/${row.oppCrest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
-                      </span>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#15181d', flex: 1 }}>{row.opp}</span>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#3a3f47', fontVariantNumeric: 'tabular-nums', width: '44px', textAlign: 'right' }}>{row.score}</span>
-                      <span style={{ ...row.badgeStyleObj, flex: '0 0 24px', textAlign: 'center', fontSize: '10px', fontWeight: 800, borderRadius: '6px', padding: '3px 0' }}>{row.badge}</span>
-                    </button>
+                    <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '6px 10px', borderRadius: '8px' }}>
+                      <button onClick={row.onClick} style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#B0B4BC', width: '26px', flex: '0 0 26px', fontVariantNumeric: 'tabular-nums' }}>{row.w}</span>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#9298a1', width: '20px', flex: '0 0 20px' }}>{row.ha}</span>
+                        <span style={{ flex: '0 0 auto', width: '24px', height: '24px', borderRadius: '50%', background: '#DEE3E8', border: '1px solid #CBD1D8', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                          <img src={`logos/${row.oppCrest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+                        </span>
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#15181d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.opp}</span>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#3a3f47', fontVariantNumeric: 'tabular-nums', width: '44px', textAlign: 'right' }}>{row.score}</span>
+                        <span style={{ ...row.badgeStyleObj, flex: '0 0 24px', textAlign: 'center', fontSize: '10px', fontWeight: 800, borderRadius: '6px', padding: '3px 0' }}>{row.badge}</span>
+                      </button>
+                      {row.highlights.length > 0 && (
+                        <span style={{ display: 'flex', gap: '4px', flex: '0 0 auto' }}>
+                          {row.highlights.map((h: any, i: number) => (
+                            <a key={h.lang || i} href={`https://www.youtube.com/watch?v=${h.id}`} target="_blank" rel="noopener noreferrer" title={`Watch highlights — ${h.label}`} style={{ display: 'inline-flex', width: '23px', height: '23px', borderRadius: '6px', alignItems: 'center', justifyContent: 'center', fontSize: '12px', textDecoration: 'none', background: i === 0 ? '#FFEAED' : '#F1F2F4', border: `1px solid ${i === 0 ? '#FFC4CD' : '#E3E6EA'}` }}>{h.flag}</a>
+                          ))}
+                        </span>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -973,18 +998,7 @@ export class SeasonTower extends React.Component<Props, State> {
     let popScoreA = '—', popScoreB = '—', popHomeDim: React.CSSProperties = {}, popAwayDim: React.CSSProperties = {}, popAccentStyle = '', popIsSim = false
     let popHighlights: { lang: string; id: string; label: string; flag: string }[] = []
     if (pop) {
-      // highlights entry can be a legacy string (one video) or a { lang: videoId } map (e.g. Serie A en+it).
-      const raw = (S.seasons && S.seasons[S.season].HL && S.seasons[S.season].HL[pop.id])
-      const META: Record<string, { label: string; flag: string }> = { en: { label: 'English', flag: '🇬🇧' }, it: { label: 'Italiano', flag: '🇮🇹' }, es: { label: 'Español', flag: '🇪🇸' }, fr: { label: 'Français', flag: '🇫🇷' } }
-      if (typeof raw === 'string' && raw) {
-        popHighlights = [{ lang: '', id: raw, label: 'Watch highlights', flag: '▶' }]
-      } else if (raw && typeof raw === 'object') {
-        const vlang = (typeof navigator !== 'undefined' ? (navigator.language || '') : '').slice(0, 2).toLowerCase()
-        const order = ['en', 'it', 'es', 'fr']
-        popHighlights = Object.keys(raw).filter(k => raw[k])
-          .sort((a, b) => (a === vlang ? -1 : b === vlang ? 1 : (order.indexOf(a) + 99 * (order.indexOf(a) < 0 ? 1 : 0)) - (order.indexOf(b) + 99 * (order.indexOf(b) < 0 ? 1 : 0))))
-          .map(k => ({ lang: k, id: raw[k], label: (META[k] || { label: k.toUpperCase() }).label, flag: (META[k] || { flag: '▶' }).flag }))
-      }
+      popHighlights = this.normHighlights(S.seasons && S.seasons[S.season].HL && S.seasons[S.season].HL[pop.id])
       const home = pop.ha === 'H' ? pop.code : pop.opp
       const away = pop.ha === 'H' ? pop.opp : pop.code
       const logoName = (c: string) => (S.league === 'FRA' && c === 'BRE') ? 'FRA_BRE' : c   // one cross-league code clash (Brest vs Brentford)
@@ -1019,11 +1033,12 @@ export class SeasonTower extends React.Component<Props, State> {
       const idx = list.findIndex(e => e.code === code); const e = list[idx]; const rank = idx + 1
       const prim = t.primary, txt = this.contrast(prim)
       const crestOf = (c: string) => (S.league === 'FRA' && c === 'BRE') ? 'FRA_BRE' : c   // one cross-league code clash (Brest vs Brentford)
+      const HL = (S.seasons && S.seasons[S.season].HL) || {}
       const rows = t.games.slice().sort((a: any, b: any) => a.w - b.w).map((g: any) => {
         const r = this.getRes(code, g.id); const res = r ? r.res : null
         const c = res === 'W' ? ['#E7F4EC', '#1F8A4C'] : res === 'L' ? ['#FBEAE9', '#C23A2E'] : res === 'D' ? ['#F2E4BC', '#7C6320'] : ['#F1F2F4', '#9298a1']
         return {
-          id: g.id, w: g.w, ha: g.ha === 'H' ? 'vs' : '→', opp: g.oppFull, oppCrest: crestOf(g.opp),
+          id: g.id, w: g.w, ha: g.ha === 'H' ? 'vs' : '→', opp: g.oppFull, oppCrest: crestOf(g.opp), highlights: this.normHighlights(HL[g.id]),
           score: r ? `${r.gf}–${r.ga}` : '—', badge: res || '·',
           badgeStyleObj: { color: c[1], background: c[0] } as React.CSSProperties,
           onClick: () => this.setState({ teamPop: null, pop: { code, id: g.id, w: g.w, opp: g.opp, oppFull: g.oppFull, ha: g.ha, venue: g.venue, city: g.city, net: g.net, et: g.et } }),
