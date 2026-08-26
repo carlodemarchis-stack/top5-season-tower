@@ -1,2 +1,2 @@
-// Official YouTube highlights, keyed by matchId -> { lang: videoId }. Auto-updated by scripts/update-highlights.mjs.
-export const HIGHLIGHTS = {"102258":{"es":"6necjALien0"},"102260":{"es":"4dPE5OkzbeQ"},"102262":{"es":"9XiG_TtRGlI"},"102264":{"es":"hkl8h8XWbws"},"102266":{"es":"5-BNOPHcCiQ"}}
+// Official YouTube highlights, keyed by matchId -> videoId. Auto-updated by scripts/update-highlights.mjs.
+export const HIGHLIGHTS = {"102249":{"es":"9WlsPzrTSqU"},"102250":{"es":"E-szcv8lprI"},"102253":{"es":"eOe1TvZqRH0"},"102255":{"es":"WbicLcqYEng"},"102257":{"es":"IPEloYT9B7M"},"102258":{"es":"6necjALien0"},"102259":{"es":"dm-iyg-cU0Y"},"102260":{"es":"4dPE5OkzbeQ"},"102261":{"es":"p0ytvj2j94I"},"102262":{"es":"9XiG_TtRGlI"},"102263":{"es":"l-71b-_ZW3Q"},"102264":{"es":"hkl8h8XWbws"},"102266":{"es":"5-BNOPHcCiQ"},"102267":{"es":"U5f7ikFDgSQ"},"102268":{"es":"Ce3nq4_FpRk"}}
