@@ -56,10 +56,11 @@ function parseESP(title) {
   return m ? { lang: 'es', pairs: [{ home: m[1], away: m[2] }] } : null
 }
 
-// LeagueId -> { official channel id, title parser, YT-name→code overrides, legacyLang for old string entries }
+// LeagueId -> source (curated `playlists` [best] OR a `channel` whose uploads are scanned) + parser.
+// Serie A has official per-language HIGHLIGHTS playlists (English + Italian) — cleanest source.
 const FEEDS = {
-  ITA: { channel: 'UCBJeMCIeLQos7wacox4hmLQ', parse: parseITA, overrides: {}, legacyLang: 'en' },   // "Serie A" @seriea
-  ESP: { channel: 'UCTv-XvfzLX3i4IGWAm4sbmA', parse: parseESP, overrides: {}, legacyLang: 'es' },   // "LALIGA EA SPORTS" @LaLiga
+  ITA: { playlists: ['PLcv0mBdEYNdk', 'PLfS86OfgqpRs'], parse: parseITA, overrides: {}, legacyLang: 'en' },   // @seriea EN + IT highlights playlists
+  ESP: { channel: 'UCTv-XvfzLX3i4IGWAm4sbmA', parse: parseESP, overrides: {}, legacyLang: 'es' },              // "LALIGA EA SPORTS" @LaLiga (uploads)
 }
 
 const norm = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -87,13 +88,13 @@ function writeHighlights(lg, hl) {
   fs.writeFileSync(f, `// Official YouTube highlights, keyed by matchId -> videoId. Auto-updated by scripts/update-highlights.mjs.\nexport const HIGHLIGHTS = ${JSON.stringify(hl)}\n`)
 }
 
-// Page through a channel's uploads playlist (UC… → UU…) via the Data API. 1 quota unit / 50 items.
-async function fetchUploads(channelId) {
-  const uploads = 'UU' + channelId.slice(2)
+// Page through any playlist via the Data API (1 quota unit / 50 items). A channel's uploads playlist
+// is UC…→UU…; a curated highlights playlist is used as-is.
+async function fetchPlaylistItems(playlistId) {
   const out = []
   let pageToken = ''
   for (let p = 0; p < PAGES; p++) {
-    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${uploads}&key=${KEY}` + (pageToken ? `&pageToken=${pageToken}` : '')
+    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${KEY}` + (pageToken ? `&pageToken=${pageToken}` : '')
     const r = await fetch(url)
     if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error(`HTTP ${r.status} ${t.slice(0, 120)}`) }
     const j = await r.json()
@@ -129,8 +130,9 @@ async function run() {
   for (const [lg, cfg] of Object.entries(FEEDS)) {
     let TEAMS; try { TEAMS = await loadSchedule(lg) } catch { console.log(`  ${lg}: no schedule for ${SEASON}, skip`); continue }
     const resolve = resolver(TEAMS, cfg.overrides)
-    let items
-    try { items = await fetchUploads(cfg.channel) } catch (e) { console.log(`  ${lg}: fetch failed ${e.message}`); continue }
+    const lists = cfg.playlists || ['UU' + cfg.channel.slice(2)]   // curated highlights playlists, or the channel's uploads
+    let items = []
+    try { for (const pl of lists) items.push(...await fetchPlaylistItems(pl)) } catch (e) { console.log(`  ${lg}: fetch failed ${e.message}`); continue }
 
     const HL = loadHighlights(lg), RESULTS = loadResults(lg)
     let added = 0, skipped = 0
