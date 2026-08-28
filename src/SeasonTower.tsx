@@ -332,7 +332,15 @@ export class SeasonTower extends React.Component<Props, State> {
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
     const t = e.target as HTMLElement | null; const tag = t && t.tagName
     if (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) return
-    if (this.state.pop || this.state.teamPop) return
+    // club modal open → ←/→ move to the previous/next club in league-table order
+    if (this.state.teamPop) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      e.preventDefault()
+      const codes = this.rankedCodes(); const i = codes.indexOf(this.state.teamPop)
+      if (i >= 0) this.openTeam(codes[(i + (e.key === 'ArrowRight' ? 1 : -1) + codes.length) % codes.length])
+      return
+    }
+    if (this.state.pop) return
     e.preventDefault()
     if (e.key === 'ArrowLeft') this.stepLeague(-1)
     else if (e.key === 'ArrowRight') this.stepLeague(1)
@@ -400,6 +408,13 @@ export class SeasonTower extends React.Component<Props, State> {
     return { W, D, L, GF, GA, GD: gd, Pts: pts, played }
   }
 
+  // all clubs in current league-table order (points → GD → GF)
+  rankedCodes(): string[] {
+    const T = this.activeTeams(); if (!T) return []
+    return Object.keys(T).map(c => ({ c, ...this.tableLine(c) }))
+      .sort((x, y) => (y.Pts - x.Pts) || (y.GD - x.GD) || (y.GF - x.GF) || (x.c < y.c ? -1 : 1))
+      .map(a => a.c)
+  }
   // a club's league position counting only matches up to and including matchday `w`
   rankAfterWeek(code: string, w: number): number {
     const T = this.activeTeams(); if (!T) return 0
@@ -514,7 +529,7 @@ export class SeasonTower extends React.Component<Props, State> {
         {mds.filter(md => totalMd <= 12 || md === 1 || md === totalMd || md % Math.ceil(totalMd / 9) === 0).map(md => <text key={'x' + md} x={x(md)} y={H - 4} textAnchor="middle" fontSize="7.5" fontWeight="700" fill="#9298a1">{md}</text>)}
         {yticks.map(rk => <text key={'y' + rk} x={padL - 3} y={y(rk) + 2.5} textAnchor="end" fontSize="7" fontWeight="700" fill="#9298a1">{rk}</text>)}
         <polyline points={pts} fill="none" stroke={color} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
-        {rankPath.map((p: any, i: number) => <circle key={'p' + i} cx={x(p.md)} cy={y(p.rank)} r="2.8" fill={color} stroke="#fff" strokeWidth="1.2" />)}
+        {rankPath.map((p: any, i: number) => <circle key={'p' + i} cx={x(p.md)} cy={y(p.rank)} r="4" fill={p.res === 'W' ? '#1f8a4c' : p.res === 'L' ? '#d0454a' : '#EAB308'} stroke="#fff" strokeWidth="1.4" />)}
       </svg>
     )
   }
@@ -1134,7 +1149,7 @@ export class SeasonTower extends React.Component<Props, State> {
         rows,
         // rank trajectory chart: position after each played matchday
         color: prim, nTeams: Object.keys(T).length, totalMd: mx,
-        rankPath: rows.filter((r: any) => r.rank != null).map((r: any) => ({ md: r.w, rank: r.rank })),
+        rankPath: rows.filter((r: any) => r.rank != null).map((r: any) => ({ md: r.w, rank: r.rank, res: r.badge })),
         chartBands: zoneBands.map((b: any) => ({ label: b.label, color: b.color, bg: b.bg, from: b.start + 1, to: b.start + b.count })),
       }
     }
