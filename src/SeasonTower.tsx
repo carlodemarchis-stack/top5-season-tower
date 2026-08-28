@@ -878,15 +878,35 @@ export class SeasonTower extends React.Component<Props, State> {
                 <button onClick={() => this.stepTeam(-1)} title="Previous club (←)" aria-label="Previous club" style={{ position: 'absolute', left: '-19px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4E7EB', background: '#fff', color: '#15181d', fontSize: '18px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,18,22,.22)', lineHeight: 1, paddingBottom: '2px' }}>‹</button>
                 <button onClick={() => this.stepTeam(1)} title="Next club (→)" aria-label="Next club" style={{ position: 'absolute', right: '-19px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4E7EB', background: '#fff', color: '#15181d', fontSize: '18px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,18,22,.22)', lineHeight: 1, paddingBottom: '2px' }}>›</button>
                 <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '86vh', borderRadius: '16px', overflow: 'hidden' }}>
-                <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: '14px', ...v.tm.headStyleObj }}>
+                <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '14px', ...v.tm.headStyleObj }}>
                   <img src={`logos/${v.tm.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ flex: '0 0 auto', width: '46px', height: '46px', objectFit: 'contain', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,.35))' }} />
-                  <div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '9px' }}>
-                      <span style={{ fontSize: '18px', fontWeight: 900 }}>{v.tm.name}</span>
-                      <span style={{ fontSize: '12px', fontWeight: 700, opacity: .82 }}>{v.tm.rankLine}</span>
+                      <span style={{ fontSize: '19px', fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.tm.name}</span>
+                      <span style={{ fontSize: '12px', fontWeight: 700, opacity: .82, whiteSpace: 'nowrap' }}>{v.tm.zoneName}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '14px', marginTop: '9px', fontSize: '12px', fontWeight: 700 }}>
-                      <span>{v.tm.Pts} pts</span><span style={{ opacity: .8 }}>{v.tm.rec}</span><span style={{ opacity: .8 }}>{v.tm.goals}</span>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '12px', fontWeight: 700, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ opacity: .85 }}>{v.tm.rec}</span>
+                      <span style={{ opacity: .85 }}>{v.tm.goals}</span>
+                      {/* longest W / D / L runs of the season */}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ opacity: .6, fontWeight: 800, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '.4px' }}>Best run</span>
+                        <span>{v.tm.streak.W}<span style={{ opacity: .6 }}>W</span></span><span style={{ opacity: .4 }}>·</span>
+                        <span>{v.tm.streak.D}<span style={{ opacity: .6 }}>D</span></span><span style={{ opacity: .4 }}>·</span>
+                        <span>{v.tm.streak.L}<span style={{ opacity: .6 }}>L</span></span>
+                      </span>
+                    </div>
+                  </div>
+                  {/* prominent rank + points on the right */}
+                  <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: '16px', paddingLeft: '8px' }}>
+                    <div style={{ textAlign: 'right', lineHeight: 1 }}>
+                      <div style={{ fontSize: '32px', fontWeight: 900, letterSpacing: '-.5px' }}>{v.tm.rankOrd}</div>
+                      <div style={{ fontSize: '9.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.6px', opacity: .68, marginTop: '4px' }}>Position</div>
+                    </div>
+                    <div style={{ width: '1px', height: '40px', background: 'currentColor', opacity: .22 }} />
+                    <div style={{ textAlign: 'right', lineHeight: 1 }}>
+                      <div style={{ fontSize: '32px', fontWeight: 900, letterSpacing: '-.5px' }}>{v.tm.Pts}</div>
+                      <div style={{ fontSize: '9.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.6px', opacity: .68, marginTop: '4px' }}>Points</div>
                     </div>
                   </div>
                 </div>
@@ -1310,9 +1330,21 @@ export class SeasonTower extends React.Component<Props, State> {
           onClick: () => this.setState({ teamPop: null, pop: { code, id: g.id, w: g.w, opp: g.opp, oppFull: g.oppFull, ha: g.ha, venue: g.venue, city: g.city, net: g.net, et: g.et } }),
         }
       })
+      // longest consecutive run of each result across played matchdays (in matchday order)
+      const streak = { W: 0, D: 0, L: 0 }
+      let curT = '', curN = 0
+      for (const rw of rows) {
+        const b = rw.badge
+        if (b !== 'W' && b !== 'D' && b !== 'L') { curT = ''; curN = 0; continue }
+        curN = b === curT ? curN + 1 : 1; curT = b
+        if (curN > (streak as any)[b]) (streak as any)[b] = curN
+      }
+      const ord = (n: number) => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`
       tm = {
-        name: t.name, crest: crestOf(code), rankLine: `${rank}${rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th'} · ${zoneFor(S.league, nTeams)(rank).label || 'Mid-table'}`,
+        name: t.name, crest: crestOf(code), rankLine: `${ord(rank)} · ${zoneFor(S.league, nTeams)(rank).label || 'Mid-table'}`,
+        rankOrd: ord(rank), zoneName: zoneFor(S.league, nTeams)(rank).label || 'Mid-table',
         Pts: e.Pts, rec: `${e.W}W · ${e.D}D · ${e.L}L`, goals: `${e.GF}:${e.GA} (${e.GD >= 0 ? '+' : ''}${e.GD})`,
+        streak,
         headStyleObj: { background: `linear-gradient(135deg,${prim} 0%,${this.mix(prim, '#000000', .25)} 100%)`, color: txt } as React.CSSProperties,
         rows,
         // rank trajectory chart: position after each played matchday
