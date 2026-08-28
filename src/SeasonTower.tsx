@@ -952,7 +952,7 @@ export class SeasonTower extends React.Component<Props, State> {
     let maxBelow = DECH; for (const e of list) { const px = e.L * DECH + e.D * DLOSTH; if (px > maxBelow) maxBelow = px }
     const belowH = maxBelow + 2
     this._droppedW = belowH   // rows mode overwrites this below
-    const rowH = Math.max(15, Math.min(50, (chartH - 40) / nTeams))   // all rows fit the viewport height
+    const rowH = Math.max(14, Math.min(50, (chartH - 6 - (nTeams - 1) * 2) / nTeams))   // all rows fit the height (2px inter-row gap accounted for)
     const rowLabelW = 104   // rows team box holds one line: rank · team · pts · W-D-L
     // Landscape px-per-point — widen the boxes to use the horizontal space (win/loss = 3u, drawn-won
     // = 1u, drawn-lost = 2u stays intact). Sized so the widest WON side fills the room right of the box.
