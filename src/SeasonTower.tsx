@@ -64,14 +64,22 @@ const SEASONS: { id: SeasonId; label: string; real: boolean }[] = [
   { id: '2026-27', label: '2026/27', real: false },
 ]
 
-type LeagueId = 'ITA' | 'ENG' | 'ESP' | 'FRA' | 'GER'
-const LEAGUES: { id: LeagueId; name: string; country: string }[] = [
+type LeagueId = 'ITA' | 'ENG' | 'ESP' | 'FRA' | 'GER' | 'CL' | 'EL' | 'ECL'
+const LEAGUES: { id: LeagueId; name: string; country: string; uefa?: boolean }[] = [
   { id: 'ITA', name: 'Serie A', country: 'Italy' },
   { id: 'ENG', name: 'Premier League', country: 'England' },
   { id: 'ESP', name: 'La Liga', country: 'Spain' },
   { id: 'FRA', name: 'Ligue 1', country: 'France' },
   { id: 'GER', name: 'Bundesliga', country: 'Germany' },
+  { id: 'CL', name: 'Champions League', country: 'UEFA · Europe', uefa: true },
+  { id: 'EL', name: 'Europa League', country: 'UEFA · Europe', uefa: true },
+  { id: 'ECL', name: 'Conference League', country: 'UEFA · Europe', uefa: true },
 ]
+const DOMESTIC = LEAGUES.filter(l => !l.uefa)   // the five domestic leagues (used by the "All 5" overview)
+const isUefa = (id: LeagueId) => LEAGUES.some(l => l.id === id && l.uefa)
+// crest filename for a club: UEFA competitions namespace their crests (CL_/EL_/ECL_) to avoid code
+// clashes with the domestic sets (e.g. AJA = Auxerre in Ligue 1 but Ajax in the Champions League).
+const logoFile = (league: LeagueId, code: string) => isUefa(league) ? `${league}_${code}` : (league === 'FRA' && code === 'BRE' ? 'FRA_BRE' : code)
 // URL state (#league/season/week/layout) so a reload restores exactly where the user was.
 function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; layout?: 'towers' | 'rows'; overview?: boolean } {
   const h = (typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '')
@@ -103,6 +111,13 @@ function zoneOf(rank: number): { key: string; label: string; color: string } {
   if (rank >= 18) return { key: 'rel', label: 'Relegation', color: '#C23A2E' }
   return { key: 'mid', label: '', color: '#B0B4BC' }
 }
+// UEFA league-phase bands (36 teams): top 8 → Round of 16, 9–24 → knockout play-off, 25–36 → out.
+function zoneUefa(rank: number): { key: string; label: string; color: string } {
+  if (rank <= 8) return { key: 'r16', label: 'Round of 16', color: '#0B4DA2' }
+  if (rank <= 24) return { key: 'po', label: 'Knockout play-off', color: '#E8820B' }
+  return { key: 'out', label: 'Eliminated', color: '#C23A2E' }
+}
+const zoneFor = (league: LeagueId) => isUefa(league) ? zoneUefa : zoneOf
 
 export class SeasonTower extends React.Component<Props, State> {
   chartRef = React.createRef<HTMLDivElement>()
@@ -193,7 +208,7 @@ export class SeasonTower extends React.Component<Props, State> {
   }
   // Load every league's schedule + results for one season and reduce to a standings summary each.
   loadOverview(season: SeasonId) {
-    const jobs = LEAGUES.map(lg => {
+    const jobs = DOMESTIC.map(lg => {
       const sm = SCHED_MODS[`./data/schedule-${lg.id}-${season}.js`]
       const rm = RES_MODS[`./data/results-${lg.id}-${season}.js`]
       return Promise.all([sm ? sm() : Promise.resolve(null), rm ? rm() : Promise.resolve(null)])
@@ -412,7 +427,7 @@ export class SeasonTower extends React.Component<Props, State> {
       <div style={{ display: 'flex', gap: '10px', height: '100%', minHeight: '420px', alignItems: 'stretch' }}>
         {data.map(lg => {
           const relFrom = lg.clubs.length - 3   // bottom 3 = relegation (basic zone hint)
-          const leaderCrest = (lg.id === 'FRA' && lg.leader && lg.leader.code === 'BRE') ? 'FRA_BRE' : (lg.leader && lg.leader.code)
+          const leaderCrest = lg.leader ? logoFile(lg.id, lg.leader.code) : ''
           const chip: React.CSSProperties = { fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px', whiteSpace: 'nowrap' }
           return (
             <div key={lg.id} onClick={() => this.pickLeague(lg.id)} title={`Open ${lg.name}`} style={{ flex: '1 1 0', minWidth: '176px', display: 'flex', flexDirection: 'column', background: '#fff', border: '1px solid #E7E9EC', borderRadius: '14px', padding: '12px 12px 10px', cursor: 'pointer' }}>
@@ -497,14 +512,17 @@ export class SeasonTower extends React.Component<Props, State> {
                     <span style={{ color: '#0B8A3D', fontWeight: 900, fontSize: '13px' }}>{v.overviewActive ? '✓' : ''}</span>
                   </button>
                   <div style={{ height: '1px', background: '#EDEFF2', margin: '5px 8px' }} />
-                  {v.leagueList.map((l: any) => (
-                    <button key={l.id} onClick={l.onClick} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '9px 12px', border: 'none', borderRadius: '8px', background: l.active ? '#F1F3F5' : '#fff', color: '#15181d', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'inherit' }}>
-                      <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                        <span style={{ fontSize: '13.5px', fontWeight: l.active ? 800 : 600 }}>{l.name}{!l.has && <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: '#C0A020' }}>soon</span>}</span>
-                        <span style={{ fontSize: '10px', color: '#9298a1', fontWeight: 600 }}>{l.country}</span>
-                      </span>
-                      <span style={{ color: '#0B8A3D', fontWeight: 900, fontSize: '13px' }}>{l.active ? '✓' : ''}</span>
-                    </button>
+                  {v.leagueList.map((l: any, i: number) => (
+                    <React.Fragment key={l.id}>
+                      {l.uefa && !v.leagueList[i - 1]?.uefa && <div style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 12px 4px' }}><span style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '.6px', textTransform: 'uppercase', color: '#9298a1' }}>UEFA clubs</span><span style={{ flex: 1, height: '1px', background: '#EDEFF2' }} /></div>}
+                      <button onClick={l.onClick} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '9px 12px', border: 'none', borderRadius: '8px', background: l.active ? '#F1F3F5' : '#fff', color: '#15181d', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'inherit' }}>
+                        <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                          <span style={{ fontSize: '13.5px', fontWeight: l.active ? 800 : 600 }}>{l.name}{!l.has && <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: '#C0A020' }}>soon</span>}</span>
+                          <span style={{ fontSize: '10px', color: '#9298a1', fontWeight: 600 }}>{l.country}</span>
+                        </span>
+                        <span style={{ color: '#0B8A3D', fontWeight: 900, fontSize: '13px' }}>{l.active ? '✓' : ''}</span>
+                      </button>
+                    </React.Fragment>
                   ))}
                 </div>
               </>
@@ -794,7 +812,7 @@ export class SeasonTower extends React.Component<Props, State> {
       leagueName, leagueOpen: S.leagueOpen,
       onToggleLeague: () => this.setState(s => ({ leagueOpen: !s.leagueOpen, seasonOpen: false })),
       overviewActive: S.overview, onOverview: () => this.enterOverview(),
-      leagueList: LEAGUES.map(x => ({ id: x.id, name: x.name, country: x.country, active: !S.overview && x.id === S.league, has: SEASONS.some(s => !!SCHED_MODS[`./data/schedule-${x.id}-${s.id}.js`]), onClick: () => this.pickLeague(x.id) })),
+      leagueList: LEAGUES.map(x => ({ id: x.id, name: x.name, country: x.country, uefa: !!x.uefa, active: !S.overview && x.id === S.league, has: SEASONS.some(s => !!SCHED_MODS[`./data/schedule-${x.id}-${s.id}.js`]), onClick: () => this.pickLeague(x.id) })),
       seasonLabel: (SEASONS.find(x => x.id === S.season) || SEASONS[0]).label,
       seasonTag: isReal ? 'Real' : 'Simulated', seasonOpen: S.seasonOpen,
       onToggleSeason: () => this.setState(s => ({ seasonOpen: !s.seasonOpen, leagueOpen: false })),
@@ -937,8 +955,9 @@ export class SeasonTower extends React.Component<Props, State> {
     const teamsSorted = list.map((e, i) => {
       const t = e.t, prim = t.primary
       const rank = i + 1
-      const z = zoneOf(rank)
-      const isZoneStart = zonesOn && i > 0 && zoneOf(i).key !== z.key
+      const zf = zoneFor(S.league)
+      const z = zf(rank)
+      const isZoneStart = zonesOn && i > 0 && zf(i).key !== z.key
       const wdlStr = `${e.W}-${e.D}-${e.L}`
       const ptsStr = `${e.Pts} pts`
       const labelTitle = `${t.name} · ${rank}${rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th'} · ${e.Pts} pts · ${e.W}W-${e.D}D-${e.L}L · GD ${e.GD >= 0 ? '+' : ''}${e.GD}`
@@ -951,7 +970,7 @@ export class SeasonTower extends React.Component<Props, State> {
       const wdlStyle = `font-size:${narrowLbl ? 6.5 : 7.5}px;font-weight:800;color:${ink};opacity:.78;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;`
       const ptsStyle = `font-size:${narrowLbl ? 8 : 9}px;font-weight:800;color:${ink};line-height:1;white-space:nowrap;`
       const lblRowStyle = `position:relative;z-index:1;display:flex;flex-direction:row;align-items:baseline;justify-content:space-between;width:100%;gap:3px;overflow:hidden;`
-      const crest = (S.league === 'FRA' && t.abbr === 'BRE') ? 'FRA_BRE' : t.abbr   // one cross-league code clash (Brest vs Brentford)
+      const crest = logoFile(S.league, t.abbr)
       const base: Dict = { abbr: t.abbr, rank, wdlStr, ptsStr, labelTitle, crest, onLabel: () => this.openTeam(t.abbr), rankStyle, teamStyle, wdlStyle, ptsStyle, lblRowStyle }
 
       if (layout === 'rows') {
@@ -1001,7 +1020,7 @@ export class SeasonTower extends React.Component<Props, State> {
       popHighlights = this.normHighlights(S.seasons && S.seasons[S.season].HL && S.seasons[S.season].HL[pop.id])
       const home = pop.ha === 'H' ? pop.code : pop.opp
       const away = pop.ha === 'H' ? pop.opp : pop.code
-      const logoName = (c: string) => (S.league === 'FRA' && c === 'BRE') ? 'FRA_BRE' : c   // one cross-league code clash (Brest vs Brentford)
+      const logoName = (c: string) => logoFile(S.league, c)
       popHomeCode = logoName(home); popAwayCode = logoName(away)
       const hp = (T[home] && T[home].primary) || '#8A8F98', ap = (T[away] && T[away].primary) || '#8A8F98'
       popHomeColor = hp; popAwayColor = ap
@@ -1032,7 +1051,7 @@ export class SeasonTower extends React.Component<Props, State> {
       const code = S.teamPop, t = T[code]
       const idx = list.findIndex(e => e.code === code); const e = list[idx]; const rank = idx + 1
       const prim = t.primary, txt = this.contrast(prim)
-      const crestOf = (c: string) => (S.league === 'FRA' && c === 'BRE') ? 'FRA_BRE' : c   // one cross-league code clash (Brest vs Brentford)
+      const crestOf = (c: string) => logoFile(S.league, c)
       const HL = (S.seasons && S.seasons[S.season].HL) || {}
       const rows = t.games.slice().sort((a: any, b: any) => a.w - b.w).map((g: any) => {
         const r = this.getRes(code, g.id); const res = r ? r.res : null
@@ -1045,7 +1064,7 @@ export class SeasonTower extends React.Component<Props, State> {
         }
       })
       tm = {
-        name: t.name, crest: crestOf(code), rankLine: `${rank}${rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th'} · ${zoneOf(rank).label || 'Mid-table'}`,
+        name: t.name, crest: crestOf(code), rankLine: `${rank}${rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th'} · ${zoneFor(S.league)(rank).label || 'Mid-table'}`,
         Pts: e.Pts, rec: `${e.W}W · ${e.D}D · ${e.L}L`, goals: `${e.GF}:${e.GA} (${e.GD >= 0 ? '+' : ''}${e.GD})`,
         headStyleObj: { background: `linear-gradient(135deg,${prim} 0%,${this.mix(prim, '#000000', .25)} 100%)`, color: txt } as React.CSSProperties,
         rows,
