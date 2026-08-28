@@ -581,7 +581,7 @@ export class SeasonTower extends React.Component<Props, State> {
           <span style={{ fontSize: `${nameFs}px`, fontWeight: 700, color: '#15181d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.opp}</span>
           {/* 3 aligned columns: score (right) · rank (left) · result (right) — kept compact so the name gets room */}
           <span style={{ flex: '0 0 36px', fontSize: '12px', fontWeight: 700, color: '#3a3f47', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{row.score}</span>
-          <span style={{ flex: '0 0 32px', textAlign: 'left' }}>{row.rank != null && <span title="League position after this match" style={{ fontSize: '10px', fontWeight: 800, color: '#5c616b', background: '#F1F2F4', borderRadius: '6px', padding: '3px 5px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>R{row.rank}</span>}</span>
+          <span style={{ flex: '0 0 32px', textAlign: 'left' }}>{row.rank != null && <span title="League position after this match (coloured by qualification zone)" style={{ fontSize: '10px', fontWeight: 800, color: row.rankFg, background: row.rankBg, borderRadius: '6px', padding: '3px 5px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>R{row.rank}</span>}</span>
           <span style={{ ...row.badgeStyleObj, flex: '0 0 20px', textAlign: 'center', fontSize: '10px', fontWeight: 800, borderRadius: '6px', padding: '3px 0' }}>{row.badge}</span>
         </button>
         {row.highlights.length > 0 && (
@@ -1259,11 +1259,16 @@ export class SeasonTower extends React.Component<Props, State> {
       const prim = t.primary, txt = this.contrast(prim)
       const crestOf = (c: string) => logoFile(S.league, c)
       const HL = (S.seasons && S.seasons[S.season].HL) || {}
+      const zfRow = zoneFor(S.league, nTeams)
       const rows = t.games.slice().sort((a: any, b: any) => a.w - b.w).map((g: any) => {
         const r = this.getRes(code, g.id); const res = r ? r.res : null
         const c = res === 'W' ? ['#E7F4EC', '#1F8A4C'] : res === 'L' ? ['#FBEAE9', '#C23A2E'] : res === 'D' ? ['#F2E4BC', '#7C6320'] : ['#F1F2F4', '#9298a1']
+        const rk = r ? this.rankAfterWeek(code, g.w) : null
+        // rank chip tinted with the qualification/relegation zone of that position after the match
+        const zc = rk != null ? zfRow(rk) : null
         return {
-          id: g.id, w: g.w, ha: g.ha === 'H' ? 'vs' : '→', opp: g.oppFull, oppCrest: crestOf(g.opp), highlights: this.normHighlights(HL[g.id]), rank: r ? this.rankAfterWeek(code, g.w) : null,
+          id: g.id, w: g.w, ha: g.ha === 'H' ? 'vs' : '→', opp: g.oppFull, oppCrest: crestOf(g.opp), highlights: this.normHighlights(HL[g.id]), rank: rk,
+          rankBg: zc ? this.mix(zc.color, '#ffffff', 0.84) : '#F1F2F4', rankFg: zc ? this.ink(zc.color) : '#5c616b',
           score: r ? `${r.gf}–${r.ga}` : '—', badge: res || '·',
           badgeStyleObj: { color: c[1], background: c[0] } as React.CSSProperties,
           onClick: () => this.setState({ teamPop: null, pop: { code, id: g.id, w: g.w, opp: g.opp, oppFull: g.oppFull, ha: g.ha, venue: g.venue, city: g.city, net: g.net, et: g.et } }),
