@@ -555,10 +555,9 @@ export class SeasonTower extends React.Component<Props, State> {
         {mds.filter(md => totalMd <= 12 || md === 1 || md === totalMd || md % Math.ceil(totalMd / 9) === 0).map(md => <text key={'x' + md} x={x(md)} y={H - 5} textAnchor="middle" fontSize={fs} fontWeight="700" fill="#9298a1">{md}</text>)}
         {yticks.map(rk => <text key={'y' + rk} x={padL - 4} y={y(rk) + fs * 0.35} textAnchor="end" fontSize={fs} fontWeight="700" fill="#9298a1">{rk}</text>)}
         {/* domestic double round-robin → divider between the first and second half of the season */}
-        {totalMd > 12 && totalMd % 2 === 0 && (() => { const xm = x(totalMd / 2 + 0.5); return <>
+        {totalMd > 12 && totalMd % 2 === 0 && (() => { const xm = x(totalMd / 2 + 0.5); return (
           <line x1={xm} x2={xm} y1={padT} y2={H - padB} stroke="#8b9098" strokeWidth="0.9" strokeDasharray="4 3" />
-          <text x={xm} y={padT + fs + 1} textAnchor="middle" fontSize={fs * 0.9} fontWeight="800" fill="#8b9098">2nd half →</text>
-        </> })()}
+        ) })()}
         <polyline points={pts} fill="none" stroke={color} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
         {rankPath.map((p: any, i: number) => <circle key={'p' + i} cx={x(p.md)} cy={y(p.rank)} r={dotR} fill={p.res === 'W' ? '#1f8a4c' : p.res === 'L' ? '#d0454a' : '#EAB308'} stroke="#fff" strokeWidth={dotR > 3.4 ? 1.5 : 1.1} />)}
       </svg>
@@ -843,7 +842,7 @@ export class SeasonTower extends React.Component<Props, State> {
                         <span style={{ fontSize: '13px', fontWeight: 700, color: '#15181d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.opp}</span>
                         {/* 3 aligned columns: score (right) · rank (left) · result (right) */}
                         <span style={{ flex: '0 0 46px', fontSize: '12px', fontWeight: 700, color: '#3a3f47', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{row.score}</span>
-                        <span style={{ flex: '0 0 58px', textAlign: 'left' }}>{row.rank != null && <span title="League position after this match" style={{ fontSize: '10px', fontWeight: 800, color: '#5c616b', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>rank {row.rank}</span>}</span>
+                        <span style={{ flex: '0 0 58px', textAlign: 'left' }}>{row.rank != null && <span title="League position after this match" style={{ fontSize: '10px', fontWeight: 800, color: '#5c616b', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>R{row.rank}</span>}</span>
                         <span style={{ ...row.badgeStyleObj, flex: '0 0 24px', textAlign: 'center', fontSize: '10px', fontWeight: 800, borderRadius: '6px', padding: '3px 0' }}>{row.badge}</span>
                       </button>
                       {row.highlights.length > 0 && (
