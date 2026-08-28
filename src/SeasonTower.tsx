@@ -673,11 +673,27 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div style={css(t.droppedStyle)}>{t.dropped.map((c: any) => <Cell key={c.key} c={c} />)}</div>
                   <div style={css(t.labelStyle)} onClick={t.onLabel} title={t.labelTitle}>
                     <img src={`logos/${t.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={crestWatermark} />
-                    {/* one line: rank · team · points · W-D-L (compact so nothing clips) */}
-                    <span style={{ ...css(t.rankStyle), position: 'relative', zIndex: 1, fontSize: '11px' }}>{t.rank}</span>
-                    <span style={{ ...css(t.teamStyle), position: 'relative', zIndex: 1, fontSize: '11.5px' }}>{t.abbr}</span>
-                    <span style={{ ...css(t.ptsStyle), position: 'relative', zIndex: 1, marginLeft: 'auto', fontSize: '10px' }}>{String(t.ptsStr).replace(' pts', '')}<span style={{ opacity: .7, fontSize: '.8em' }}>p</span></span>
-                    <span style={{ ...css(t.wdlStyle), position: 'relative', zIndex: 1, fontSize: '9px' }}>{t.wdlStr}</span>
+                    {v.uefa ? (
+                      /* UEFA: one line — rank · team · points · W-D-L (compact so 36 rows fit) */
+                      <>
+                        <span style={{ ...css(t.rankStyle), position: 'relative', zIndex: 1, fontSize: '11px' }}>{t.rank}</span>
+                        <span style={{ ...css(t.teamStyle), position: 'relative', zIndex: 1, fontSize: '11.5px' }}>{t.abbr}</span>
+                        <span style={{ ...css(t.ptsStyle), position: 'relative', zIndex: 1, marginLeft: 'auto', fontSize: '10px' }}>{String(t.ptsStr).replace(' pts', '')}<span style={{ opacity: .7, fontSize: '.8em' }}>p</span></span>
+                        <span style={{ ...css(t.wdlStyle), position: 'relative', zIndex: 1, fontSize: '9px' }}>{t.wdlStr}</span>
+                      </>
+                    ) : (
+                      /* DOMESTIC (original): 2 rows — [rank · team] / [W-D-L · pts] */
+                      <>
+                        <div style={css(t.lblRowStyle)}>
+                          <span style={css(t.rankStyle)}>{t.rank}</span>
+                          <span style={css(t.teamStyle)}>{t.abbr}</span>
+                        </div>
+                        <div style={css(t.lblRowStyle)}>
+                          <span style={css(t.wdlStyle)}>{t.wdlStr}</span>
+                          <span style={css(t.ptsStyle)}>{t.ptsStr}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div style={css(t.wonStyle)}>{t.won.map((c: any) => <Cell key={c.key} c={c} />)}</div>
                 </div>
@@ -685,15 +701,15 @@ export class SeasonTower extends React.Component<Props, State> {
             </div>
           ) : (
             <>
-            {/* zone labels — sticky strip pinned to the top of the viewport, aligned to each band */}
-            <div style={{ position: 'sticky', top: 0, height: 0, zIndex: 6, pointerEvents: 'none' }}>
+            {/* zone labels — sticky strip pinned to the top of the viewport (UEFA league phase only) */}
+            {v.uefa && <div style={{ position: 'sticky', top: 0, height: 0, zIndex: 6, pointerEvents: 'none' }}>
               {(v.zoneBands || []).filter((b: any) => b.label).map((b: any, i: number) => (
                 <div key={'lb' + i} style={{ position: 'absolute', top: '4px', left: `${b.start * (v.colW + v.colGap)}px`, width: `${b.count * (v.colW + v.colGap) - v.colGap}px`, textAlign: 'center', fontSize: '9.5px', fontWeight: 800, letterSpacing: '.4px', textTransform: 'uppercase', color: b.color, lineHeight: 1.1, textShadow: '0 0 3px #F5F6F4, 0 0 3px #F5F6F4, 0 1px 2px #F5F6F4' }}>{b.label}</div>
               ))}
-            </div>
+            </div>}
             <div style={css(v.colsWrapStyle)}>
-              {/* qualification bands — light zone backdrop BEHIND the columns */}
-              {(v.zoneBands || []).map((b: any, i: number) => (
+              {/* qualification bands — light zone backdrop BEHIND the columns (UEFA league phase only) */}
+              {v.uefa && (v.zoneBands || []).map((b: any, i: number) => (
                 <div key={'bg' + i} style={{ position: 'absolute', top: 0, bottom: 0, zIndex: 0, pointerEvents: 'none', left: `${b.start * (v.colW + v.colGap)}px`, width: `${b.count * (v.colW + v.colGap) - v.colGap}px`, background: b.bg }} />
               ))}
               {v.teamsSorted.map((t: any) => (
@@ -701,11 +717,27 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div style={css(t.aboveStyle)}>{t.above.map((c: any) => <Cell key={c.key} c={c} />)}</div>
                   <div style={css(t.labelStyle)} onClick={t.onLabel} title={t.labelTitle}>
                     <img src={`logos/${t.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={crestWatermark} />
-                    {/* 4 stacked lines: rank · team · points · W-D-L */}
-                    <span style={{ ...css(t.rankStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.rank}</span>
-                    <span style={{ ...css(t.teamStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.abbr}</span>
-                    <span style={{ ...css(t.ptsStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.ptsStr}</span>
-                    <span style={{ ...css(t.wdlStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.wdlStr}</span>
+                    {v.uefa ? (
+                      /* UEFA: 4 stacked lines: rank · team · points · W-D-L */
+                      <>
+                        <span style={{ ...css(t.rankStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.rank}</span>
+                        <span style={{ ...css(t.teamStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.abbr}</span>
+                        <span style={{ ...css(t.ptsStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.ptsStr}</span>
+                        <span style={{ ...css(t.wdlStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.wdlStr}</span>
+                      </>
+                    ) : (
+                      /* DOMESTIC (original): 2 rows — [rank · team] / [W-D-L · pts] */
+                      <>
+                        <div style={css(t.lblRowStyle)}>
+                          <span style={css(t.rankStyle)}>{t.rank}</span>
+                          <span style={css(t.teamStyle)}>{t.abbr}</span>
+                        </div>
+                        <div style={css(t.lblRowStyle)}>
+                          <span style={css(t.wdlStyle)}>{t.wdlStr}</span>
+                          <span style={css(t.ptsStyle)}>{t.ptsStr}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div style={css(t.belowStyle)}>{t.below.map((c: any) => <Cell key={c.key} c={c} />)}</div>
                 </div>
@@ -978,24 +1010,29 @@ export class SeasonTower extends React.Component<Props, State> {
     const chartW = S.cw || 1200
     const liveH = this.chartRef.current ? Math.round(this.chartRef.current.clientHeight - 20) : 0
     const chartH = liveH > 40 ? liveH : (S.ch || 600)
-    const labelH = 54   // 4 stacked lines: rank · team · points · W-D-L
-    const nTeams = T ? Object.keys(T).length : 20   // 20 domestic, 36 for the UEFA league phase
-    const colW = Math.max(28, Math.min(82, (chartW - 2) / nTeams - 1))   // all teams fit the width (tight 1px gap)
+    const nTeams = T ? Object.keys(T).length : 20   // 20/18 domestic, 36 for the UEFA league phase
+    const uefa = isUefa(S.league)   // UEFA league phase (36 clubs) uses the compact fit-format; domestic keeps the original
+    const labelH = uefa ? 54 : 46   // UEFA: 4 stacked lines; domestic: 2 rows
+    const colW = uefa
+      ? Math.max(28, Math.min(82, (chartW - 2) / nTeams - 1))   // 36 teams fit the width (tight 1px gap)
+      : Math.max(46, Math.min(82, (chartW - 6) / nTeams - 2))   // domestic — original wider columns
     // HORIZONTAL view (teams ranked left→right): fixed, legible cell sizes — 1× tie box at a
     // minimum legible height, 2× and 3× scaled from it. The canvas scrolls vertically if needed.
-    const DRAWH = 15                // 1× tie (minimum legible) — full win/loss box = 45px fits 3 stacked lines
+    const DRAWH = uefa ? 15 : 10    // 1× tie; UEFA 15 → 45px win box fits 3 stacked lines, domestic 10 (original)
     const DECH = DRAWH * 3          // 3× win / loss / pending
     const PENDH = DECH
     const DLOSTH = DRAWH * 2        // 2× tie shown in the loss tower
     let maxBelow = DECH; for (const e of list) { const px = e.L * DECH + e.D * DLOSTH; if (px > maxBelow) maxBelow = px }
     const belowH = maxBelow + 2
     this._droppedW = belowH   // rows mode overwrites this below
-    const rowH = Math.max(14, Math.min(50, (chartH - 6 - (nTeams - 1) * 2) / nTeams))   // all rows fit the height (2px inter-row gap accounted for)
-    const rowLabelW = 104   // rows team box holds one line: rank · team · pts · W-D-L
+    const rowH = uefa
+      ? Math.max(14, Math.min(50, (chartH - 6 - (nTeams - 1) * 2) / nTeams))   // 36 rows fit the height (2px inter-row gap accounted for)
+      : Math.max(22, Math.min(50, (chartH - 40) / nTeams))                     // domestic — original taller rows
+    const rowLabelW = uefa ? 104 : 80   // UEFA one-line team box; domestic 2-row box (original)
     // Landscape px-per-point — widen the boxes to use the horizontal space (win/loss = 3u, drawn-won
     // = 1u, drawn-lost = 2u stays intact). Sized so the widest WON side fills the room right of the box.
     const wonUnits = Math.max(24, ...list.map((e: any) => e.W * 3 + e.D))
-    const ROW_U = Math.max(16, Math.min(30, (chartW - rowLabelW - 12) / wonUnits))
+    const ROW_U = uefa ? Math.max(16, Math.min(30, (chartW - rowLabelW - 12) / wonUnits)) : 16   // domestic: fixed 16px/point (original)
     const WLW = 3 * ROW_U                             // win / loss box (3×)
     const TIE1 = ROW_U                                // tie box = 16 (1×), stacked into 4 rows
     const TIE2 = 2 * ROW_U                            // tie shown below (points dropped) = 32 (2×)
@@ -1019,7 +1056,7 @@ export class SeasonTower extends React.Component<Props, State> {
       else { bg = this.mix(oppPrim, '#ffffff', 0.90); color = this.ink(oppPrim); border = '1.5px solid ' + oppPrim; chipBg = oppPrim; chipText = this.contrast(oppPrim) }   // win — opponent on colour chip, score on a very light opponent tint
 
       const h = type === 'draw' ? DRAWH : type === 'drawlost' ? DLOSTH : type === 'pend' ? PENDH : DECH
-      const fs = type === 'draw' ? 8 : Math.max(9, Math.min(12, h * 0.30))
+      const fs = uefa ? (type === 'draw' ? 8 : Math.max(9, Math.min(12, h * 0.30))) : (type === 'draw' ? 7 : Math.max(8.5, Math.min(11, h * 0.42)))
       // one line: "TOR: 2-1" (home) / "@JUV: 3-1" (away); pending shows the opponent only.
       let sA = '', sMid = '', sB = '', sAStyle = '', sBStyle = ''
       if (r && type !== 'pend') {
@@ -1035,24 +1072,47 @@ export class SeasonTower extends React.Component<Props, State> {
       const resTxt = r ? (` · ${r.res} ${r.gf}-${r.ga}`) : ' · to play'
       const title = `MD ${g.w} · ${g.ha === 'A' ? '@ ' : 'vs '}${g.oppFull}${resTxt}`
       if (layout === 'rows') {
-        // landscape ledger: width = points × ROW_U; ALL content on ONE horizontal line (opponent + score)
-        // so each row is short and all 36 fit vertically without clipping text.
         const w = type === 'draw' ? TIE1 : type === 'drawlost' ? TIE2 : type === 'pend' ? pendW : WLW
+        if (!uefa) {
+          // DOMESTIC (original): two stacked lines — opponent on top, score below ("TOR" / "2-0")
+          const oppTxt = arrow + g.opp
+          const scoreTxt = (r && type !== 'pend') ? `${r.gf}-${r.ga}` : ''
+          const vTie = type === 'draw' && !!r          // won-side tie → arrow / 3 letters stacked / score
+          const tieRows = type === 'drawlost' && !!r   // dropped tie → 4 stacked rows
+          const pendRows = type === 'pend'             // unplayed → matchday / opponent / arrow
+          const fs2 = vTie ? Math.max(6, Math.min(w * 0.62, (rowH - 2) / 5.4))
+            : tieRows ? Math.max(5, Math.min(w / 3.2, (rowH - 3) / 4.2))
+            : Math.max(5, Math.min(11, w / 3.2))
+          const align = pendRows ? 'flex-start' : 'center'
+          const rstyle = `flex:0 0 ${w}px;width:${w}px;min-width:${w}px;height:${rowH}px;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:column;align-items:center;justify-content:${align};overflow:hidden;cursor:pointer;font-size:${fs2}px;font-weight:700;line-height:1.05;letter-spacing:-.3px;padding:1px 0;`
+          return { key: t.abbr + '-' + g.id, twoLine: true, vTie, tieRows, pendRows, chip: !!chipBg, chipBg, chipText, mdNum: String(g.w), arrowTxt: arrow, oppCode: g.opp, oppLetters: g.opp.split(''), oppTxt, scoreTxt, gf: r ? String(r.gf) : '', ga: r ? String(r.ga) : '', style: rstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
+        }
+        // UEFA (36 clubs): ALL content on ONE horizontal line so all rows fit vertically without clipping.
         // drawn-won box is only 1 unit wide → shrink the font so the 3-letter code fits inside it
         const fs2 = type === 'draw'
           ? Math.max(5, Math.min(8, Math.min((rowH - 2) * 0.72, w * 0.30)))
           : Math.max(6, Math.min(11, Math.min((rowH - 2) * 0.72, w * 0.44)))
         const rstyle = `flex:0 0 ${w}px;width:${w}px;min-width:${w}px;height:${rowH}px;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:row;align-items:center;justify-content:center;gap:2px;overflow:hidden;cursor:pointer;font-size:${fs2}px;font-weight:700;line-height:1;letter-spacing:-.2px;padding:0 2px;`
-        // draws/upcoming are narrow → opponent only (no score); wins/losses show "→OPP: g-a" on one line
         return { key: t.abbr + '-' + g.id, oppLab, arrowTxt: (type === 'draw' ? '' : arrow), oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, hideScore: type === 'draw' || type === 'pend', style: rstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
       }
       if (type === 'pend') {
-        // towers upcoming game → 3 lines: opponent · matchday · home/away (mirrors a played box)
+        if (!uefa) {
+          // DOMESTIC (original): two lines — matchday number (dim) over the opponent
+          const pfs = Math.max(6.5, Math.min(9, h * 0.4))
+          const pstyle = `width:100%;height:${h}px;min-height:${h}px;margin:0;background:${bg};color:${color};border:${border};display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.02;overflow:hidden;cursor:pointer;font-size:${pfs}px;font-weight:700;padding:0 2px;`
+          return { key: t.abbr + '-' + g.id, towerPend: true, domPend: true, mdNum: String(g.w), oppCode: arrow + g.opp, style: pstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
+        }
+        // UEFA towers upcoming game → 3 lines: opponent · matchday · home/away (mirrors a played box)
         const pfs = Math.max(8, Math.min(11, h * 0.24))
         const pstyle = `width:100%;height:${h}px;min-height:${h}px;margin:0;background:${bg};color:${color};border:${border};display:flex;flex-direction:column;align-items:center;justify-content:flex-start;line-height:1.05;overflow:hidden;cursor:pointer;font-size:${pfs}px;font-weight:700;padding:1px 2px 0;`
         return { key: t.abbr + '-' + g.id, towerPend: true, mdNum: 'MD' + g.w, oppCode: g.opp, arrowTxt: arrow, style: pstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
       }
-      // towers (columns): tall boxes stack 3 lines — opponent · score · home/away — so columns can be
+      if (!uefa) {
+        // DOMESTIC towers (original): one horizontal line — "TOR: 2-1" (home) / "→JUV: 3-1" (away)
+        const style = `width:100%;height:${h}px;min-height:${h}px;margin:0;border-radius:0;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:row;align-items:center;justify-content:center;gap:2px;overflow:hidden;cursor:pointer;font-size:${fs}px;line-height:1;padding:0 3px;`
+        return { key: t.abbr + '-' + g.id, oppLab, arrowTxt: arrow, oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, style, title, onClick: () => this.openPop(t.abbr, g.id) }
+      }
+      // UEFA towers (columns): tall boxes stack 3 lines — opponent · score · home/away — so columns can be
       // narrow enough to fit all 36 teams; the short 1× draw box stays one line.
       const tall = h >= 28
       const style = `width:100%;height:${h}px;min-height:${h}px;margin:0;border-radius:0;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:${tall ? 'column' : 'row'};align-items:center;justify-content:${tall ? 'flex-start' : 'center'};gap:0;overflow:hidden;cursor:pointer;font-size:${fs}px;line-height:1.05;padding:1px 2px 0;`
@@ -1093,8 +1153,11 @@ export class SeasonTower extends React.Component<Props, State> {
         const rowStyle = `flex:0 0 ${rowH}px;height:${rowH}px;min-height:0;display:flex;flex-direction:row;align-items:stretch;${isZoneStart ? 'margin-top:10px;' : ''}`
         const droppedStyle = `flex:0 0 ${rowsDroppedW}px;height:${rowH}px;display:flex;flex-direction:row;justify-content:flex-end;align-items:stretch;overflow:hidden;`
         const wonStyle = `flex:0 0 auto;height:${rowH}px;display:flex;flex-direction:row;justify-content:flex-start;align-items:stretch;overflow:hidden;`
-        // sticky horizontally so the team column never disappears when scrolling left/right
-        const labelStyle = `position:sticky;left:2px;right:2px;z-index:5;flex:0 0 ${rowLabelW}px;height:${rowH}px;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:4px;padding:0 5px;overflow:hidden;background:${prim};border:1px solid ${this.mix(prim, '#000000', 0.22)};border-right:3px solid ${zoneBar};border-radius:4px;box-shadow:0 0 6px rgba(20,22,28,.18);cursor:pointer;`
+        // sticky horizontally so the team column never disappears when scrolling left/right.
+        // UEFA: one row (fits 36 teams tightly); domestic: two rows (original)
+        const labelStyle = uefa
+          ? `position:sticky;left:2px;right:2px;z-index:5;flex:0 0 ${rowLabelW}px;height:${rowH}px;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:4px;padding:0 5px;overflow:hidden;background:${prim};border:1px solid ${this.mix(prim, '#000000', 0.22)};border-right:3px solid ${zoneBar};border-radius:4px;box-shadow:0 0 6px rgba(20,22,28,.18);cursor:pointer;`
+          : `position:sticky;left:2px;right:2px;z-index:5;flex:0 0 ${rowLabelW}px;height:${rowH}px;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:2px;padding:2px 5px;overflow:hidden;background:${prim};border:1px solid ${this.mix(prim, '#000000', 0.22)};border-right:3px solid ${zoneBar};border-radius:4px;box-shadow:0 0 6px rgba(20,22,28,.18);cursor:pointer;`
         return { ...base, won, dropped, rowStyle, droppedStyle, wonStyle, labelStyle }
       }
 
@@ -1106,11 +1169,14 @@ export class SeasonTower extends React.Component<Props, State> {
       const lossC = [...e.losses].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'loss'))
       const drawDn = [...e.draws].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'drawlost'))
       const below = [...lossC, ...drawDn]
-      const colStyle = `position:relative;z-index:1;flex:0 0 ${colW}px;width:${colW}px;min-width:0;max-width:${colW}px;display:flex;flex-direction:column;align-items:stretch;${isZoneStart ? 'margin-left:14px;' : ''}`
+      const colStyle = uefa
+        ? `position:relative;z-index:1;flex:0 0 ${colW}px;width:${colW}px;min-width:0;max-width:${colW}px;display:flex;flex-direction:column;align-items:stretch;${isZoneStart ? 'margin-left:14px;' : ''}`
+        : `position:relative;z-index:1;flex:0 0 ${colW}px;display:flex;flex-direction:column;align-items:stretch;${isZoneStart ? 'margin-left:14px;' : ''}`
       const aboveStyle = `display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;`
       const belowStyle = `flex:0 0 ${belowH}px;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;padding-top:2px;`
-      // sticky vertically (both edges) so the team row never disappears when scrolling up/down
-      const labelStyle = `position:sticky;top:2px;bottom:2px;z-index:5;margin-top:2px;height:${labelH}px;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:1px;padding:2px 1px;overflow:hidden;background:${prim};border:1px solid ${this.mix(prim, '#000000', 0.22)};border-top:3px solid ${zoneBar};border-radius:4px;box-shadow:0 0 6px rgba(20,22,28,.18);cursor:pointer;`
+      // sticky vertically (both edges) so the team row never disappears when scrolling up/down.
+      // UEFA: tight padding for narrow columns; domestic: original padding
+      const labelStyle = `position:sticky;top:2px;bottom:2px;z-index:5;margin-top:2px;height:${labelH}px;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:${uefa ? 1 : 2}px;padding:2px ${uefa ? 1 : 5}px;overflow:hidden;background:${prim};border:1px solid ${this.mix(prim, '#000000', 0.22)};border-top:3px solid ${zoneBar};border-radius:4px;box-shadow:0 0 6px rgba(20,22,28,.18);cursor:pointer;`
       return { ...base, above, below, aboveStyle, belowStyle, colStyle, labelStyle }
     })
 
@@ -1193,8 +1259,8 @@ export class SeasonTower extends React.Component<Props, State> {
     }
 
     return {
-      ...base, loading: false, orient, teamsSorted, layout, zoneBands, colW, colGap: 1,
-      colsWrapStyle: 'position:relative;display:flex;flex-direction:row;gap:1px;align-items:flex-end;min-width:100%;min-height:100%;',
+      ...base, loading: false, orient, teamsSorted, layout, uefa, zoneBands, colW, colGap: uefa ? 1 : 2,
+      colsWrapStyle: `position:relative;display:flex;flex-direction:row;gap:${uefa ? 1 : 2}px;align-items:flex-end;min-width:100%;min-height:100%;`,
       rowsWrapStyle: `display:flex;flex-direction:column;gap:2px;width:max-content;min-width:100%;padding-right:${chartW}px;`,
       playedStr: `${decided} / ${mx * Math.floor(list.length / 2)}`, leaderAbbr: leader.code, leaderPts: leader.Pts,
       pop, popWeek, popResBadge, popResStyleObj, popChips, popHomeColor, popAwayColor, popHomeName, popAwayName, popHomeCode, popAwayCode,
@@ -1207,7 +1273,13 @@ export class SeasonTower extends React.Component<Props, State> {
 // One tower cell, single line: "TOR: 2-1" / "@JUV: 3-1" (opponent + score), score on its own
 // for very short cells, opponent only for pending fixtures.
 function Cell({ c }: { c: Dict }) {
-  if (c.towerPend) return (
+  if (c.towerPend) return c.domPend ? (
+    // DOMESTIC (original): matchday number (dim) over the opponent
+    <div style={css(c.style)} title={c.title} onClick={c.onClick}>
+      <span style={{ opacity: .5, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{c.mdNum}</span>
+      <span style={{ whiteSpace: 'nowrap' }}>{c.oppCode}</span>
+    </div>
+  ) : (
     <div style={css(c.style)} title={c.title} onClick={c.onClick}>
       <span style={{ whiteSpace: 'nowrap', fontWeight: 800 }}>{c.oppCode}</span>
       <span style={{ opacity: .5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '.82em' }}>{c.mdNum}</span>
