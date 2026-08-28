@@ -491,6 +491,34 @@ export class SeasonTower extends React.Component<Props, State> {
     )
   }
 
+  // rank-trajectory chart for the club modal: Y = league position (1 top → N bottom), X = matchday,
+  // team-coloured line, qualification zones as light horizontal bands.
+  renderRankChart(tm: Dict) {
+    const { nTeams, totalMd, color, rankPath, chartBands } = tm
+    const W = 276, H = 300, padL = 18, padR = 8, padT = 6, padB = 15
+    const pw = W - padL - padR, ph = H - padT - padB
+    const x = (md: number) => padL + (totalMd > 1 ? (md - 1) / (totalMd - 1) : 0.5) * pw
+    const y = (rank: number) => padT + ((rank - 0.5) / nTeams) * ph
+    const bandY = (from: number) => padT + ((from - 1) / nTeams) * ph
+    const pts = rankPath.map((p: any) => `${x(p.md).toFixed(1)},${y(p.rank).toFixed(1)}`).join(' ')
+    const yticks = Array.from(new Set([1, ...chartBands.map((b: any) => b.to)])) as number[]
+    const mds = Array.from({ length: totalMd }, (_, i) => i + 1)
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }} role="img">
+        {chartBands.map((b: any, i: number) => (
+          <rect key={'b' + i} x={padL} y={bandY(b.from)} width={pw} height={((b.to - b.from + 1) / nTeams) * ph} fill={b.bg} />
+        ))}
+        {chartBands.filter((b: any) => b.to < nTeams).map((b: any, i: number) => (
+          <line key={'s' + i} x1={padL} x2={padL + pw} y1={bandY(b.to + 1)} y2={bandY(b.to + 1)} stroke="#DADEE3" strokeWidth="0.6" />
+        ))}
+        {mds.filter(md => totalMd <= 12 || md === 1 || md === totalMd || md % Math.ceil(totalMd / 9) === 0).map(md => <text key={'x' + md} x={x(md)} y={H - 4} textAnchor="middle" fontSize="7.5" fontWeight="700" fill="#9298a1">{md}</text>)}
+        {yticks.map(rk => <text key={'y' + rk} x={padL - 3} y={y(rk) + 2.5} textAnchor="end" fontSize="7" fontWeight="700" fill="#9298a1">{rk}</text>)}
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
+        {rankPath.map((p: any, i: number) => <circle key={'p' + i} cx={x(p.md)} cy={y(p.rank)} r="2.8" fill={color} stroke="#fff" strokeWidth="1.2" />)}
+      </svg>
+    )
+  }
+
   render() {
     const v = this.renderVals()
     const mStop = (e: React.MouseEvent) => e.stopPropagation()
@@ -707,7 +735,7 @@ export class SeasonTower extends React.Component<Props, State> {
           {/* ---------- club modal ---------- */}
           {v.tm && (
             <div onClick={() => this.closeTeam()} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-              <div onClick={mStop} style={{ width: 'min(460px,94vw)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(16,18,22,.32)' }}>
+              <div onClick={mStop} style={{ width: v.tm.rankPath.length > 1 ? 'min(820px,96vw)' : 'min(460px,94vw)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(16,18,22,.32)' }}>
                 <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: '14px', ...v.tm.headStyleObj }}>
                   <img src={`logos/${v.tm.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ flex: '0 0 auto', width: '46px', height: '46px', objectFit: 'contain', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,.35))' }} />
                   <div>
@@ -720,7 +748,8 @@ export class SeasonTower extends React.Component<Props, State> {
                     </div>
                   </div>
                 </div>
-                <div style={{ padding: '6px 10px 12px', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+                <div style={{ flex: 1, minWidth: 0, padding: '6px 10px 12px', overflowY: 'auto' }}>
                   {v.tm.rows.map((row: any) => (
                     <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '6px 10px', borderRadius: '8px' }}>
                       <button onClick={row.onClick} style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
@@ -743,6 +772,13 @@ export class SeasonTower extends React.Component<Props, State> {
                       {row.rank != null && <span title="League position after this match" style={{ flex: '0 0 auto', fontSize: '10px', fontWeight: 800, color: '#5c616b', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>rank {row.rank}</span>}
                     </div>
                   ))}
+                </div>
+                {v.tm.rankPath.length > 1 && (
+                  <div style={{ flex: '0 0 300px', borderLeft: '1px solid #EDEFF2', padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '.5px', textTransform: 'uppercase', color: '#9298a1', marginBottom: '8px' }}>Position by matchday</div>
+                    {this.renderRankChart(v.tm)}
+                  </div>
+                )}
                 </div>
               </div>
             </div>
@@ -1096,6 +1132,10 @@ export class SeasonTower extends React.Component<Props, State> {
         Pts: e.Pts, rec: `${e.W}W · ${e.D}D · ${e.L}L`, goals: `${e.GF}:${e.GA} (${e.GD >= 0 ? '+' : ''}${e.GD})`,
         headStyleObj: { background: `linear-gradient(135deg,${prim} 0%,${this.mix(prim, '#000000', .25)} 100%)`, color: txt } as React.CSSProperties,
         rows,
+        // rank trajectory chart: position after each played matchday
+        color: prim, nTeams: Object.keys(T).length, totalMd: mx,
+        rankPath: rows.filter((r: any) => r.rank != null).map((r: any) => ({ md: r.w, rank: r.rank })),
+        chartBands: zoneBands.map((b: any) => ({ label: b.label, color: b.color, bg: b.bg, from: b.start + 1, to: b.start + b.count })),
       }
     }
 
