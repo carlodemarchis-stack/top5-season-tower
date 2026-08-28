@@ -871,7 +871,8 @@ export class SeasonTower extends React.Component<Props, State> {
     const liveH = this.chartRef.current ? Math.round(this.chartRef.current.clientHeight - 20) : 0
     const chartH = liveH > 40 ? liveH : (S.ch || 600)
     const labelH = 46
-    const colW = Math.max(46, Math.min(82, (chartW - 6) / 20 - 2))
+    const nTeams = T ? Object.keys(T).length : 20   // 20 domestic, 36 for the UEFA league phase
+    const colW = Math.max(30, Math.min(82, (chartW - 6) / nTeams - 2))   // all teams fit the width
     // HORIZONTAL view (teams ranked left→right): fixed, legible cell sizes — 1× tie box at a
     // minimum legible height, 2× and 3× scaled from it. The canvas scrolls vertically if needed.
     const DRAWH = 10                // 1× tie (minimum legible)
@@ -881,7 +882,7 @@ export class SeasonTower extends React.Component<Props, State> {
     let maxBelow = DECH; for (const e of list) { const px = e.L * DECH + e.D * DLOSTH; if (px > maxBelow) maxBelow = px }
     const belowH = maxBelow + 2
     this._droppedW = belowH   // rows mode overwrites this below
-    const rowH = Math.max(22, Math.min(50, (chartH - 40) / 20))   // all 20 rows fit the viewport height
+    const rowH = Math.max(15, Math.min(50, (chartH - 40) / nTeams))   // all rows fit the viewport height
     const rowLabelW = 80
     // Landscape uses a much bigger px-per-point so the 1-pt tie boxes are wide enough to read.
     const ROW_U = 16                                  // px per point in rows mode
@@ -948,8 +949,11 @@ export class SeasonTower extends React.Component<Props, State> {
         const pstyle = `width:100%;height:${h}px;min-height:${h}px;margin:0;background:${bg};color:${color};border:${border};display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.02;overflow:hidden;cursor:pointer;font-size:${pfs}px;font-weight:700;padding:0 2px;`
         return { key: t.abbr + '-' + g.id, towerPend: true, mdNum: String(g.w), oppCode: arrow + g.opp, style: pstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
       }
-      const style = `width:100%;height:${h}px;min-height:${h}px;margin:0;border-radius:0;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:row;align-items:center;justify-content:center;gap:2px;overflow:hidden;cursor:pointer;font-size:${fs}px;line-height:1;padding:0 3px;`
-      return { key: t.abbr + '-' + g.id, oppLab, arrowTxt: arrow, oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, style, title, onClick: () => this.openPop(t.abbr, g.id) }
+      // stack opponent over score (column) on the taller win/loss boxes so narrow columns (36-team UEFA
+      // league phase) still read; the short 1× draw box keeps a single centred line.
+      const stack = type !== 'draw'
+      const style = `width:100%;height:${h}px;min-height:${h}px;margin:0;border-radius:0;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:${stack ? 'column' : 'row'};align-items:center;justify-content:center;gap:${stack ? 0 : 2}px;overflow:hidden;cursor:pointer;font-size:${fs}px;line-height:1.02;padding:0 2px;`
+      return { key: t.abbr + '-' + g.id, oppLab, arrowTxt: arrow, oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, stack, style, title, onClick: () => this.openPop(t.abbr, g.id) }
     }
 
     const teamsSorted = list.map((e, i) => {
@@ -1136,7 +1140,7 @@ function Cell({ c }: { c: Dict }) {
   return (
     <div style={css(c.style)} title={c.title} onClick={c.onClick}>
       {c.chip
-        ? <>{c.arrowTxt && <span style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>{c.arrowTxt}</span>}<span style={{ background: c.chipBg, color: c.chipText, borderRadius: '2px', padding: '0 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto' }}>{c.oppCode}</span>{score}</>
+        ? <><span style={{ display: 'inline-flex', alignItems: 'center', gap: '1px', maxWidth: '100%', flex: '0 0 auto' }}>{c.arrowTxt && <span style={{ whiteSpace: 'nowrap' }}>{c.arrowTxt}</span>}<span style={{ background: c.chipBg, color: c.chipText, borderRadius: '2px', padding: '0 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.oppCode}</span></span>{score}</>
         : <>{opp}{score}</>}
     </div>
   )
