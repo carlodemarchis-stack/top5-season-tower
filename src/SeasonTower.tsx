@@ -559,9 +559,29 @@ export class SeasonTower extends React.Component<Props, State> {
           <line x1={xm} x2={xm} y1={padT} y2={H - padB} stroke="#8b9098" strokeWidth="0.9" strokeDasharray="4 3" />
         ) })()}
         <polyline points={pts} fill="none" stroke={color} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
-        {rankPath.map((p: any, i: number) => <circle key={'p' + i} cx={x(p.md)} cy={y(p.rank)} r={dotR} fill={p.res === 'W' ? '#1f8a4c' : p.res === 'L' ? '#d0454a' : '#EAB308'} stroke="#fff" strokeWidth={dotR > 3.4 ? 1.5 : 1.1} />)}
+        {rankPath.map((p: any, i: number) => (
+          <g key={'p' + i}>
+            <circle cx={x(p.md)} cy={y(p.rank)} r={dotR} data-mddot={p.md} data-r={dotR} fill={p.res === 'W' ? '#1f8a4c' : p.res === 'L' ? '#d0454a' : '#EAB308'} stroke="#fff" strokeWidth={dotR > 3.4 ? 1.5 : 1.1} style={{ transition: 'r .08s' }} />
+            {/* larger invisible hit target so the dot is easy to hover */}
+            <circle cx={x(p.md)} cy={y(p.rank)} r={Math.max(dotR + 4, 8)} fill="transparent" style={{ cursor: 'pointer' }} onMouseEnter={() => this.hoverMatch(p.md, true)} onMouseLeave={() => this.hoverMatch(p.md, false)} />
+          </g>
+        ))}
       </svg>
     )
+  }
+
+  // cross-highlight a fixture row and its chart dot (keyed by matchday) — done via direct DOM toggling
+  // so hovering doesn't trigger a full re-render of the heavy standings computation.
+  hoverMatch(w: number, on: boolean) {
+    const row = document.querySelector(`[data-mdrow="${w}"]`) as HTMLElement | null
+    if (row) row.style.backgroundColor = on ? '#EDF1F6' : ''
+    const dot = document.querySelector(`[data-mddot="${w}"]`) as SVGCircleElement | null
+    if (dot) {
+      const base = parseFloat(dot.getAttribute('data-r') || '3')
+      dot.setAttribute('r', String(on ? Math.max(base * 1.9, base + 3) : base))
+      ;(dot as any).style.strokeWidth = on ? '2.6' : ''
+      ;(dot as any).style.stroke = on ? '#15181d' : ''
+    }
   }
 
   // one fixture row in the club modal (used single- or two-column). `dense` tightens padding so a
@@ -571,7 +591,7 @@ export class SeasonTower extends React.Component<Props, State> {
     const nm = String(row.opp || '')
     const nameFs = nm.length > 22 ? 9.5 : nm.length > 18 ? 10.5 : nm.length > 15 ? 11.5 : 13
     return (
-      <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: dense ? '3px 6px' : '6px 10px', borderRadius: '8px' }}>
+      <div key={row.id} data-mdrow={row.w} onMouseEnter={() => this.hoverMatch(row.w, true)} onMouseLeave={() => this.hoverMatch(row.w, false)} style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: dense ? '3px 6px' : '6px 10px', borderRadius: '8px', transition: 'background-color .08s' }}>
         <button onClick={row.onClick} style={{ display: 'flex', alignItems: 'center', gap: dense ? '6px' : '10px', flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
           <span style={{ fontSize: '10px', fontWeight: 700, color: '#B0B4BC', width: '18px', flex: '0 0 18px', fontVariantNumeric: 'tabular-nums' }}>{row.w}</span>
           <span style={{ fontSize: '11px', fontWeight: 700, color: '#9298a1', width: '15px', flex: '0 0 15px' }}>{row.ha}</span>
