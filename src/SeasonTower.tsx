@@ -903,9 +903,11 @@ export class SeasonTower extends React.Component<Props, State> {
     this._droppedW = belowH   // rows mode overwrites this below
     const rowH = Math.max(15, Math.min(50, (chartH - 40) / nTeams))   // all rows fit the viewport height
     const rowLabelW = 104   // rows team box holds one line: rank · team · pts · W-D-L
-    // Landscape uses a much bigger px-per-point so the 1-pt tie boxes are wide enough to read.
-    const ROW_U = 16                                  // px per point in rows mode
-    const WLW = 3 * ROW_U                             // win / loss box = 48 (3×)
+    // Landscape px-per-point — widen the boxes to use the horizontal space (win/loss = 3u, drawn-won
+    // = 1u, drawn-lost = 2u stays intact). Sized so the widest WON side fills the room right of the box.
+    const wonUnits = Math.max(24, ...list.map((e: any) => e.W * 3 + e.D))
+    const ROW_U = Math.max(16, Math.min(30, (chartW - rowLabelW - 12) / wonUnits))
+    const WLW = 3 * ROW_U                             // win / loss box (3×)
     const TIE1 = ROW_U                                // tie box = 16 (1×), stacked into 4 rows
     const TIE2 = 2 * ROW_U                            // tie shown below (points dropped) = 32 (2×)
     // "to play" boxes carry no points → size them so a full fixture row (pre-season) fits the width.
