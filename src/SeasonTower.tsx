@@ -579,10 +579,20 @@ export class SeasonTower extends React.Component<Props, State> {
             <img src={`logos/${row.oppCrest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ width: '17px', height: '17px', objectFit: 'contain' }} />
           </span>
           <span style={{ fontSize: `${nameFs}px`, fontWeight: 700, color: '#15181d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.opp}</span>
-          {/* 3 aligned columns: score (right) · rank (left) · result (right) — kept compact so the name gets room */}
-          <span style={{ flex: '0 0 36px', fontSize: '12px', fontWeight: 700, color: '#3a3f47', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{row.score}</span>
-          <span style={{ flex: '0 0 32px', textAlign: 'left' }}>{row.rank != null && <span title="League position after this match (coloured by qualification zone)" style={{ fontSize: '10px', fontWeight: 800, color: row.rankFg, background: row.rankBg, borderRadius: '6px', padding: '3px 5px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>R{row.rank}</span>}</span>
-          <span style={{ ...row.badgeStyleObj, flex: '0 0 20px', textAlign: 'center', fontSize: '10px', fontWeight: 800, borderRadius: '6px', padding: '3px 0' }}>{row.badge}</span>
+          {row.rank != null ? (
+            /* played → 3 aligned columns: score (right) · rank (left) · result (right) — kept compact so the name gets room */
+            <>
+              <span style={{ flex: '0 0 36px', fontSize: '12px', fontWeight: 700, color: '#3a3f47', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{row.score}</span>
+              <span style={{ flex: '0 0 32px', textAlign: 'left' }}>{<span title="League position after this match (coloured by qualification zone)" style={{ fontSize: '10px', fontWeight: 800, color: row.rankFg, background: row.rankBg, borderRadius: '6px', padding: '3px 5px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>R{row.rank}</span>}</span>
+              <span style={{ ...row.badgeStyleObj, flex: '0 0 20px', textAlign: 'center', fontSize: '10px', fontWeight: 800, borderRadius: '6px', padding: '3px 0' }}>{row.badge}</span>
+            </>
+          ) : (
+            /* upcoming → kickoff date, and the time when the league has confirmed it */
+            <span style={{ flex: '0 0 auto', display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: '5px', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#7c828b', fontVariantNumeric: 'tabular-nums' }}>{row.dateShort || '—'}</span>
+              {row.timeShort && <span style={{ fontSize: '10px', fontWeight: 700, color: '#aeb3ba', fontVariantNumeric: 'tabular-nums' }}>{row.timeShort}</span>}
+            </span>
+          )}
         </button>
         {row.highlights.length > 0 && (
           <span style={{ display: 'flex', gap: '4px', flex: '0 0 auto' }}>
@@ -843,7 +853,7 @@ export class SeasonTower extends React.Component<Props, State> {
           {/* ---------- club modal ---------- */}
           {v.tm && (
             <div onClick={() => this.closeTeam()} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-              <div onClick={mStop} style={{ position: 'relative', width: v.tm.rankPath.length > 1 ? `min(${(v.tm.rows.length > 20 ? 736 : 430) + Math.max(300, Math.min(560, v.tm.totalMd * 13))}px, 96vw)` : `min(${v.tm.rows.length > 20 ? 752 : 460}px,94vw)`, maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', overflow: 'visible', boxShadow: '0 24px 60px rgba(16,18,22,.32)' }}>
+              <div onClick={mStop} style={{ position: 'relative', width: v.tm.rankPath.length >= 1 ? `min(${(v.tm.rows.length > 20 ? 736 : 430) + Math.max(300, Math.min(560, v.tm.totalMd * 13))}px, 96vw)` : `min(${v.tm.rows.length > 20 ? 752 : 460}px,94vw)`, maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', overflow: 'visible', boxShadow: '0 24px 60px rgba(16,18,22,.32)' }}>
                 {/* prev / next club (league-table order) */}
                 <button onClick={() => this.stepTeam(-1)} title="Previous club (←)" aria-label="Previous club" style={{ position: 'absolute', left: '-19px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4E7EB', background: '#fff', color: '#15181d', fontSize: '18px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,18,22,.22)', lineHeight: 1, paddingBottom: '2px' }}>‹</button>
                 <button onClick={() => this.stepTeam(1)} title="Next club (→)" aria-label="Next club" style={{ position: 'absolute', right: '-19px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4E7EB', background: '#fff', color: '#15181d', fontSize: '18px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,18,22,.22)', lineHeight: 1, paddingBottom: '2px' }}>›</button>
@@ -878,7 +888,7 @@ export class SeasonTower extends React.Component<Props, State> {
                     </div>
                   )
                 })()}
-                {v.tm.rankPath.length > 1 && (
+                {v.tm.rankPath.length >= 1 && (
                   <div style={{ flex: '1 1 auto', borderLeft: '1px solid #EDEFF2', padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                     <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '.5px', textTransform: 'uppercase', color: '#9298a1', marginBottom: '8px' }}>Position by matchday</div>
                     <div ref={this.setRankChartRef} style={{ flex: 1, minHeight: 0, position: 'relative' }}>
@@ -1266,9 +1276,15 @@ export class SeasonTower extends React.Component<Props, State> {
         const rk = r ? this.rankAfterWeek(code, g.w) : null
         // rank chip tinted with the qualification/relegation zone of that position after the match
         const zc = rk != null ? zfRow(rk) : null
+        // upcoming match → compact kickoff date (+ time when the league has confirmed it; "None" = TBD)
+        const dm = String(g.et || '').match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}):(\d{2}))?/)
+        const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        const dateShort = dm ? `${+dm[3]} ${MON[(+dm[2]) - 1]}` : ''
+        const timeShort = dm && dm[4] ? `${dm[4]}:${dm[5]}` : ''
         return {
           id: g.id, w: g.w, ha: g.ha === 'H' ? 'vs' : '→', opp: g.oppFull, oppCrest: crestOf(g.opp), highlights: this.normHighlights(HL[g.id]), rank: rk,
           rankBg: zc ? this.mix(zc.color, '#ffffff', 0.84) : '#F1F2F4', rankFg: zc ? this.ink(zc.color) : '#5c616b',
+          dateShort, timeShort,
           score: r ? `${r.gf}–${r.ga}` : '—', badge: res || '·',
           badgeStyleObj: { color: c[1], background: c[0] } as React.CSSProperties,
           onClick: () => this.setState({ teamPop: null, pop: { code, id: g.id, w: g.w, opp: g.opp, oppFull: g.oppFull, ha: g.ha, venue: g.venue, city: g.city, net: g.net, et: g.et } }),
