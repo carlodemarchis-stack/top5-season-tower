@@ -104,12 +104,13 @@ const SCHED_MODS = import.meta.glob('./data/schedule-*.js') as Record<string, ()
 const RES_MODS = import.meta.glob('./data/results-*.js') as Record<string, () => Promise<any>>
 const HL_MODS = import.meta.glob('./data/highlights-*.js') as Record<string, () => Promise<any>>
 
-// European / relegation bands by finishing position (1-based rank).
-function zoneOf(rank: number): { key: string; label: string; color: string } {
+// European / relegation bands by finishing position (1-based rank). `total` = teams in the league so
+// the relegation band tracks the bottom 3 whether it's a 20- or 18-team league.
+function zoneOf(rank: number, total = 20): { key: string; label: string; color: string } {
   if (rank <= 4) return { key: 'ucl', label: 'Champions L.', color: '#0B4DA2' }
   if (rank === 5) return { key: 'uel', label: 'Europa L.', color: '#E8820B' }
   if (rank === 6) return { key: 'uecl', label: 'Conference L.', color: '#0B8A3D' }
-  if (rank >= 18) return { key: 'rel', label: 'Relegation', color: '#C23A2E' }
+  if (rank > total - 3) return { key: 'rel', label: 'Relegation', color: '#C23A2E' }
   return { key: 'mid', label: '', color: '#B0B4BC' }
 }
 // UEFA league-phase bands (36 teams): top 8 → Round of 16, 9–24 → knockout play-off, 25–36 → out.
@@ -118,7 +119,7 @@ function zoneUefa(rank: number): { key: string; label: string; color: string } {
   if (rank <= 24) return { key: 'po', label: 'Knockout play-off', color: '#E8820B' }
   return { key: 'out', label: 'Eliminated', color: '#C23A2E' }
 }
-const zoneFor = (league: LeagueId) => isUefa(league) ? zoneUefa : zoneOf
+const zoneFor = (league: LeagueId, total = 20) => isUefa(league) ? zoneUefa : (rank: number) => zoneOf(rank, total)
 
 export class SeasonTower extends React.Component<Props, State> {
   chartRef = React.createRef<HTMLDivElement>()
@@ -701,15 +702,15 @@ export class SeasonTower extends React.Component<Props, State> {
             </div>
           ) : (
             <>
-            {/* zone labels — sticky strip pinned to the top of the viewport (UEFA league phase only) */}
-            {v.uefa && <div style={{ position: 'sticky', top: 0, height: 0, zIndex: 6, pointerEvents: 'none' }}>
+            {/* zone labels — sticky strip pinned to the top of the viewport, aligned to each band */}
+            <div style={{ position: 'sticky', top: 0, height: 0, zIndex: 6, pointerEvents: 'none' }}>
               {(v.zoneBands || []).filter((b: any) => b.label).map((b: any, i: number) => (
                 <div key={'lb' + i} style={{ position: 'absolute', top: '4px', left: `${b.start * (v.colW + v.colGap)}px`, width: `${b.count * (v.colW + v.colGap) - v.colGap}px`, textAlign: 'center', fontSize: '9.5px', fontWeight: 800, letterSpacing: '.4px', textTransform: 'uppercase', color: b.color, lineHeight: 1.1, textShadow: '0 0 3px #F5F6F4, 0 0 3px #F5F6F4, 0 1px 2px #F5F6F4' }}>{b.label}</div>
               ))}
-            </div>}
+            </div>
             <div style={css(v.colsWrapStyle)}>
-              {/* qualification bands — light zone backdrop BEHIND the columns (UEFA league phase only) */}
-              {v.uefa && (v.zoneBands || []).map((b: any, i: number) => (
+              {/* qualification bands — light zone backdrop BEHIND the columns */}
+              {(v.zoneBands || []).map((b: any, i: number) => (
                 <div key={'bg' + i} style={{ position: 'absolute', top: 0, bottom: 0, zIndex: 0, pointerEvents: 'none', left: `${b.start * (v.colW + v.colGap)}px`, width: `${b.count * (v.colW + v.colGap) - v.colGap}px`, background: b.bg }} />
               ))}
               {v.teamsSorted.map((t: any) => (
@@ -1122,7 +1123,7 @@ export class SeasonTower extends React.Component<Props, State> {
     const teamsSorted = list.map((e, i) => {
       const t = e.t, prim = t.primary
       const rank = i + 1
-      const zf = zoneFor(S.league)
+      const zf = zoneFor(S.league, nTeams)
       const z = zf(rank)
       const isZoneStart = zonesOn && i > 0 && zf(i).key !== z.key
       const wdlStr = `${e.W}-${e.D}-${e.L}`
@@ -1184,7 +1185,7 @@ export class SeasonTower extends React.Component<Props, State> {
     const leader = list[0]
 
     // qualification bands (contiguous rank groups) drawn as light backdrops behind the ranking
-    const zf2 = zoneFor(S.league)
+    const zf2 = zoneFor(S.league, nTeams)
     const zoneBands: any[] = []
     let curBand: any = null
     teamsSorted.forEach((_: any, i: number) => {
@@ -1247,7 +1248,7 @@ export class SeasonTower extends React.Component<Props, State> {
         }
       })
       tm = {
-        name: t.name, crest: crestOf(code), rankLine: `${rank}${rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th'} · ${zoneFor(S.league)(rank).label || 'Mid-table'}`,
+        name: t.name, crest: crestOf(code), rankLine: `${rank}${rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th'} · ${zoneFor(S.league, nTeams)(rank).label || 'Mid-table'}`,
         Pts: e.Pts, rec: `${e.W}W · ${e.D}D · ${e.L}L`, goals: `${e.GF}:${e.GA} (${e.GD >= 0 ? '+' : ''}${e.GD})`,
         headStyleObj: { background: `linear-gradient(135deg,${prim} 0%,${this.mix(prim, '#000000', .25)} 100%)`, color: txt } as React.CSSProperties,
         rows,
