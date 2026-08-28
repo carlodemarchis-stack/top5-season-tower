@@ -514,7 +514,8 @@ export class SeasonTower extends React.Component<Props, State> {
   // team-coloured line, qualification zones as light horizontal bands.
   renderRankChart(tm: Dict) {
     const { nTeams, totalMd, color, rankPath, chartBands } = tm
-    const W = 276, H = 300, padL = 18, padR = 8, padT = 6, padB = 15
+    const W = Math.max(276, Math.min(560, 34 + totalMd * 13)), H = 300, padL = 18, padR = 8, padT = 6, padB = 15
+    const dotR = totalMd > 24 ? 2.6 : totalMd > 12 ? 3.2 : 4
     const pw = W - padL - padR, ph = H - padT - padB
     const x = (md: number) => padL + (totalMd > 1 ? (md - 1) / (totalMd - 1) : 0.5) * pw
     const y = (rank: number) => padT + ((rank - 0.5) / nTeams) * ph
@@ -532,8 +533,13 @@ export class SeasonTower extends React.Component<Props, State> {
         ))}
         {mds.filter(md => totalMd <= 12 || md === 1 || md === totalMd || md % Math.ceil(totalMd / 9) === 0).map(md => <text key={'x' + md} x={x(md)} y={H - 4} textAnchor="middle" fontSize="7.5" fontWeight="700" fill="#9298a1">{md}</text>)}
         {yticks.map(rk => <text key={'y' + rk} x={padL - 3} y={y(rk) + 2.5} textAnchor="end" fontSize="7" fontWeight="700" fill="#9298a1">{rk}</text>)}
+        {/* domestic double round-robin → divider between the first and second half of the season */}
+        {totalMd > 12 && totalMd % 2 === 0 && (() => { const xm = x(totalMd / 2 + 0.5); return <>
+          <line x1={xm} x2={xm} y1={padT} y2={H - padB} stroke="#8b9098" strokeWidth="0.8" strokeDasharray="3 2.5" />
+          <text x={xm} y={padT + 8} textAnchor="middle" fontSize="6.5" fontWeight="800" fill="#8b9098">2nd half →</text>
+        </> })()}
         <polyline points={pts} fill="none" stroke={color} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
-        {rankPath.map((p: any, i: number) => <circle key={'p' + i} cx={x(p.md)} cy={y(p.rank)} r="4" fill={p.res === 'W' ? '#1f8a4c' : p.res === 'L' ? '#d0454a' : '#EAB308'} stroke="#fff" strokeWidth="1.4" />)}
+        {rankPath.map((p: any, i: number) => <circle key={'p' + i} cx={x(p.md)} cy={y(p.rank)} r={dotR} fill={p.res === 'W' ? '#1f8a4c' : p.res === 'L' ? '#d0454a' : '#EAB308'} stroke="#fff" strokeWidth={dotR > 3 ? 1.4 : 1} />)}
       </svg>
     )
   }
@@ -754,7 +760,7 @@ export class SeasonTower extends React.Component<Props, State> {
           {/* ---------- club modal ---------- */}
           {v.tm && (
             <div onClick={() => this.closeTeam()} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-              <div onClick={mStop} style={{ position: 'relative', width: v.tm.rankPath.length > 1 ? 'min(820px,96vw)' : 'min(460px,94vw)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', overflow: 'visible', boxShadow: '0 24px 60px rgba(16,18,22,.32)' }}>
+              <div onClick={mStop} style={{ position: 'relative', width: v.tm.rankPath.length > 1 ? `min(${430 + Math.max(300, Math.min(560, v.tm.totalMd * 13))}px, 96vw)` : 'min(460px,94vw)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', overflow: 'visible', boxShadow: '0 24px 60px rgba(16,18,22,.32)' }}>
                 {/* prev / next club (league-table order) */}
                 <button onClick={() => this.stepTeam(-1)} title="Previous club (←)" aria-label="Previous club" style={{ position: 'absolute', left: '-19px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4E7EB', background: '#fff', color: '#15181d', fontSize: '18px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,18,22,.22)', lineHeight: 1, paddingBottom: '2px' }}>‹</button>
                 <button onClick={() => this.stepTeam(1)} title="Next club (→)" aria-label="Next club" style={{ position: 'absolute', right: '-19px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4E7EB', background: '#fff', color: '#15181d', fontSize: '18px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,18,22,.22)', lineHeight: 1, paddingBottom: '2px' }}>›</button>
@@ -772,7 +778,7 @@ export class SeasonTower extends React.Component<Props, State> {
                   </div>
                 </div>
                 <div style={{ display: 'flex', minHeight: 0, overflow: 'hidden' }}>
-                <div style={{ flex: 1, minWidth: 0, padding: '6px 10px 12px', overflowY: 'auto' }}>
+                <div style={{ flex: '0 0 430px', maxWidth: '54vw', minWidth: 0, padding: '6px 10px 12px', overflowY: 'auto' }}>
                   {v.tm.rows.map((row: any) => (
                     <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '6px 10px', borderRadius: '8px' }}>
                       <button onClick={row.onClick} style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
@@ -798,7 +804,7 @@ export class SeasonTower extends React.Component<Props, State> {
                   ))}
                 </div>
                 {v.tm.rankPath.length > 1 && (
-                  <div style={{ flex: '0 0 300px', borderLeft: '1px solid #EDEFF2', padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  <div style={{ flex: '1 1 auto', borderLeft: '1px solid #EDEFF2', padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                     <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '.5px', textTransform: 'uppercase', color: '#9298a1', marginBottom: '8px' }}>Position by matchday</div>
                     {this.renderRankChart(v.tm)}
                   </div>
