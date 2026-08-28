@@ -377,7 +377,10 @@ export class SeasonTower extends React.Component<Props, State> {
     if (this._pinBottom) {
       const c = this.chartRef.current
       if (c) {
-        if (this.state.layout === 'rows') { if (this._droppedW > 100 && c.scrollWidth > c.clientWidth) { this._pinBottom = false; c.scrollLeft = this._droppedW } }
+        // rows → scroll the team column flush-left (dropped/losses hidden off to the left). Always reset
+        // to _droppedW (not just when it's large) so a season switch can't leave a stale scroll that
+        // pushes the narrower current-season rows off-screen into the right-hand padding.
+        if (this.state.layout === 'rows') { if (c.scrollWidth > c.clientWidth) { this._pinBottom = false; c.scrollLeft = this._droppedW } }
         else if (c.scrollHeight > c.clientHeight + 20) { this._pinBottom = false; c.scrollTop = c.scrollHeight }
       }
     }
@@ -586,10 +589,11 @@ export class SeasonTower extends React.Component<Props, State> {
 
   // one fixture row in the club modal (used single- or two-column). `dense` tightens padding so a
   // full 19-match half-season column fits vertically without scrolling.
-  renderFixtureRow(row: any, dense: boolean) {
+  renderFixtureRow(row: any, dense: boolean, hlSlotW: number) {
     // shrink the font for very long club names ("Brighton and Hove Albion") so they don't get an ellipsis
     const nm = String(row.opp || '')
     const nameFs = nm.length > 22 ? 9.5 : nm.length > 18 ? 10.5 : nm.length > 15 ? 11.5 : 13
+    const pillSz = dense ? 20 : 23
     return (
       <div key={row.id} data-mdrow={row.w} onMouseEnter={() => this.hoverMatch(row.w, true)} onMouseLeave={() => this.hoverMatch(row.w, false)} style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: dense ? '3px 6px' : '6px 10px', borderRadius: '8px', transition: 'background-color .08s' }}>
         <button onClick={row.onClick} style={{ display: 'flex', alignItems: 'center', gap: dense ? '6px' : '10px', flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
@@ -614,10 +618,11 @@ export class SeasonTower extends React.Component<Props, State> {
             </span>
           )}
         </button>
-        {row.highlights.length > 0 && (
-          <span style={{ display: 'flex', gap: '4px', flex: '0 0 auto' }}>
+        {/* fixed-width highlights slot so score/rank/result stay aligned whether or not a row has clips */}
+        {hlSlotW > 0 && (
+          <span style={{ display: 'flex', gap: '4px', flex: `0 0 ${hlSlotW}px`, justifyContent: 'flex-start' }}>
             {row.highlights.map((h: any, i: number) => (
-              <a key={h.lang || i} href={`https://www.youtube.com/watch?v=${h.id}`} target="_blank" rel="noopener noreferrer" title={`Watch highlights — ${h.label}`} style={{ display: 'inline-flex', width: dense ? '20px' : '23px', height: dense ? '20px' : '23px', borderRadius: '6px', alignItems: 'center', justifyContent: 'center', fontSize: '12px', textDecoration: 'none', background: i === 0 ? '#FFEAED' : '#F1F2F4', border: `1px solid ${i === 0 ? '#FFC4CD' : '#E3E6EA'}` }}>{h.flag}</a>
+              <a key={h.lang || i} href={`https://www.youtube.com/watch?v=${h.id}`} target="_blank" rel="noopener noreferrer" title={`Watch highlights — ${h.label}`} style={{ display: 'inline-flex', width: `${pillSz}px`, height: `${pillSz}px`, borderRadius: '6px', alignItems: 'center', justifyContent: 'center', fontSize: '12px', textDecoration: 'none', background: i === 0 ? '#FFEAED' : '#F1F2F4', border: `1px solid ${i === 0 ? '#FFC4CD' : '#E3E6EA'}` }}>{h.flag}</a>
             ))}
           </span>
         )}
@@ -918,11 +923,16 @@ export class SeasonTower extends React.Component<Props, State> {
                   const twoCol = rows.length > 20
                   const half = Math.ceil(rows.length / 2)
                   const cols = twoCol ? [rows.slice(0, half), rows.slice(half)] : [rows]
+                  // reserve a fixed highlights column (sized to the most languages any row has) only when
+                  // this team actually has clips, so score/rank/result align and no-clip rows leave it empty
+                  const maxHL = Math.max(0, ...rows.map((r: any) => r.highlights.length))
+                  const pillSz = twoCol ? 20 : 23
+                  const hlSlotW = maxHL > 0 ? maxHL * pillSz + (maxHL - 1) * 4 : 0
                   return (
                     <div style={{ flex: '0 0 auto', display: 'flex', minWidth: 0 }}>
                       {cols.map((colRows: any[], ci: number) => (
                         <div key={ci} style={{ flex: `0 0 ${twoCol ? 360 : 430}px`, maxWidth: twoCol ? '36vw' : '54vw', minWidth: 0, padding: twoCol ? (ci > 0 ? '4px 8px 10px 18px' : '4px 18px 10px 8px') : '4px 8px 10px', overflowY: 'auto', borderLeft: (twoCol && ci > 0) ? '2px solid #C4CAD2' : 'none' }}>
-                          {colRows.map((row: any) => this.renderFixtureRow(row, twoCol))}
+                          {colRows.map((row: any) => this.renderFixtureRow(row, twoCol, hlSlotW))}
                         </div>
                       ))}
                     </div>
