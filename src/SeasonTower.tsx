@@ -890,7 +890,7 @@ export class SeasonTower extends React.Component<Props, State> {
                       <span style={{ opacity: .85 }}>{v.tm.goals}</span>
                       {/* longest W / D / L runs of the season */}
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ opacity: .6, fontWeight: 800, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '.4px' }}>Best run</span>
+                        <span style={{ opacity: .6, fontWeight: 800, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '.4px' }}>Max streaks</span>
                         <span>{v.tm.streak.W}<span style={{ opacity: .6 }}>W</span></span><span style={{ opacity: .4 }}>·</span>
                         <span>{v.tm.streak.D}<span style={{ opacity: .6 }}>D</span></span><span style={{ opacity: .4 }}>·</span>
                         <span>{v.tm.streak.L}<span style={{ opacity: .6 }}>L</span></span>
