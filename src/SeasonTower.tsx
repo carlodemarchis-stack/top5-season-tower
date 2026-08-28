@@ -56,6 +56,7 @@ interface State {
   creditsOpen: boolean
   overview: boolean          // "All 5 leagues" points-board view
   ovData: any[] | null       // per-league standings summary for the overview
+  chartBox: { w: number; h: number } | null   // measured px size of the club-modal rank-chart panel
 }
 
 // order shown in the switcher; `real` gates the simulation + the "simulated" wording.
@@ -140,6 +141,20 @@ export class SeasonTower extends React.Component<Props, State> {
     creditsOpen: false,
     overview: !!this._init!.overview,
     ovData: null,
+    chartBox: null,
+  }
+
+  // measure the club-modal rank-chart panel so the SVG can fill the whole vertical space (round dots kept)
+  _rco?: ResizeObserver
+  setRankChartRef = (el: HTMLDivElement | null) => {
+    if (this._rco) { this._rco.disconnect(); this._rco = undefined }
+    if (!el) { return }
+    const measure = () => {
+      const w = Math.round(el.clientWidth), h = Math.round(el.clientHeight)
+      if (w > 40 && h > 40) this.setState(s => (s.chartBox && Math.abs(s.chartBox.w - w) < 2 && Math.abs(s.chartBox.h - h) < 2) ? null : { chartBox: { w, h } } as any)
+    }
+    if (window.ResizeObserver) { this._rco = new ResizeObserver(measure); this._rco.observe(el) }
+    requestAnimationFrame(measure)
   }
 
   componentDidMount() {
@@ -164,7 +179,7 @@ export class SeasonTower extends React.Component<Props, State> {
     requestAnimationFrame(() => this._measure())
     window.addEventListener('keydown', this.onKey)
   }
-  componentWillUnmount() { if (this._ro) this._ro.disconnect(); if (this._mt) clearInterval(this._mt); if (this._timer) clearInterval(this._timer); window.removeEventListener('keydown', this.onKey) }
+  componentWillUnmount() { if (this._ro) this._ro.disconnect(); if (this._rco) this._rco.disconnect(); if (this._mt) clearInterval(this._mt); if (this._timer) clearInterval(this._timer); window.removeEventListener('keydown', this.onKey) }
 
   // ---- league / season accessors --------------------------------------------
   // Load a league's two seasons via the file globs (missing files → empty season, "no data").
@@ -514,9 +529,14 @@ export class SeasonTower extends React.Component<Props, State> {
   // team-coloured line, qualification zones as light horizontal bands.
   renderRankChart(tm: Dict) {
     const { nTeams, totalMd, color, rankPath, chartBands } = tm
-    const W = Math.max(276, Math.min(560, 34 + totalMd * 13)), H = 300, padL = 18, padR = 8, padT = 6, padB = 15
-    const dotR = totalMd > 24 ? 2.6 : totalMd > 12 ? 3.2 : 4
+    // viewBox = the panel's real pixel box so the plot fills the whole vertical space; 1 unit = 1px keeps dots round.
+    const box = this.state.chartBox
+    const W = box ? box.w : 440, H = box ? box.h : 560
+    const padL = 22, padR = 10, padT = 8, padB = 18
     const pw = W - padL - padR, ph = H - padT - padB
+    const gap = totalMd > 1 ? pw / (totalMd - 1) : pw   // horizontal spacing between matchdays
+    const dotR = Math.max(2.6, Math.min(6, gap * 0.34))
+    const fs = Math.max(8, Math.min(12, H / 44))        // axis label size scaled to height
     const x = (md: number) => padL + (totalMd > 1 ? (md - 1) / (totalMd - 1) : 0.5) * pw
     const y = (rank: number) => padT + ((rank - 0.5) / nTeams) * ph
     const bandY = (from: number) => padT + ((from - 1) / nTeams) * ph
@@ -524,22 +544,22 @@ export class SeasonTower extends React.Component<Props, State> {
     const yticks = Array.from(new Set([1, ...chartBands.map((b: any) => b.to)])) as number[]
     const mds = Array.from({ length: totalMd }, (_, i) => i + 1)
     return (
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }} role="img">
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} role="img">
         {chartBands.map((b: any, i: number) => (
           <rect key={'b' + i} x={padL} y={bandY(b.from)} width={pw} height={((b.to - b.from + 1) / nTeams) * ph} fill={b.bg} />
         ))}
         {chartBands.filter((b: any) => b.to < nTeams).map((b: any, i: number) => (
-          <line key={'s' + i} x1={padL} x2={padL + pw} y1={bandY(b.to + 1)} y2={bandY(b.to + 1)} stroke="#DADEE3" strokeWidth="0.6" />
+          <line key={'s' + i} x1={padL} x2={padL + pw} y1={bandY(b.to + 1)} y2={bandY(b.to + 1)} stroke="#DADEE3" strokeWidth="0.7" />
         ))}
-        {mds.filter(md => totalMd <= 12 || md === 1 || md === totalMd || md % Math.ceil(totalMd / 9) === 0).map(md => <text key={'x' + md} x={x(md)} y={H - 4} textAnchor="middle" fontSize="7.5" fontWeight="700" fill="#9298a1">{md}</text>)}
-        {yticks.map(rk => <text key={'y' + rk} x={padL - 3} y={y(rk) + 2.5} textAnchor="end" fontSize="7" fontWeight="700" fill="#9298a1">{rk}</text>)}
+        {mds.filter(md => totalMd <= 12 || md === 1 || md === totalMd || md % Math.ceil(totalMd / 9) === 0).map(md => <text key={'x' + md} x={x(md)} y={H - 5} textAnchor="middle" fontSize={fs} fontWeight="700" fill="#9298a1">{md}</text>)}
+        {yticks.map(rk => <text key={'y' + rk} x={padL - 4} y={y(rk) + fs * 0.35} textAnchor="end" fontSize={fs} fontWeight="700" fill="#9298a1">{rk}</text>)}
         {/* domestic double round-robin → divider between the first and second half of the season */}
         {totalMd > 12 && totalMd % 2 === 0 && (() => { const xm = x(totalMd / 2 + 0.5); return <>
-          <line x1={xm} x2={xm} y1={padT} y2={H - padB} stroke="#8b9098" strokeWidth="0.8" strokeDasharray="3 2.5" />
-          <text x={xm} y={padT + 8} textAnchor="middle" fontSize="6.5" fontWeight="800" fill="#8b9098">2nd half →</text>
+          <line x1={xm} x2={xm} y1={padT} y2={H - padB} stroke="#8b9098" strokeWidth="0.9" strokeDasharray="4 3" />
+          <text x={xm} y={padT + fs + 1} textAnchor="middle" fontSize={fs * 0.9} fontWeight="800" fill="#8b9098">2nd half →</text>
         </> })()}
-        <polyline points={pts} fill="none" stroke={color} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
-        {rankPath.map((p: any, i: number) => <circle key={'p' + i} cx={x(p.md)} cy={y(p.rank)} r={dotR} fill={p.res === 'W' ? '#1f8a4c' : p.res === 'L' ? '#d0454a' : '#EAB308'} stroke="#fff" strokeWidth={dotR > 3 ? 1.4 : 1} />)}
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
+        {rankPath.map((p: any, i: number) => <circle key={'p' + i} cx={x(p.md)} cy={y(p.rank)} r={dotR} fill={p.res === 'W' ? '#1f8a4c' : p.res === 'L' ? '#d0454a' : '#EAB308'} stroke="#fff" strokeWidth={dotR > 3.4 ? 1.5 : 1.1} />)}
       </svg>
     )
   }
@@ -806,7 +826,9 @@ export class SeasonTower extends React.Component<Props, State> {
                 {v.tm.rankPath.length > 1 && (
                   <div style={{ flex: '1 1 auto', borderLeft: '1px solid #EDEFF2', padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                     <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '.5px', textTransform: 'uppercase', color: '#9298a1', marginBottom: '8px' }}>Position by matchday</div>
-                    {this.renderRankChart(v.tm)}
+                    <div ref={this.setRankChartRef} style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+                      {this.renderRankChart(v.tm)}
+                    </div>
                   </div>
                 )}
                 </div>
