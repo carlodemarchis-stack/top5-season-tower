@@ -664,7 +664,7 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '.6px', textTransform: 'uppercase', color: '#9298a1', padding: '5px 10px 7px' }}>Season</div>
                   {v.seasonList.map((s: any) => (
                     <button key={s.id} onClick={s.onClick} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '9px 12px', border: 'none', borderRadius: '8px', background: s.active ? '#F1F3F5' : '#fff', color: '#15181d', fontSize: '13.5px', fontWeight: s.active ? 800 : 600, cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'inherit' }}>
-                      <span>{s.label}<span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: !s.has ? '#C0A020' : s.tag === 'Real' ? '#0B8A3D' : '#9298a1' }}>{s.has ? s.tag : 'soon'}</span></span>
+                      <span>{s.label}<span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: !s.has ? '#9298a1' : s.tag === 'Completed' ? '#0B8A3D' : '#C0A020' }}>{s.has ? s.tag : 'soon'}</span></span>
                       <span style={{ color: '#0B8A3D', fontWeight: 900, fontSize: '13px' }}>{s.active ? '✓' : ''}</span>
                     </button>
                   ))}
@@ -989,7 +989,7 @@ export class SeasonTower extends React.Component<Props, State> {
       seasonLabel: (SEASONS.find(x => x.id === S.season) || SEASONS[0]).label,
       seasonTag: isReal ? 'Real' : 'Simulated', seasonOpen: S.seasonOpen,
       onToggleSeason: () => this.setState(s => ({ seasonOpen: !s.seasonOpen, leagueOpen: false })),
-      seasonList: SEASONS.map(x => ({ id: x.id, label: x.label, tag: x.real ? 'Real' : (SIM ? 'Simulated' : 'Upcoming'), active: x.id === S.season, has: this.seasonHasData(x.id), onClick: () => this.pickSeason(x.id) })),
+      seasonList: SEASONS.map(x => ({ id: x.id, label: x.label, tag: x.real ? 'Completed' : 'In progress', active: x.id === S.season, has: Object.keys(SCHED_MODS).some(k => k.endsWith(`-${x.id}.js`)), onClick: () => this.pickSeason(x.id) })),
     }
     if (!T) return { ...base, loading: true, teamsSorted: [], layout, colsWrapStyle: '', rowsWrapStyle: '', playedStr: '', leaderAbbr: '', leaderPts: '', pop: null, tm: null, noData: !!S.seasons }
 
