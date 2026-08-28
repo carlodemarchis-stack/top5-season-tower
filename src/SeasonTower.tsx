@@ -148,7 +148,7 @@ export class SeasonTower extends React.Component<Props, State> {
 
     this._measure = () => {
       const c = this.chartRef.current; if (!c) return
-      const w = Math.round(c.clientWidth - 32), h = Math.round(c.clientHeight - 20)
+      const w = Math.round(c.clientWidth - 16), h = Math.round(c.clientHeight - 20)
       if (w > 40 && h > 40) this.setState(s => (w === s.cw && h === s.ch) ? null : { cw: w, ch: h } as any)
     }
     const el = this.chartRef.current
@@ -580,7 +580,7 @@ export class SeasonTower extends React.Component<Props, State> {
         </div>}
 
         {/* ---------- chart ---------- */}
-        <div ref={this.chartRef} style={{ position: 'relative', flex: '1 1 0', minHeight: 0, overflow: 'auto', padding: '6px 16px 14px' }}>
+        <div ref={this.chartRef} style={{ position: 'relative', flex: '1 1 0', minHeight: 0, overflow: 'auto', padding: '6px 8px 14px' }}>
           {v.overview ? this.renderOverview(v) : v.layout === 'rows' ? (
             <div style={css(v.rowsWrapStyle)}>
               {v.teamsSorted.map((t: any) => (
@@ -869,10 +869,10 @@ export class SeasonTower extends React.Component<Props, State> {
     const chartH = liveH > 40 ? liveH : (S.ch || 600)
     const labelH = 54   // 4 stacked lines: rank · team · points · W-D-L
     const nTeams = T ? Object.keys(T).length : 20   // 20 domestic, 36 for the UEFA league phase
-    const colW = Math.max(30, Math.min(82, (chartW - 6) / nTeams - 2))   // all teams fit the width
+    const colW = Math.max(28, Math.min(82, (chartW - 2) / nTeams - 1))   // all teams fit the width (tight 1px gap)
     // HORIZONTAL view (teams ranked left→right): fixed, legible cell sizes — 1× tie box at a
     // minimum legible height, 2× and 3× scaled from it. The canvas scrolls vertically if needed.
-    const DRAWH = 10                // 1× tie (minimum legible)
+    const DRAWH = 15                // 1× tie (minimum legible) — full win/loss box = 45px fits 3 stacked lines
     const DECH = DRAWH * 3          // 3× win / loss / pending
     const PENDH = DECH
     const DLOSTH = DRAWH * 2        // 2× tie shown in the loss tower
@@ -906,7 +906,7 @@ export class SeasonTower extends React.Component<Props, State> {
       else { bg = this.mix(oppPrim, '#ffffff', 0.90); color = this.ink(oppPrim); border = '1.5px solid ' + oppPrim; chipBg = oppPrim; chipText = this.contrast(oppPrim) }   // win — opponent on colour chip, score on a very light opponent tint
 
       const h = type === 'draw' ? DRAWH : type === 'drawlost' ? DLOSTH : type === 'pend' ? PENDH : DECH
-      const fs = type === 'draw' ? 7 : Math.max(8.5, Math.min(11, h * 0.42))
+      const fs = type === 'draw' ? 8 : Math.max(9, Math.min(12, h * 0.30))
       // one line: "TOR: 2-1" (home) / "@JUV: 3-1" (away); pending shows the opponent only.
       let sA = '', sMid = '', sB = '', sAStyle = '', sBStyle = ''
       if (r && type !== 'pend') {
@@ -946,9 +946,9 @@ export class SeasonTower extends React.Component<Props, State> {
         const pstyle = `width:100%;height:${h}px;min-height:${h}px;margin:0;background:${bg};color:${color};border:${border};display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.02;overflow:hidden;cursor:pointer;font-size:${pfs}px;font-weight:700;padding:0 2px;`
         return { key: t.abbr + '-' + g.id, towerPend: true, mdNum: String(g.w), oppCode: arrow + g.opp, style: pstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
       }
-      // towers (columns): tall boxes (win/loss/drawlost) stack 3 lines — opponent · score · arrow —
-      // so columns can be narrow enough to fit all 36 teams; the short 1× draw box stays one line.
-      const tall = h >= 20
+      // towers (columns): tall boxes stack 3 lines — opponent · score · home/away — so columns can be
+      // narrow enough to fit all 36 teams; the short 1× draw box stays one line.
+      const tall = h >= 28
       const style = `width:100%;height:${h}px;min-height:${h}px;margin:0;border-radius:0;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:${tall ? 'column' : 'row'};align-items:center;justify-content:center;gap:0;overflow:hidden;cursor:pointer;font-size:${fs}px;line-height:1.02;padding:0 2px;`
       return { key: t.abbr + '-' + g.id, tower3: tall, oppLab, arrowTxt: arrow, oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, style, title, onClick: () => this.openPop(t.abbr, g.id) }
     }
@@ -1000,11 +1000,11 @@ export class SeasonTower extends React.Component<Props, State> {
       const lossC = [...e.losses].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'loss'))
       const drawDn = [...e.draws].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'drawlost'))
       const below = [...lossC, ...drawDn]
-      const colStyle = `flex:0 0 ${colW}px;display:flex;flex-direction:column;align-items:stretch;${isZoneStart ? 'margin-left:14px;' : ''}`
+      const colStyle = `flex:0 0 ${colW}px;width:${colW}px;min-width:0;max-width:${colW}px;display:flex;flex-direction:column;align-items:stretch;${isZoneStart ? 'margin-left:14px;' : ''}`
       const aboveStyle = `display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;`
       const belowStyle = `flex:0 0 ${belowH}px;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;padding-top:2px;`
       // sticky vertically (both edges) so the team row never disappears when scrolling up/down
-      const labelStyle = `position:sticky;top:2px;bottom:2px;z-index:5;margin-top:2px;height:${labelH}px;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:2px;padding:2px 5px;overflow:hidden;background:${prim};border:1px solid ${this.mix(prim, '#000000', 0.22)};border-top:3px solid ${zoneBar};border-radius:4px;box-shadow:0 0 6px rgba(20,22,28,.18);cursor:pointer;`
+      const labelStyle = `position:sticky;top:2px;bottom:2px;z-index:5;margin-top:2px;height:${labelH}px;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:1px;padding:2px 1px;overflow:hidden;background:${prim};border:1px solid ${this.mix(prim, '#000000', 0.22)};border-top:3px solid ${zoneBar};border-radius:4px;box-shadow:0 0 6px rgba(20,22,28,.18);cursor:pointer;`
       return { ...base, above, below, aboveStyle, belowStyle, colStyle, labelStyle }
     })
 
@@ -1074,7 +1074,7 @@ export class SeasonTower extends React.Component<Props, State> {
 
     return {
       ...base, loading: false, orient, teamsSorted, layout,
-      colsWrapStyle: 'display:flex;flex-direction:row;gap:2px;align-items:flex-end;min-width:100%;min-height:100%;',
+      colsWrapStyle: 'display:flex;flex-direction:row;gap:1px;align-items:flex-end;min-width:100%;min-height:100%;',
       rowsWrapStyle: `display:flex;flex-direction:column;gap:2px;width:max-content;min-width:100%;padding-right:${chartW}px;`,
       playedStr: `${decided} / ${mx * Math.floor(list.length / 2)}`, leaderAbbr: leader.code, leaderPts: leader.Pts,
       pop, popWeek, popResBadge, popResStyleObj, popChips, popHomeColor, popAwayColor, popHomeName, popAwayName, popHomeCode, popAwayCode,
@@ -1140,7 +1140,7 @@ function Cell({ c }: { c: Dict }) {
         ? <span style={{ background: c.chipBg, color: c.chipText, borderRadius: '2px', padding: '0 3px', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{c.oppCode}</span>
         : <span style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{c.oppCode}</span>}
       {score && <span style={{ fontWeight: 800 }}>{score}</span>}
-      <span style={{ opacity: .8, fontWeight: 700, minHeight: '1px' }}>{c.arrowTxt || ''}</span>
+      <span style={{ opacity: .7, fontWeight: 700, fontSize: '.82em' }}>{c.arrowTxt ? '→ away' : 'home'}</span>
     </div>
   )
   const opp = c.oppLab !== '' && <span style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.oppLab}</span>
