@@ -941,16 +941,16 @@ export class SeasonTower extends React.Component<Props, State> {
         return { key: t.abbr + '-' + g.id, twoLine: true, vTie, tieRows, pendRows, chip: !!chipBg, chipBg, chipText, mdNum: String(g.w), arrowTxt: arrow, oppCode: g.opp, oppLetters: g.opp.split(''), oppTxt, scoreTxt, gf: r ? String(r.gf) : '', ga: r ? String(r.ga) : '', style: rstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
       }
       if (type === 'pend') {
-        // horizontal view, upcoming game → two lines: matchday number (dim) over the opponent
-        const pfs = Math.max(6.5, Math.min(9, h * 0.4))
-        const pstyle = `width:100%;height:${h}px;min-height:${h}px;margin:0;background:${bg};color:${color};border:${border};display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.02;overflow:hidden;cursor:pointer;font-size:${pfs}px;font-weight:700;padding:0 2px;`
-        return { key: t.abbr + '-' + g.id, towerPend: true, mdNum: String(g.w), oppCode: arrow + g.opp, style: pstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
+        // towers upcoming game → 3 lines: opponent · matchday · home/away (mirrors a played box)
+        const pfs = Math.max(8, Math.min(11, h * 0.24))
+        const pstyle = `width:100%;height:${h}px;min-height:${h}px;margin:0;background:${bg};color:${color};border:${border};display:flex;flex-direction:column;align-items:center;justify-content:flex-start;line-height:1.05;overflow:hidden;cursor:pointer;font-size:${pfs}px;font-weight:700;padding:1px 2px 0;`
+        return { key: t.abbr + '-' + g.id, towerPend: true, mdNum: 'MD' + g.w, oppCode: g.opp, arrowTxt: arrow, style: pstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
       }
       // towers (columns): tall boxes stack 3 lines — opponent · score · home/away — so columns can be
       // narrow enough to fit all 36 teams; the short 1× draw box stays one line.
       const tall = h >= 28
-      const style = `width:100%;height:${h}px;min-height:${h}px;margin:0;border-radius:0;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:${tall ? 'column' : 'row'};align-items:center;justify-content:center;gap:0;overflow:hidden;cursor:pointer;font-size:${fs}px;line-height:1.02;padding:0 2px;`
-      return { key: t.abbr + '-' + g.id, tower3: tall, oppLab, arrowTxt: arrow, oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, style, title, onClick: () => this.openPop(t.abbr, g.id) }
+      const style = `width:100%;height:${h}px;min-height:${h}px;margin:0;border-radius:0;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:${tall ? 'column' : 'row'};align-items:center;justify-content:${tall ? 'flex-start' : 'center'};gap:0;overflow:hidden;cursor:pointer;font-size:${fs}px;line-height:1.05;padding:1px 2px 0;`
+      return { key: t.abbr + '-' + g.id, tower3: tall, hideScore: type === 'draw', oppLab, arrowTxt: arrow, oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, style, title, onClick: () => this.openPop(t.abbr, g.id) }
     }
 
     const teamsSorted = list.map((e, i) => {
@@ -1089,8 +1089,9 @@ export class SeasonTower extends React.Component<Props, State> {
 function Cell({ c }: { c: Dict }) {
   if (c.towerPend) return (
     <div style={css(c.style)} title={c.title} onClick={c.onClick}>
-      <span style={{ opacity: .5, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{c.mdNum}</span>
-      <span style={{ whiteSpace: 'nowrap' }}>{c.oppCode}</span>
+      <span style={{ whiteSpace: 'nowrap', fontWeight: 800 }}>{c.oppCode}</span>
+      <span style={{ opacity: .5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '.82em' }}>{c.mdNum}</span>
+      <span style={{ opacity: .75, fontWeight: 700 }}>{c.arrowTxt}</span>
     </div>
   )
   if (c.pendRows) return (
@@ -1123,12 +1124,12 @@ function Cell({ c }: { c: Dict }) {
     return (
       <div style={css(c.style)} title={c.title} onClick={c.onClick}>
         {c.chip
-          ? <><span style={{ display: 'inline-flex', alignItems: 'center', gap: '1px', maxWidth: '100%' }}>{c.arrowTxt && <span style={{ whiteSpace: 'nowrap' }}>{c.arrowTxt}</span>}<span style={{ background: c.chipBg, color: c.chipText, borderRadius: '2px', padding: '0 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.oppCode}</span></span>{score}</>
+          ? <><span style={{ display: 'inline-flex', alignItems: 'center', gap: '1px', maxWidth: '100%' }}>{c.arrowTxt && <span style={{ whiteSpace: 'nowrap' }}>{c.arrowTxt}</span>}<span style={{ background: c.chipBg, color: c.chipText, borderRadius: '2px', padding: '0 3px', whiteSpace: 'nowrap' }}>{c.oppCode}</span></span>{score}</>
           : <><span style={{ whiteSpace: 'nowrap' }}>{c.oppTxt}</span>{score}</>}
       </div>
     )
   }
-  const score = c.sA !== '' && (
+  const score = !c.hideScore && c.sA !== '' && (
     <span style={{ display: 'inline-flex', alignItems: 'center', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>
       <span style={css(c.sAStyle)}>{c.sA}</span>{c.sMid && <span style={{ opacity: .6 }}>{c.sMid}</span>}<span style={css(c.sBStyle)}>{c.sB}</span>
     </span>
@@ -1137,17 +1138,17 @@ function Cell({ c }: { c: Dict }) {
   if (c.tower3) return (
     <div style={css(c.style)} title={c.title} onClick={c.onClick}>
       {c.chip
-        ? <span style={{ background: c.chipBg, color: c.chipText, borderRadius: '2px', padding: '0 3px', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{c.oppCode}</span>
+        ? <span style={{ background: c.chipBg, color: c.chipText, borderRadius: '2px', padding: '0 3px', fontWeight: 800, whiteSpace: 'nowrap', maxWidth: '100%' }}>{c.oppCode}</span>
         : <span style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{c.oppCode}</span>}
       {score && <span style={{ fontWeight: 800 }}>{score}</span>}
-      <span style={{ opacity: .7, fontWeight: 700, fontSize: '.82em' }}>{c.arrowTxt ? '→ away' : 'home'}</span>
+      <span style={{ opacity: .75, fontWeight: 700, lineHeight: 1 }}>{c.arrowTxt}</span>
     </div>
   )
-  const opp = c.oppLab !== '' && <span style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.oppLab}</span>
+  const opp = c.oppLab !== '' && <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{c.oppLab}</span>
   return (
     <div style={css(c.style)} title={c.title} onClick={c.onClick}>
       {c.chip
-        ? <><span style={{ display: 'inline-flex', alignItems: 'center', gap: '1px', maxWidth: '100%', flex: '0 0 auto' }}>{c.arrowTxt && <span style={{ whiteSpace: 'nowrap' }}>{c.arrowTxt}</span>}<span style={{ background: c.chipBg, color: c.chipText, borderRadius: '2px', padding: '0 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.oppCode}</span></span>{score}</>
+        ? <><span style={{ display: 'inline-flex', alignItems: 'center', gap: '1px', maxWidth: '100%', flex: '0 0 auto' }}>{c.arrowTxt && <span style={{ whiteSpace: 'nowrap' }}>{c.arrowTxt}</span>}<span style={{ background: c.chipBg, color: c.chipText, borderRadius: '2px', padding: '0 3px', whiteSpace: 'nowrap' }}>{c.oppCode}</span></span>{score}</>
         : <>{opp}{score}</>}
     </div>
   )
