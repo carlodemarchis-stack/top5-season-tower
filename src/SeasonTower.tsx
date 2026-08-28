@@ -608,14 +608,11 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div style={css(t.aboveStyle)}>{t.above.map((c: any) => <Cell key={c.key} c={c} />)}</div>
                   <div style={css(t.labelStyle)} onClick={t.onLabel} title={t.labelTitle}>
                     <img src={`logos/${t.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={crestWatermark} />
-                    <div style={css(t.lblRowStyle)}>
-                      <span style={css(t.rankStyle)}>{t.rank}</span>
-                      <span style={css(t.teamStyle)}>{t.abbr}</span>
-                    </div>
-                    <div style={css(t.lblRowStyle)}>
-                      <span style={css(t.wdlStyle)}>{t.wdlStr}</span>
-                      <span style={css(t.ptsStyle)}>{t.ptsStr}</span>
-                    </div>
+                    {/* 4 stacked lines: rank · team · points · W-D-L */}
+                    <span style={{ ...css(t.rankStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.rank}</span>
+                    <span style={{ ...css(t.teamStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.abbr}</span>
+                    <span style={{ ...css(t.ptsStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.ptsStr}</span>
+                    <span style={{ ...css(t.wdlStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.wdlStr}</span>
                   </div>
                   <div style={css(t.belowStyle)}>{t.below.map((c: any) => <Cell key={c.key} c={c} />)}</div>
                 </div>
@@ -870,7 +867,7 @@ export class SeasonTower extends React.Component<Props, State> {
     const chartW = S.cw || 1200
     const liveH = this.chartRef.current ? Math.round(this.chartRef.current.clientHeight - 20) : 0
     const chartH = liveH > 40 ? liveH : (S.ch || 600)
-    const labelH = 46
+    const labelH = 54   // 4 stacked lines: rank · team · points · W-D-L
     const nTeams = T ? Object.keys(T).length : 20   // 20 domestic, 36 for the UEFA league phase
     const colW = Math.max(30, Math.min(82, (chartW - 6) / nTeams - 2))   // all teams fit the width
     // HORIZONTAL view (teams ranked left→right): fixed, legible cell sizes — 1× tie box at a
@@ -949,10 +946,11 @@ export class SeasonTower extends React.Component<Props, State> {
         const pstyle = `width:100%;height:${h}px;min-height:${h}px;margin:0;background:${bg};color:${color};border:${border};display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.02;overflow:hidden;cursor:pointer;font-size:${pfs}px;font-weight:700;padding:0 2px;`
         return { key: t.abbr + '-' + g.id, towerPend: true, mdNum: String(g.w), oppCode: arrow + g.opp, style: pstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
       }
-      // towers (columns): opponent + score on ONE horizontal line — keeps each cell short so the
-      // 8-game UEFA tower stays compact vertically; column width already scales to fit all teams.
-      const style = `width:100%;height:${h}px;min-height:${h}px;margin:0;border-radius:0;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:row;align-items:center;justify-content:center;gap:2px;overflow:hidden;cursor:pointer;font-size:${fs}px;line-height:1;padding:0 2px;`
-      return { key: t.abbr + '-' + g.id, oppLab, arrowTxt: arrow, oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, style, title, onClick: () => this.openPop(t.abbr, g.id) }
+      // towers (columns): tall boxes (win/loss/drawlost) stack 3 lines — opponent · score · arrow —
+      // so columns can be narrow enough to fit all 36 teams; the short 1× draw box stays one line.
+      const tall = h >= 20
+      const style = `width:100%;height:${h}px;min-height:${h}px;margin:0;border-radius:0;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:${tall ? 'column' : 'row'};align-items:center;justify-content:center;gap:0;overflow:hidden;cursor:pointer;font-size:${fs}px;line-height:1.02;padding:0 2px;`
+      return { key: t.abbr + '-' + g.id, tower3: tall, oppLab, arrowTxt: arrow, oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, style, title, onClick: () => this.openPop(t.abbr, g.id) }
     }
 
     const teamsSorted = list.map((e, i) => {
@@ -1134,6 +1132,16 @@ function Cell({ c }: { c: Dict }) {
     <span style={{ display: 'inline-flex', alignItems: 'center', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>
       <span style={css(c.sAStyle)}>{c.sA}</span>{c.sMid && <span style={{ opacity: .6 }}>{c.sMid}</span>}<span style={css(c.sBStyle)}>{c.sB}</span>
     </span>
+  )
+  // towers tall box → 3 stacked lines: opponent · score · home/away arrow
+  if (c.tower3) return (
+    <div style={css(c.style)} title={c.title} onClick={c.onClick}>
+      {c.chip
+        ? <span style={{ background: c.chipBg, color: c.chipText, borderRadius: '2px', padding: '0 3px', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{c.oppCode}</span>
+        : <span style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{c.oppCode}</span>}
+      {score && <span style={{ fontWeight: 800 }}>{score}</span>}
+      <span style={{ opacity: .8, fontWeight: 700, minHeight: '1px' }}>{c.arrowTxt || ''}</span>
+    </div>
   )
   const opp = c.oppLab !== '' && <span style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.oppLab}</span>
   return (
