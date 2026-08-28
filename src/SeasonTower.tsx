@@ -400,6 +400,18 @@ export class SeasonTower extends React.Component<Props, State> {
     return { W, D, L, GF, GA, GD: gd, Pts: pts, played }
   }
 
+  // a club's league position counting only matches up to and including matchday `w`
+  rankAfterWeek(code: string, w: number): number {
+    const T = this.activeTeams(); if (!T) return 0
+    const lines = Object.keys(T).map(c => {
+      let W = 0, D = 0, L = 0, GF = 0, GA = 0
+      for (const g of T[c].games) { if (g.w > w) continue; const r = this.getRes(c, g.id); if (!r) continue; GF += r.gf; GA += r.ga; if (r.res === 'W') W++; else if (r.res === 'D') D++; else L++ }
+      return { c, Pts: W * 3 + D, GD: GF - GA, GF }
+    })
+    lines.sort((x, y) => (y.Pts - x.Pts) || (y.GD - x.GD) || (y.GF - x.GF) || (x.c < y.c ? -1 : 1))
+    return lines.findIndex(l => l.c === code) + 1
+  }
+
   // Normalize a highlights entry (legacy string OR { lang: videoId }) into an ordered link list;
   // the viewer's browser language floats to the front, but every available language is kept.
   normHighlights(raw: any): { lang: string; id: string; label: string; flag: string }[] {
@@ -602,7 +614,18 @@ export class SeasonTower extends React.Component<Props, State> {
               ))}
             </div>
           ) : (
+            <>
+            {/* zone labels — sticky strip pinned to the top of the viewport, aligned to each band */}
+            <div style={{ position: 'sticky', top: 0, height: 0, zIndex: 6, pointerEvents: 'none' }}>
+              {(v.zoneBands || []).filter((b: any) => b.label).map((b: any, i: number) => (
+                <div key={'lb' + i} style={{ position: 'absolute', top: '4px', left: `${b.start * (v.colW + v.colGap)}px`, width: `${b.count * (v.colW + v.colGap) - v.colGap}px`, textAlign: 'center', fontSize: '9.5px', fontWeight: 800, letterSpacing: '.4px', textTransform: 'uppercase', color: b.color, lineHeight: 1.1, textShadow: '0 0 3px #F5F6F4, 0 0 3px #F5F6F4, 0 1px 2px #F5F6F4' }}>{b.label}</div>
+              ))}
+            </div>
             <div style={css(v.colsWrapStyle)}>
+              {/* qualification bands — light zone backdrop BEHIND the columns */}
+              {(v.zoneBands || []).map((b: any, i: number) => (
+                <div key={'bg' + i} style={{ position: 'absolute', top: 0, bottom: 0, zIndex: 0, pointerEvents: 'none', left: `${b.start * (v.colW + v.colGap)}px`, width: `${b.count * (v.colW + v.colGap) - v.colGap}px`, background: b.bg }} />
+              ))}
               {v.teamsSorted.map((t: any) => (
                 <div key={t.abbr} data-team={t.abbr} style={css(t.colStyle)}>
                   <div style={css(t.aboveStyle)}>{t.above.map((c: any) => <Cell key={c.key} c={c} />)}</div>
@@ -618,6 +641,7 @@ export class SeasonTower extends React.Component<Props, State> {
                 </div>
               ))}
             </div>
+            </>
           )}
 
           {/* ---------- match-detail modal ---------- */}
@@ -719,6 +743,7 @@ export class SeasonTower extends React.Component<Props, State> {
                           ))}
                         </span>
                       )}
+                      {row.rank != null && <span title="League position after this match" style={{ flex: '0 0 auto', fontSize: '10px', fontWeight: 800, color: '#5c616b', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>rank {row.rank}</span>}
                     </div>
                   ))}
                 </div>
@@ -768,7 +793,7 @@ export class SeasonTower extends React.Component<Props, State> {
           )}
 
           {/* ---------- credit ---------- */}
-          <div style={{ position: 'fixed', right: '14px', bottom: '9px', zIndex: 30, fontSize: '10px', fontWeight: 600, color: '#9298a1', letterSpacing: '.2px' }}>
+          <div style={{ position: 'fixed', ...(v.layout === 'towers' && !v.overview ? { left: '14px' } : { right: '14px' }), bottom: '9px', zIndex: 30, fontSize: '10px', fontWeight: 600, color: '#9298a1', letterSpacing: '.2px' }}>
             Produced with passion by{' '}
             <a href="https://dataviz.aguywithascarf.com" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>A Guy With A Scarf</a>
             {' · '}
@@ -1000,7 +1025,7 @@ export class SeasonTower extends React.Component<Props, State> {
       const lossC = [...e.losses].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'loss'))
       const drawDn = [...e.draws].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'drawlost'))
       const below = [...lossC, ...drawDn]
-      const colStyle = `flex:0 0 ${colW}px;width:${colW}px;min-width:0;max-width:${colW}px;display:flex;flex-direction:column;align-items:stretch;${isZoneStart ? 'margin-left:14px;' : ''}`
+      const colStyle = `position:relative;z-index:1;flex:0 0 ${colW}px;width:${colW}px;min-width:0;max-width:${colW}px;display:flex;flex-direction:column;align-items:stretch;${isZoneStart ? 'margin-left:14px;' : ''}`
       const aboveStyle = `display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;`
       const belowStyle = `flex:0 0 ${belowH}px;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;padding-top:2px;`
       // sticky vertically (both edges) so the team row never disappears when scrolling up/down
@@ -1010,6 +1035,16 @@ export class SeasonTower extends React.Component<Props, State> {
 
     const decided = list.reduce((a, e) => a + e.played, 0) / 2
     const leader = list[0]
+
+    // qualification bands (contiguous rank groups) drawn as light backdrops behind the ranking
+    const zf2 = zoneFor(S.league)
+    const zoneBands: any[] = []
+    let curBand: any = null
+    teamsSorted.forEach((_: any, i: number) => {
+      const z = zf2(i + 1)
+      if (!curBand || curBand.key !== z.key) { curBand = { key: z.key, label: z.label, color: z.color, bg: this.mix(z.color, '#ffffff', 0.90), start: i, count: 0 }; zoneBands.push(curBand) }
+      curBand.count++
+    })
 
     // match-detail modal
     const pop = S.pop
@@ -1058,7 +1093,7 @@ export class SeasonTower extends React.Component<Props, State> {
         const r = this.getRes(code, g.id); const res = r ? r.res : null
         const c = res === 'W' ? ['#E7F4EC', '#1F8A4C'] : res === 'L' ? ['#FBEAE9', '#C23A2E'] : res === 'D' ? ['#F2E4BC', '#7C6320'] : ['#F1F2F4', '#9298a1']
         return {
-          id: g.id, w: g.w, ha: g.ha === 'H' ? 'vs' : '→', opp: g.oppFull, oppCrest: crestOf(g.opp), highlights: this.normHighlights(HL[g.id]),
+          id: g.id, w: g.w, ha: g.ha === 'H' ? 'vs' : '→', opp: g.oppFull, oppCrest: crestOf(g.opp), highlights: this.normHighlights(HL[g.id]), rank: r ? this.rankAfterWeek(code, g.w) : null,
           score: r ? `${r.gf}–${r.ga}` : '—', badge: res || '·',
           badgeStyleObj: { color: c[1], background: c[0] } as React.CSSProperties,
           onClick: () => this.setState({ teamPop: null, pop: { code, id: g.id, w: g.w, opp: g.opp, oppFull: g.oppFull, ha: g.ha, venue: g.venue, city: g.city, net: g.net, et: g.et } }),
@@ -1073,8 +1108,8 @@ export class SeasonTower extends React.Component<Props, State> {
     }
 
     return {
-      ...base, loading: false, orient, teamsSorted, layout,
-      colsWrapStyle: 'display:flex;flex-direction:row;gap:1px;align-items:flex-end;min-width:100%;min-height:100%;',
+      ...base, loading: false, orient, teamsSorted, layout, zoneBands, colW, colGap: 1,
+      colsWrapStyle: 'position:relative;display:flex;flex-direction:row;gap:1px;align-items:flex-end;min-width:100%;min-height:100%;',
       rowsWrapStyle: `display:flex;flex-direction:column;gap:2px;width:max-content;min-width:100%;padding-right:${chartW}px;`,
       playedStr: `${decided} / ${mx * Math.floor(list.length / 2)}`, leaderAbbr: leader.code, leaderPts: leader.Pts,
       pop, popWeek, popResBadge, popResStyleObj, popChips, popHomeColor, popAwayColor, popHomeName, popAwayName, popHomeCode, popAwayCode,
