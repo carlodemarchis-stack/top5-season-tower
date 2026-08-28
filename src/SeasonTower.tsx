@@ -949,11 +949,10 @@ export class SeasonTower extends React.Component<Props, State> {
         const pstyle = `width:100%;height:${h}px;min-height:${h}px;margin:0;background:${bg};color:${color};border:${border};display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.02;overflow:hidden;cursor:pointer;font-size:${pfs}px;font-weight:700;padding:0 2px;`
         return { key: t.abbr + '-' + g.id, towerPend: true, mdNum: String(g.w), oppCode: arrow + g.opp, style: pstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
       }
-      // stack opponent over score (column) on the taller win/loss boxes so narrow columns (36-team UEFA
-      // league phase) still read; the short 1× draw box keeps a single centred line.
-      const stack = type !== 'draw'
-      const style = `width:100%;height:${h}px;min-height:${h}px;margin:0;border-radius:0;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:${stack ? 'column' : 'row'};align-items:center;justify-content:center;gap:${stack ? 0 : 2}px;overflow:hidden;cursor:pointer;font-size:${fs}px;line-height:1.02;padding:0 2px;`
-      return { key: t.abbr + '-' + g.id, oppLab, arrowTxt: arrow, oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, stack, style, title, onClick: () => this.openPop(t.abbr, g.id) }
+      // towers (columns): opponent + score on ONE horizontal line — keeps each cell short so the
+      // 8-game UEFA tower stays compact vertically; column width already scales to fit all teams.
+      const style = `width:100%;height:${h}px;min-height:${h}px;margin:0;border-radius:0;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:row;align-items:center;justify-content:center;gap:2px;overflow:hidden;cursor:pointer;font-size:${fs}px;line-height:1;padding:0 2px;`
+      return { key: t.abbr + '-' + g.id, oppLab, arrowTxt: arrow, oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, style, title, onClick: () => this.openPop(t.abbr, g.id) }
     }
 
     const teamsSorted = list.map((e, i) => {
