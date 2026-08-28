@@ -564,6 +564,34 @@ export class SeasonTower extends React.Component<Props, State> {
     )
   }
 
+  // one fixture row in the club modal (used single- or two-column). `dense` tightens padding so a
+  // full 19-match half-season column fits vertically without scrolling.
+  renderFixtureRow(row: any, dense: boolean) {
+    return (
+      <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: dense ? '3px 6px' : '6px 10px', borderRadius: '8px' }}>
+        <button onClick={row.onClick} style={{ display: 'flex', alignItems: 'center', gap: dense ? '7px' : '10px', flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+          <span style={{ fontSize: '10px', fontWeight: 700, color: '#B0B4BC', width: '20px', flex: '0 0 20px', fontVariantNumeric: 'tabular-nums' }}>{row.w}</span>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: '#9298a1', width: '16px', flex: '0 0 16px' }}>{row.ha}</span>
+          <span style={{ flex: '0 0 auto', width: '22px', height: '22px', borderRadius: '50%', background: '#DEE3E8', border: '1px solid #CBD1D8', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <img src={`logos/${row.oppCrest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ width: '17px', height: '17px', objectFit: 'contain' }} />
+          </span>
+          <span style={{ fontSize: '13px', fontWeight: 700, color: '#15181d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.opp}</span>
+          {/* 3 aligned columns: score (right) · rank (left) · result (right) */}
+          <span style={{ flex: '0 0 42px', fontSize: '12px', fontWeight: 700, color: '#3a3f47', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{row.score}</span>
+          <span style={{ flex: '0 0 40px', textAlign: 'left' }}>{row.rank != null && <span title="League position after this match" style={{ fontSize: '10px', fontWeight: 800, color: '#5c616b', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>R{row.rank}</span>}</span>
+          <span style={{ ...row.badgeStyleObj, flex: '0 0 22px', textAlign: 'center', fontSize: '10px', fontWeight: 800, borderRadius: '6px', padding: '3px 0' }}>{row.badge}</span>
+        </button>
+        {row.highlights.length > 0 && (
+          <span style={{ display: 'flex', gap: '4px', flex: '0 0 auto' }}>
+            {row.highlights.map((h: any, i: number) => (
+              <a key={h.lang || i} href={`https://www.youtube.com/watch?v=${h.id}`} target="_blank" rel="noopener noreferrer" title={`Watch highlights — ${h.label}`} style={{ display: 'inline-flex', width: dense ? '20px' : '23px', height: dense ? '20px' : '23px', borderRadius: '6px', alignItems: 'center', justifyContent: 'center', fontSize: '12px', textDecoration: 'none', background: i === 0 ? '#FFEAED' : '#F1F2F4', border: `1px solid ${i === 0 ? '#FFC4CD' : '#E3E6EA'}` }}>{h.flag}</a>
+            ))}
+          </span>
+        )}
+      </div>
+    )
+  }
+
   render() {
     const v = this.renderVals()
     const mStop = (e: React.MouseEvent) => e.stopPropagation()
@@ -812,7 +840,7 @@ export class SeasonTower extends React.Component<Props, State> {
           {/* ---------- club modal ---------- */}
           {v.tm && (
             <div onClick={() => this.closeTeam()} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-              <div onClick={mStop} style={{ position: 'relative', width: v.tm.rankPath.length > 1 ? `min(${430 + Math.max(300, Math.min(560, v.tm.totalMd * 13))}px, 96vw)` : 'min(460px,94vw)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', overflow: 'visible', boxShadow: '0 24px 60px rgba(16,18,22,.32)' }}>
+              <div onClick={mStop} style={{ position: 'relative', width: v.tm.rankPath.length > 1 ? `min(${(v.tm.rows.length > 20 ? 656 : 430) + Math.max(300, Math.min(560, v.tm.totalMd * 13))}px, 96vw)` : `min(${v.tm.rows.length > 20 ? 672 : 460}px,94vw)`, maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', overflow: 'visible', boxShadow: '0 24px 60px rgba(16,18,22,.32)' }}>
                 {/* prev / next club (league-table order) */}
                 <button onClick={() => this.stepTeam(-1)} title="Previous club (←)" aria-label="Previous club" style={{ position: 'absolute', left: '-19px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4E7EB', background: '#fff', color: '#15181d', fontSize: '18px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,18,22,.22)', lineHeight: 1, paddingBottom: '2px' }}>‹</button>
                 <button onClick={() => this.stepTeam(1)} title="Next club (→)" aria-label="Next club" style={{ position: 'absolute', right: '-19px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4E7EB', background: '#fff', color: '#15181d', fontSize: '18px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,18,22,.22)', lineHeight: 1, paddingBottom: '2px' }}>›</button>
@@ -830,31 +858,23 @@ export class SeasonTower extends React.Component<Props, State> {
                   </div>
                 </div>
                 <div style={{ display: 'flex', minHeight: 0, overflow: 'hidden' }}>
-                <div style={{ flex: '0 0 430px', maxWidth: '54vw', minWidth: 0, padding: '6px 10px 12px', overflowY: 'auto' }}>
-                  {v.tm.rows.map((row: any) => (
-                    <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '6px 10px', borderRadius: '8px' }}>
-                      <button onClick={row.onClick} style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#B0B4BC', width: '26px', flex: '0 0 26px', fontVariantNumeric: 'tabular-nums' }}>{row.w}</span>
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#9298a1', width: '20px', flex: '0 0 20px' }}>{row.ha}</span>
-                        <span style={{ flex: '0 0 auto', width: '24px', height: '24px', borderRadius: '50%', background: '#DEE3E8', border: '1px solid #CBD1D8', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                          <img src={`logos/${row.oppCrest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
-                        </span>
-                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#15181d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.opp}</span>
-                        {/* 3 aligned columns: score (right) · rank (left) · result (right) */}
-                        <span style={{ flex: '0 0 46px', fontSize: '12px', fontWeight: 700, color: '#3a3f47', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{row.score}</span>
-                        <span style={{ flex: '0 0 58px', textAlign: 'left' }}>{row.rank != null && <span title="League position after this match" style={{ fontSize: '10px', fontWeight: 800, color: '#5c616b', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>R{row.rank}</span>}</span>
-                        <span style={{ ...row.badgeStyleObj, flex: '0 0 24px', textAlign: 'center', fontSize: '10px', fontWeight: 800, borderRadius: '6px', padding: '3px 0' }}>{row.badge}</span>
-                      </button>
-                      {row.highlights.length > 0 && (
-                        <span style={{ display: 'flex', gap: '4px', flex: '0 0 auto' }}>
-                          {row.highlights.map((h: any, i: number) => (
-                            <a key={h.lang || i} href={`https://www.youtube.com/watch?v=${h.id}`} target="_blank" rel="noopener noreferrer" title={`Watch highlights — ${h.label}`} style={{ display: 'inline-flex', width: '23px', height: '23px', borderRadius: '6px', alignItems: 'center', justifyContent: 'center', fontSize: '12px', textDecoration: 'none', background: i === 0 ? '#FFEAED' : '#F1F2F4', border: `1px solid ${i === 0 ? '#FFC4CD' : '#E3E6EA'}` }}>{h.flag}</a>
-                          ))}
-                        </span>
-                      )}
+                {(() => {
+                  // 34/38-match seasons → split the fixture list into two half-season columns
+                  // (1st half | 2nd half) so all rows fit vertically without scrolling.
+                  const rows = v.tm.rows
+                  const twoCol = rows.length > 20
+                  const half = Math.ceil(rows.length / 2)
+                  const cols = twoCol ? [rows.slice(0, half), rows.slice(half)] : [rows]
+                  return (
+                    <div style={{ flex: '0 0 auto', display: 'flex', minWidth: 0 }}>
+                      {cols.map((colRows: any[], ci: number) => (
+                        <div key={ci} style={{ flex: `0 0 ${twoCol ? 320 : 430}px`, maxWidth: twoCol ? '32vw' : '54vw', minWidth: 0, padding: '4px 8px 10px', overflowY: 'auto', borderLeft: ci > 0 ? '1px solid #EDEFF2' : 'none' }}>
+                          {colRows.map((row: any) => this.renderFixtureRow(row, twoCol))}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )
+                })()}
                 {v.tm.rankPath.length > 1 && (
                   <div style={{ flex: '1 1 auto', borderLeft: '1px solid #EDEFF2', padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                     <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '.5px', textTransform: 'uppercase', color: '#9298a1', marginBottom: '8px' }}>Position by matchday</div>
