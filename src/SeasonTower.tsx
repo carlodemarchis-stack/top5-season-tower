@@ -600,14 +600,11 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div style={css(t.droppedStyle)}>{t.dropped.map((c: any) => <Cell key={c.key} c={c} />)}</div>
                   <div style={css(t.labelStyle)} onClick={t.onLabel} title={t.labelTitle}>
                     <img src={`logos/${t.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={crestWatermark} />
-                    <div style={css(t.lblRowStyle)}>
-                      <span style={css(t.rankStyle)}>{t.rank}</span>
-                      <span style={css(t.teamStyle)}>{t.abbr}</span>
-                    </div>
-                    <div style={css(t.lblRowStyle)}>
-                      <span style={css(t.wdlStyle)}>{t.wdlStr}</span>
-                      <span style={css(t.ptsStyle)}>{t.ptsStr}</span>
-                    </div>
+                    {/* one line: rank · team · points · W-D-L (compact so nothing clips) */}
+                    <span style={{ ...css(t.rankStyle), position: 'relative', zIndex: 1, fontSize: '11px' }}>{t.rank}</span>
+                    <span style={{ ...css(t.teamStyle), position: 'relative', zIndex: 1, fontSize: '11.5px' }}>{t.abbr}</span>
+                    <span style={{ ...css(t.ptsStyle), position: 'relative', zIndex: 1, marginLeft: 'auto', fontSize: '10px' }}>{String(t.ptsStr).replace(' pts', '')}<span style={{ opacity: .7, fontSize: '.8em' }}>p</span></span>
+                    <span style={{ ...css(t.wdlStyle), position: 'relative', zIndex: 1, fontSize: '9px' }}>{t.wdlStr}</span>
                   </div>
                   <div style={css(t.wonStyle)}>{t.won.map((c: any) => <Cell key={c.key} c={c} />)}</div>
                 </div>
@@ -905,7 +902,7 @@ export class SeasonTower extends React.Component<Props, State> {
     const belowH = maxBelow + 2
     this._droppedW = belowH   // rows mode overwrites this below
     const rowH = Math.max(15, Math.min(50, (chartH - 40) / nTeams))   // all rows fit the viewport height
-    const rowLabelW = 80
+    const rowLabelW = 104   // rows team box holds one line: rank · team · pts · W-D-L
     // Landscape uses a much bigger px-per-point so the 1-pt tie boxes are wide enough to read.
     const ROW_U = 16                                  // px per point in rows mode
     const WLW = 3 * ROW_U                             // win / loss box = 48 (3×)
@@ -947,23 +944,13 @@ export class SeasonTower extends React.Component<Props, State> {
       const resTxt = r ? (` · ${r.res} ${r.gf}-${r.ga}`) : ' · to play'
       const title = `MD ${g.w} · ${g.ha === 'A' ? '@ ' : 'vs '}${g.oppFull}${resTxt}`
       if (layout === 'rows') {
-        // landscape ledger: width = points × ROW_U (bigger so ties read); two stacked lines —
-        // opponent on top, score below (e.g. "TOR" / "2-0").
+        // landscape ledger: width = points × ROW_U; ALL content on ONE horizontal line (opponent + score)
+        // so each row is short and all 36 fit vertically without clipping text.
         const w = type === 'draw' ? TIE1 : type === 'drawlost' ? TIE2 : type === 'pend' ? pendW : WLW
-        const oppTxt = arrow + g.opp
-        const scoreTxt = (r && type !== 'pend') ? `${r.gf}-${r.ga}` : ''
-        // positive tie (won side): narrow → arrow / opponent 3 letters STACKED vertically / score "1-1"
-        const vTie = type === 'draw' && !!r
-        // dropped tie: 4 stacked rows: home/away (arrow or blank), opponent, team goals, opp goals
-        const tieRows = type === 'drawlost' && !!r
-        // unplayed → 3 rows: matchday number, opponent, arrow (if away); aligned to the top
-        const pendRows = type === 'pend'
-        const fs2 = vTie ? Math.max(6, Math.min(w * 0.62, (rowH - 2) / 5.4))
-          : tieRows ? Math.max(5, Math.min(w / 3.2, (rowH - 3) / 4.2))
-          : Math.max(5, Math.min(11, w / 3.2))
-        const align = pendRows ? 'flex-start' : 'center'
-        const rstyle = `flex:0 0 ${w}px;width:${w}px;min-width:${w}px;height:${rowH}px;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:column;align-items:center;justify-content:${align};overflow:hidden;cursor:pointer;font-size:${fs2}px;font-weight:700;line-height:1.05;letter-spacing:-.3px;padding:1px 0;`
-        return { key: t.abbr + '-' + g.id, twoLine: true, vTie, tieRows, pendRows, chip: !!chipBg, chipBg, chipText, mdNum: String(g.w), arrowTxt: arrow, oppCode: g.opp, oppLetters: g.opp.split(''), oppTxt, scoreTxt, gf: r ? String(r.gf) : '', ga: r ? String(r.ga) : '', style: rstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
+        const fs2 = Math.max(6, Math.min(11, Math.min((rowH - 2) * 0.72, w * 0.44)))
+        const rstyle = `flex:0 0 ${w}px;width:${w}px;min-width:${w}px;height:${rowH}px;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:row;align-items:center;justify-content:center;gap:2px;overflow:hidden;cursor:pointer;font-size:${fs2}px;font-weight:700;line-height:1;letter-spacing:-.2px;padding:0 2px;`
+        // draws/upcoming are narrow → opponent only (no score); wins/losses show "→OPP: g-a" on one line
+        return { key: t.abbr + '-' + g.id, oppLab, arrowTxt: (type === 'draw' ? '' : arrow), oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, hideScore: type === 'draw' || type === 'pend', style: rstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
       }
       if (type === 'pend') {
         // towers upcoming game → 3 lines: opponent · matchday · home/away (mirrors a played box)
@@ -1013,7 +1000,7 @@ export class SeasonTower extends React.Component<Props, State> {
         const droppedStyle = `flex:0 0 ${rowsDroppedW}px;height:${rowH}px;display:flex;flex-direction:row;justify-content:flex-end;align-items:stretch;overflow:hidden;`
         const wonStyle = `flex:0 0 auto;height:${rowH}px;display:flex;flex-direction:row;justify-content:flex-start;align-items:stretch;overflow:hidden;`
         // sticky horizontally so the team column never disappears when scrolling left/right
-        const labelStyle = `position:sticky;left:2px;right:2px;z-index:5;flex:0 0 ${rowLabelW}px;height:${rowH}px;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:2px;padding:2px 5px;overflow:hidden;background:${prim};border:1px solid ${this.mix(prim, '#000000', 0.22)};border-right:3px solid ${zoneBar};border-radius:4px;box-shadow:0 0 6px rgba(20,22,28,.18);cursor:pointer;`
+        const labelStyle = `position:sticky;left:2px;right:2px;z-index:5;flex:0 0 ${rowLabelW}px;height:${rowH}px;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:4px;padding:0 5px;overflow:hidden;background:${prim};border:1px solid ${this.mix(prim, '#000000', 0.22)};border-right:3px solid ${zoneBar};border-radius:4px;box-shadow:0 0 6px rgba(20,22,28,.18);cursor:pointer;`
         return { ...base, won, dropped, rowStyle, droppedStyle, wonStyle, labelStyle }
       }
 
