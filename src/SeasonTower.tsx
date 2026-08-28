@@ -335,9 +335,7 @@ export class SeasonTower extends React.Component<Props, State> {
     // club modal open → ←/→ move to the previous/next club in league-table order
     if (this.state.teamPop) {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
-      e.preventDefault()
-      const codes = this.rankedCodes(); const i = codes.indexOf(this.state.teamPop)
-      if (i >= 0) this.openTeam(codes[(i + (e.key === 'ArrowRight' ? 1 : -1) + codes.length) % codes.length])
+      e.preventDefault(); this.stepTeam(e.key === 'ArrowRight' ? 1 : -1)
       return
     }
     if (this.state.pop) return
@@ -408,6 +406,12 @@ export class SeasonTower extends React.Component<Props, State> {
     return { W, D, L, GF, GA, GD: gd, Pts: pts, played }
   }
 
+  // move the open club modal to the previous/next club in league-table order (wraps)
+  stepTeam(delta: number) {
+    if (!this.state.teamPop) return
+    const codes = this.rankedCodes(); const i = codes.indexOf(this.state.teamPop)
+    if (i >= 0) this.openTeam(codes[(i + delta + codes.length) % codes.length])
+  }
   // all clubs in current league-table order (points → GD → GF)
   rankedCodes(): string[] {
     const T = this.activeTeams(); if (!T) return []
@@ -750,7 +754,11 @@ export class SeasonTower extends React.Component<Props, State> {
           {/* ---------- club modal ---------- */}
           {v.tm && (
             <div onClick={() => this.closeTeam()} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-              <div onClick={mStop} style={{ width: v.tm.rankPath.length > 1 ? 'min(820px,96vw)' : 'min(460px,94vw)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(16,18,22,.32)' }}>
+              <div onClick={mStop} style={{ position: 'relative', width: v.tm.rankPath.length > 1 ? 'min(820px,96vw)' : 'min(460px,94vw)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', overflow: 'visible', boxShadow: '0 24px 60px rgba(16,18,22,.32)' }}>
+                {/* prev / next club (league-table order) */}
+                <button onClick={() => this.stepTeam(-1)} title="Previous club (←)" aria-label="Previous club" style={{ position: 'absolute', left: '-19px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4E7EB', background: '#fff', color: '#15181d', fontSize: '18px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,18,22,.22)', lineHeight: 1, paddingBottom: '2px' }}>‹</button>
+                <button onClick={() => this.stepTeam(1)} title="Next club (→)" aria-label="Next club" style={{ position: 'absolute', right: '-19px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4E7EB', background: '#fff', color: '#15181d', fontSize: '18px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,18,22,.22)', lineHeight: 1, paddingBottom: '2px' }}>›</button>
+                <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '86vh', borderRadius: '16px', overflow: 'hidden' }}>
                 <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: '14px', ...v.tm.headStyleObj }}>
                   <img src={`logos/${v.tm.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ flex: '0 0 auto', width: '46px', height: '46px', objectFit: 'contain', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,.35))' }} />
                   <div>
@@ -774,7 +782,9 @@ export class SeasonTower extends React.Component<Props, State> {
                           <img src={`logos/${row.oppCrest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
                         </span>
                         <span style={{ fontSize: '13px', fontWeight: 700, color: '#15181d', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.opp}</span>
-                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#3a3f47', fontVariantNumeric: 'tabular-nums', width: '44px', textAlign: 'right' }}>{row.score}</span>
+                        {/* 3 aligned columns: score (right) · rank (left) · result (right) */}
+                        <span style={{ flex: '0 0 46px', fontSize: '12px', fontWeight: 700, color: '#3a3f47', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{row.score}</span>
+                        <span style={{ flex: '0 0 58px', textAlign: 'left' }}>{row.rank != null && <span title="League position after this match" style={{ fontSize: '10px', fontWeight: 800, color: '#5c616b', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>rank {row.rank}</span>}</span>
                         <span style={{ ...row.badgeStyleObj, flex: '0 0 24px', textAlign: 'center', fontSize: '10px', fontWeight: 800, borderRadius: '6px', padding: '3px 0' }}>{row.badge}</span>
                       </button>
                       {row.highlights.length > 0 && (
@@ -784,7 +794,6 @@ export class SeasonTower extends React.Component<Props, State> {
                           ))}
                         </span>
                       )}
-                      {row.rank != null && <span title="League position after this match" style={{ flex: '0 0 auto', fontSize: '10px', fontWeight: 800, color: '#5c616b', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>rank {row.rank}</span>}
                     </div>
                   ))}
                 </div>
@@ -794,6 +803,7 @@ export class SeasonTower extends React.Component<Props, State> {
                     {this.renderRankChart(v.tm)}
                   </div>
                 )}
+                </div>
                 </div>
               </div>
             </div>
