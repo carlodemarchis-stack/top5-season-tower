@@ -949,7 +949,10 @@ export class SeasonTower extends React.Component<Props, State> {
         // landscape ledger: width = points × ROW_U; ALL content on ONE horizontal line (opponent + score)
         // so each row is short and all 36 fit vertically without clipping text.
         const w = type === 'draw' ? TIE1 : type === 'drawlost' ? TIE2 : type === 'pend' ? pendW : WLW
-        const fs2 = Math.max(6, Math.min(11, Math.min((rowH - 2) * 0.72, w * 0.44)))
+        // drawn-won box is only 1 unit wide → shrink the font so the 3-letter code fits inside it
+        const fs2 = type === 'draw'
+          ? Math.max(5, Math.min(8, Math.min((rowH - 2) * 0.72, w * 0.30)))
+          : Math.max(6, Math.min(11, Math.min((rowH - 2) * 0.72, w * 0.44)))
         const rstyle = `flex:0 0 ${w}px;width:${w}px;min-width:${w}px;height:${rowH}px;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:row;align-items:center;justify-content:center;gap:2px;overflow:hidden;cursor:pointer;font-size:${fs2}px;font-weight:700;line-height:1;letter-spacing:-.2px;padding:0 2px;`
         // draws/upcoming are narrow → opponent only (no score); wins/losses show "→OPP: g-a" on one line
         return { key: t.abbr + '-' + g.id, oppLab, arrowTxt: (type === 'draw' ? '' : arrow), oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, hideScore: type === 'draw' || type === 'pend', style: rstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
