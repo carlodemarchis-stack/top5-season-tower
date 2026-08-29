@@ -129,6 +129,7 @@ export class SeasonTower extends React.Component<Props, State> {
   _mt: any = null
   _timer: any = null
   _pinBottom = true   // one-shot: scroll so the team row sits near the bottom (towers) / labels to the left (rows)
+  _pinTimer: any = null   // keeps re-applying the pin for a short window so it lands on the FINAL _droppedW
   _droppedW = 0       // reserved width left of the team column in rows mode (for the pin scroll)
 
   _init: ReturnType<typeof parseHash> | null = parseHash()   // URL state to restore on first load
@@ -180,7 +181,7 @@ export class SeasonTower extends React.Component<Props, State> {
     requestAnimationFrame(() => this._measure())
     window.addEventListener('keydown', this.onKey)
   }
-  componentWillUnmount() { if (this._ro) this._ro.disconnect(); if (this._rco) this._rco.disconnect(); if (this._mt) clearInterval(this._mt); if (this._timer) clearInterval(this._timer); window.removeEventListener('keydown', this.onKey) }
+  componentWillUnmount() { if (this._ro) this._ro.disconnect(); if (this._rco) this._rco.disconnect(); if (this._mt) clearInterval(this._mt); if (this._timer) clearInterval(this._timer); if (this._pinTimer != null) clearTimeout(this._pinTimer); window.removeEventListener('keydown', this.onKey) }
 
   // ---- league / season accessors --------------------------------------------
   // Load a league's two seasons via the file globs (missing files → empty season, "no data").
@@ -199,7 +200,7 @@ export class SeasonTower extends React.Component<Props, State> {
         // open on a season that actually has data (prefer the current one)
         let season = this.state.season
         if (!seasons![season].TEAMS) season = (SEASONS.find(x => seasons![x.id].TEAMS)?.id) || season
-        this._pinBottom = true
+        this.startPin()
         this.setState({ league: id, seasons, season }, () => {
           // honor the URL scrub week on mount (survives StrictMode's double loadLeague); cleared on user nav
           const w = this._wantWeek != null ? Math.min(this._wantWeek, this.maxW()) : this.defaultWeek()
@@ -261,11 +262,13 @@ export class SeasonTower extends React.Component<Props, State> {
   scrubMax() { return (this.seasonIsReal() || SIM) ? this.maxW() : this.latestPlayedWeek() } // scrubber ceiling: full for completed/sim; live season stops at the last matchday with a game played
   defaultWeek() { return this.scrubMax() } // open at the ceiling (full season, or the current matchday on the live one)
   syncUrl() { const s = this.state; try { const hash = s.overview ? `#ALL/${s.season}` : `#${s.league}/${s.season}/${s.throughWeek == null ? 0 : s.throughWeek}/${s.layout}`; history.replaceState(null, '', hash) } catch { /* ignore */ } }
-  setLayout(l: 'towers' | 'rows') { if (l === this.state.layout) return; this._pinBottom = true; this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
+  // begin a scroll-pin window (towers → bottom / rows → labels flush-left); resets any pending release
+  startPin() { this._pinBottom = true; if (this._pinTimer != null) { clearTimeout(this._pinTimer); this._pinTimer = null } }
+  setLayout(l: 'towers' | 'rows') { if (l === this.state.layout) return; this.startPin(); this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
   pickSeason(id: SeasonId) {
     if (id === this.state.season) { this.setState({ seasonOpen: false }); return }
     if (this._timer) { clearInterval(this._timer); this._timer = null }
-    this._pinBottom = true; this._wantWeek = null
+    this.startPin(); this._wantWeek = null
     if (this.state.overview) { this.setState({ season: id, seasonOpen: false, ovData: null }, () => { this.syncUrl(); this.loadOverview(id) }); return }
     this.setState({ season: id, seasonOpen: false, playing: false, pop: null, teamPop: null },
       () => this.buildThrough(this.defaultWeek()))
@@ -371,20 +374,25 @@ export class SeasonTower extends React.Component<Props, State> {
   componentDidUpdate(_pp: Props, ps: State, snap: Dict | null) {
     // keep the range thumb pinned to the (clamped) matchday even when React skips the controlled update
     if (this.sliderRef.current) this.sliderRef.current.value = String(this.state.throughWeek ?? 0)
-    const layoutChanged = ps.layout !== this.state.layout
+    // a full reshuffle (layout / season / league / overview switch) should NOT FLIP-animate — every row
+    // would fly across the screen; only smooth-animate reorderings within the same table (matchday steps).
+    const bigChange = ps.layout !== this.state.layout || ps.season !== this.state.season || ps.league !== this.state.league || ps.overview !== this.state.overview
     // one-shot after load / season / layout change: towers → team row near the bottom;
     // rows → team column flush left (dropped games hidden off to the left).
     if (this._pinBottom) {
       const c = this.chartRef.current
       if (c) {
-        // rows → scroll the team column flush-left (dropped/losses hidden off to the left). Always reset
-        // to _droppedW (not just when it's large) so a season switch can't leave a stale scroll that
-        // pushes the narrower current-season rows off-screen into the right-hand padding.
-        if (this.state.layout === 'rows') { if (c.scrollWidth > c.clientWidth) { this._pinBottom = false; c.scrollLeft = this._droppedW } }
-        else if (c.scrollHeight > c.clientHeight + 20) { this._pinBottom = false; c.scrollTop = c.scrollHeight }
+        // Re-apply the pin on EVERY render during the window (not a one-shot): a load/season switch renders
+        // across several frames (loading → data → measure), and _droppedW is only final on the last one.
+        // Only start the release countdown once real content is actually pinned, so a slow data load can't
+        // expire the window before the rows exist (which would leave the labels stuck on the wrong side).
+        let pinned = false
+        if (this.state.layout === 'rows') { if (c.querySelector('[data-team]')) { c.scrollLeft = this._droppedW; pinned = true } }  // team column flush-left
+        else if (c.scrollHeight > c.clientHeight + 20) { c.scrollTop = c.scrollHeight; pinned = true }                              // team row near the bottom
+        if (pinned && this._pinTimer == null) this._pinTimer = window.setTimeout(() => { this._pinBottom = false; this._pinTimer = null }, 500)
       }
     }
-    if (layoutChanged) return   // no FLIP across a whole-layout switch — it would fly every row
+    if (bigChange) return   // no FLIP across a whole-layout/season/league/overview switch
     if (!snap) return; const root = this.chartRef.current; if (!root) return
     root.querySelectorAll('[data-team]').forEach(el => {
       const ab = el.getAttribute('data-team')!; const prev = snap[ab]; if (!prev) return
