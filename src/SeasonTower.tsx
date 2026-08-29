@@ -387,8 +387,11 @@ export class SeasonTower extends React.Component<Props, State> {
         // Only start the release countdown once real content is actually pinned, so a slow data load can't
         // expire the window before the rows exist (which would leave the labels stuck on the wrong side).
         let pinned = false
-        if (this.state.layout === 'rows') { if (c.querySelector('[data-team]')) { c.scrollLeft = this._droppedW; pinned = true } }  // team column flush-left
-        else if (c.scrollHeight > c.clientHeight + 20) { c.scrollTop = c.scrollHeight; pinned = true }                              // team row near the bottom
+        // rows → team column flush-left (losses hidden off to the left, wins fill to the right).
+        // towers → team labels anchored at the BOTTOM with the wins tower rising above, the losses block
+        // (height = _droppedW = belowH in towers mode) scrolled off below the fold. Mirrors the rows framing.
+        if (this.state.layout === 'rows') { if (c.querySelector('[data-team]')) { c.scrollLeft = this._droppedW; pinned = true } }
+        else if (c.scrollHeight > c.clientHeight + 20) { c.scrollTop = Math.max(0, c.scrollHeight - this._droppedW - c.clientHeight); pinned = true }
         if (pinned && this._pinTimer == null) this._pinTimer = window.setTimeout(() => { this._pinBottom = false; this._pinTimer = null }, 500)
       }
     }
