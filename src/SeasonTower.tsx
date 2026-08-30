@@ -188,8 +188,9 @@ export class SeasonTower extends React.Component<Props, State> {
     }, 60)
     requestAnimationFrame(() => this._measure())
     window.addEventListener('keydown', this.onKey)
+    window.addEventListener('hashchange', this.applyHash)
   }
-  componentWillUnmount() { if (this._ro) this._ro.disconnect(); if (this._rco) this._rco.disconnect(); if (this._mt) clearInterval(this._mt); if (this._timer) clearInterval(this._timer); if (this._pinTimer != null) clearTimeout(this._pinTimer); window.removeEventListener('keydown', this.onKey) }
+  componentWillUnmount() { if (this._ro) this._ro.disconnect(); if (this._rco) this._rco.disconnect(); if (this._mt) clearInterval(this._mt); if (this._timer) clearInterval(this._timer); if (this._pinTimer != null) clearTimeout(this._pinTimer); window.removeEventListener('keydown', this.onKey); window.removeEventListener('hashchange', this.applyHash) }
 
   // ---- league / season accessors --------------------------------------------
   // Load a league's two seasons via the file globs (missing files → empty season, "no data").
@@ -224,6 +225,36 @@ export class SeasonTower extends React.Component<Props, State> {
     if (id === this.state.league) { this.syncUrl(); return }   // drilling from overview into the already-loaded league
     this.setState({ playing: false, pop: null, teamPop: null, seasons: null })
     this.loadLeague(id)
+  }
+
+  // Re-route on back/forward or an edited address-bar hash (our own syncUrl uses replaceState, which
+  // does NOT fire hashchange, so this only runs on genuine user navigation — no feedback loop).
+  applyHash = () => {
+    const p = parseHash()
+    const season = (p.season || this.state.season) as SeasonId
+    const seasonChanged = season !== this.state.season
+    if (p.overview) {   // ALL / UEFA overview
+      const kind = (((p as any).ovKind) || 'domestic') as 'domestic' | 'uefa'
+      if (this.state.overview && this.state.ovKind === kind && !seasonChanged) return
+      const enter = () => this.enterOverview(kind)
+      if (seasonChanged) this.setState({ season, ovData: null }, enter); else enter()
+      return
+    }
+    const lg = (p.league || this.state.league) as LeagueId
+    const leagueChanged = this.state.overview || lg !== this.state.league
+    this._wantWeek = p.week ?? null
+    if (!leagueChanged && !seasonChanged) {   // same league+season → apply layout / scrub week in place
+      this.startPin()
+      if (p.layout && p.layout !== this.state.layout) this.setState({ layout: p.layout })
+      const w = this._wantWeek != null ? Math.min(this._wantWeek, this.maxW()) : this.state.throughWeek
+      if (w != null) this.buildThrough(w)
+      this._wantWeek = null; this.syncUrl(); return
+    }
+    if (this._timer) { clearInterval(this._timer); this._timer = null }
+    const patch: any = { overview: false, leagueOpen: false, playing: false, pop: null, teamPop: null, seasons: null }
+    if (p.layout) patch.layout = p.layout
+    if (seasonChanged) patch.season = season
+    this.setState(patch, () => this.loadLeague(lg))   // loadLeague honours _wantWeek from the hash
   }
 
   // ---- overview (the 5 domestic leagues, or the 3 UEFA cups) -----------------
@@ -531,16 +562,16 @@ export class SeasonTower extends React.Component<Props, State> {
                     <span style={chip}>Avg <b style={{ color: '#15181d' }}>{lg.played ? (lg.goals / lg.played).toFixed(2) : '—'}</b></span>
                     <span style={chip}>W‑D <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.dSum}</b> {(() => { const t = lg.wSum + lg.dSum; return t ? `(${Math.round(100 * lg.wSum / t)}%/${100 - Math.round(100 * lg.wSum / t)}%)` : '' })()}</span>
                   </div>
-                  <div style={{ flex: '1 1 0', minHeight: '120px', display: 'flex', alignItems: 'flex-end', gap: '2px', borderBottom: '1px solid #E7E9EC' }}>
-                    {lg.clubs.map((c: any, i: number) => {
-                      const zc = zoneCol(i + 1, lg.clubs.length)
-                      const band = zc === '#8b9098' ? 'transparent' : hexA(zc, 0.13)   // faint qualification-zone band behind the bar (mid-table = none)
-                      return (
-                        <div key={c.code} style={{ flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', background: band }} title={`${c.abbr} · ${c.Pts} pts · ${c.W}W-${c.D}D-${c.L}L`}>
-                          <div style={{ width: '100%', height: `${100 * c.Pts / maxP}%`, minHeight: '2px', borderRadius: '3px 3px 0 0', background: c.primary, opacity: i >= dimFrom ? 0.4 : 1, outline: i === 0 ? '2px solid #0B8A3D' : 'none', outlineOffset: '1px' }} />
-                        </div>
-                      )
-                    })}
+                  <div style={{ position: 'relative', flex: '1 1 0', minHeight: '120px', display: 'flex', alignItems: 'flex-end', gap: '2px', borderBottom: '1px solid #E7E9EC' }}>
+                    {/* unified qualification-zone bands behind the bars — one continuous block per zone run (not per team) */}
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 0 }}>
+                      {(() => { const runs: { zc: string; n: number }[] = []; lg.clubs.forEach((_: any, i: number) => { const zc = zoneCol(i + 1, lg.clubs.length); const last = runs[runs.length - 1]; if (last && last.zc === zc) last.n++; else runs.push({ zc, n: 1 }) }); return runs.map((r, ri) => <div key={ri} style={{ flex: r.n, background: r.zc === '#8b9098' ? 'transparent' : hexA(r.zc, 0.13) }} />) })()}
+                    </div>
+                    {lg.clubs.map((c: any, i: number) => (
+                      <div key={c.code} style={{ position: 'relative', zIndex: 1, flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} title={`${c.abbr} · ${c.Pts} pts · ${c.W}W-${c.D}D-${c.L}L`}>
+                        <div style={{ width: '100%', height: `${100 * c.Pts / maxP}%`, minHeight: '2px', borderRadius: '3px 3px 0 0', background: c.primary, opacity: i >= dimFrom ? 0.4 : 1, outline: i === 0 ? '2px solid #0B8A3D' : 'none', outlineOffset: '1px' }} />
+                      </div>
+                    ))}
                   </div>
                   <div style={{ display: 'flex', gap: '2px', marginTop: '3px' }}>
                     {lg.clubs.map((c: any, i: number) => (
