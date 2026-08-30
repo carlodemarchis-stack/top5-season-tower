@@ -1,2 +1,2 @@
 // Real results, keyed by unique matchId -> {hg,ag}. Auto-updated by scripts/update-results.mjs.
-export const RESULTS = {"DFL-MAT-J043GB":{"hg":5,"ag":1},"DFL-MAT-J043GD":{"hg":3,"ag":0},"DFL-MAT-J043GG":{"hg":0,"ag":0},"DFL-MAT-J043GH":{"hg":3,"ag":3},"DFL-MAT-J043GJ":{"hg":3,"ag":2},"DFL-MAT-J043GI":{"hg":3,"ag":2},"DFL-MAT-J043GC":{"hg":2,"ag":0}}
+export const RESULTS = {"DFL-MAT-J043GB":{"hg":5,"ag":1},"DFL-MAT-J043GD":{"hg":3,"ag":0},"DFL-MAT-J043GG":{"hg":0,"ag":0},"DFL-MAT-J043GH":{"hg":3,"ag":3},"DFL-MAT-J043GJ":{"hg":3,"ag":2},"DFL-MAT-J043GI":{"hg":3,"ag":2},"DFL-MAT-J043GC":{"hg":2,"ag":0},"DFL-MAT-J043GE":{"hg":4,"ag":1},"DFL-MAT-J043GF":{"hg":3,"ag":0}}
