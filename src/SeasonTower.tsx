@@ -745,6 +745,10 @@ export class SeasonTower extends React.Component<Props, State> {
         <div ref={this.chartRef} style={{ position: 'relative', flex: '1 1 0', minHeight: 0, overflow: 'auto', padding: '6px 8px 14px' }}>
           {v.overview ? this.renderOverview(v) : v.layout === 'rows' ? (
             <div style={css(v.rowsWrapStyle)}>
+              {/* qualification bands — light zone backdrop BEHIND the rank rows (matches the towers view) */}
+              {(v.zoneBands || []).map((b: any, i: number) => (
+                <div key={'rb' + i} style={{ position: 'absolute', left: 0, right: 0, zIndex: 0, pointerEvents: 'none', top: `${b.start * (v.rowH + v.rowGap)}px`, height: `${b.count * (v.rowH + v.rowGap) - v.rowGap}px`, background: b.bg }} />
+              ))}
               {v.teamsSorted.map((t: any) => (
                 <div key={t.abbr} data-team={t.abbr} style={css(t.rowStyle)}>
                   <div style={css(t.droppedStyle)}>{t.dropped.map((c: any) => <Cell key={c.key} c={c} />)}</div>
@@ -1243,7 +1247,7 @@ export class SeasonTower extends React.Component<Props, State> {
         const d2 = [...e.draws].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'drawlost'))
         const losses = [...e.losses].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'loss'))
         const dropped = [...d2, ...losses]   // flex-end → losses land nearest the team box
-        const rowStyle = `flex:0 0 ${rowH}px;height:${rowH}px;min-height:0;display:flex;flex-direction:row;align-items:stretch;${isZoneStart ? 'margin-top:10px;' : ''}`
+        const rowStyle = `position:relative;z-index:1;flex:0 0 ${rowH}px;height:${rowH}px;min-height:0;display:flex;flex-direction:row;align-items:stretch;${isZoneStart ? 'margin-top:10px;' : ''}`
         const droppedStyle = `flex:0 0 ${rowsDroppedW}px;height:${rowH}px;display:flex;flex-direction:row;justify-content:flex-end;align-items:stretch;overflow:hidden;`
         const wonStyle = `flex:0 0 auto;height:${rowH}px;display:flex;flex-direction:row;justify-content:flex-start;align-items:stretch;overflow:hidden;`
         // sticky horizontally so the team column never disappears when scrolling left/right.
@@ -1375,9 +1379,9 @@ export class SeasonTower extends React.Component<Props, State> {
     }
 
     return {
-      ...base, loading: false, orient, teamsSorted, layout, uefa, zoneBands, colW, colGap: uefa ? 1 : 2,
+      ...base, loading: false, orient, teamsSorted, layout, uefa, zoneBands, colW, colGap: uefa ? 1 : 2, rowH, rowGap: 2,
       colsWrapStyle: `position:relative;display:flex;flex-direction:row;gap:${uefa ? 1 : 2}px;align-items:flex-end;min-width:100%;min-height:100%;`,
-      rowsWrapStyle: `display:flex;flex-direction:column;gap:2px;width:max-content;min-width:100%;padding-right:${chartW}px;`,
+      rowsWrapStyle: `position:relative;display:flex;flex-direction:column;gap:2px;width:max-content;min-width:100%;padding-right:${chartW}px;`,
       playedStr: `${decided} / ${mx * Math.floor(list.length / 2)}`, leaderAbbr: leader.code, leaderPts: leader.Pts,
       pop, popWeek, popResBadge, popResStyleObj, popChips, popHomeColor, popAwayColor, popHomeName, popAwayName, popHomeCode, popAwayCode,
       popScoreA, popScoreB, popHomeDim, popAwayDim, popAccentStyle, popIsSim, popHighlights,
