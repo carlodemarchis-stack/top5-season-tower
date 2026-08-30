@@ -40,12 +40,17 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: node scripts/update-highlights.mjs --season 2026-27 || true
 
+      # Champions League league phase — UEFA public API (football-data has the season but no fixtures yet).
+      # Re-runs the generator: rewrites the (stable) schedule and fills in results as matches finish.
+      - name: Fetch Champions League (UEFA API)
+        run: node scripts/gen-ucl-uefa.mjs --season 2026-27 || true
+
       - name: Commit if changed
         id: commit
         run: |
           git config user.name "results-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/data/results-*-2026-27.js src/data/highlights-*-2026-27.js
+          git add src/data/results-*-2026-27.js src/data/highlights-*-2026-27.js src/data/schedule-CL-2026-27.js
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No new results — nothing to deploy."
