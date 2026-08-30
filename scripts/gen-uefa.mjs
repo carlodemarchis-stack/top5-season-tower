@@ -94,7 +94,10 @@ for (const m of lp) {
   TEAMS[h].games.push({ id, w, opp: a, oppFull: TEAMS[a].name, ha: 'H', venue, city, net: '', et })
   TEAMS[a].games.push({ id, w, opp: h, oppFull: TEAMS[h].name, ha: 'A', venue, city, net: '', et })
   const s = m.score?.total
-  if ((m.status?.finished || m.matchStatus === 'FINISHED') && s && s.home != null) RESULTS[id] = { hg: s.home, ag: s.away }
+  // the v5 API reports a finished match as status:'FINISHED' (a string) — older readings expected
+  // status.finished (object) / matchStatus; accept all three so results are actually captured.
+  const finished = m.status === 'FINISHED' || m.status?.finished === true || m.matchStatus === 'FINISHED'
+  if (finished && s && s.home != null) RESULTS[id] = { hg: s.home, ag: s.away }
 }
 
 const CNAME = { CL: 'Champions League', EL: 'Europa League', ECL: 'Conference League' }

@@ -116,10 +116,14 @@ function zoneOf(rank: number, total = 20): { key: string; label: string; color: 
   if (rank > total - 3) return { key: 'rel', label: 'Relegation', color: '#C23A2E' }
   return { key: 'mid', label: '', color: '#B0B4BC' }
 }
-// UEFA league-phase bands (36 teams): top 8 → Round of 16, 9–24 → knockout play-off, 25–36 → out.
+// hex → rgba string (for the faint qualification-zone bands behind the overview bar charts)
+const hexA = (h: string, a: number) => { const n = parseInt(h.slice(1), 16); return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})` }
+// UEFA league-phase bands (36 teams): top-8 → Round of 16 (seeded); 9–16 → play-off (seeded);
+// 17–24 → play-off (unseeded); 25–36 → eliminated. Four tiers, mirroring the official bracket.
 function zoneUefa(rank: number): { key: string; label: string; color: string } {
-  if (rank <= 8) return { key: 'r16', label: 'Round of 16', color: '#0B4DA2' }
-  if (rank <= 24) return { key: 'po', label: 'Knockout play-off', color: '#E8820B' }
+  if (rank <= 8) return { key: 'r16', label: 'Round of 16', color: '#17924D' }
+  if (rank <= 16) return { key: 'poS', label: 'Play-off · seeded', color: '#0B4DA2' }
+  if (rank <= 24) return { key: 'poU', label: 'Play-off · unseeded', color: '#4C86CE' }
   return { key: 'out', label: 'Eliminated', color: '#C23A2E' }
 }
 const zoneFor = (league: LeagueId, total = 20) => isUefa(league) ? zoneUefa : (rank: number) => zoneOf(rank, total)
@@ -492,7 +496,7 @@ export class SeasonTower extends React.Component<Props, State> {
     // qualification zones by finishing position (indicative). Domestic: top-4 CL, 5 EL, 6 Conference, bottom-3 relegation.
     // UEFA league phase (36 teams): top-8 → Round of 16, 9–24 → knockout play-off, 25–36 → eliminated.
     const zoneCol = uefa
-      ? (rank: number) => rank <= 8 ? '#0B4DA2' : rank <= 24 ? '#E8820B' : '#C23A2E'
+      ? (rank: number) => zoneUefa(rank).color
       : (rank: number, n: number) => rank <= 4 ? '#0B4DA2' : rank === 5 ? '#E8820B' : rank === 6 ? '#0B8A3D' : rank > n - 3 ? '#C23A2E' : '#8b9098'
     return (
       <div style={{ display: 'flex', gap: '10px', height: '100%', minHeight: '420px', alignItems: 'stretch' }}>
@@ -528,11 +532,15 @@ export class SeasonTower extends React.Component<Props, State> {
                     <span style={chip}>W‑D <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.dSum}</b> {(() => { const t = lg.wSum + lg.dSum; return t ? `(${Math.round(100 * lg.wSum / t)}%/${100 - Math.round(100 * lg.wSum / t)}%)` : '' })()}</span>
                   </div>
                   <div style={{ flex: '1 1 0', minHeight: '120px', display: 'flex', alignItems: 'flex-end', gap: '2px', borderBottom: '1px solid #E7E9EC' }}>
-                    {lg.clubs.map((c: any, i: number) => (
-                      <div key={c.code} style={{ flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} title={`${c.abbr} · ${c.Pts} pts · ${c.W}W-${c.D}D-${c.L}L`}>
-                        <div style={{ width: '100%', height: `${100 * c.Pts / maxP}%`, minHeight: '2px', borderRadius: '3px 3px 0 0', background: c.primary, opacity: i >= dimFrom ? 0.4 : 1, outline: i === 0 ? '2px solid #0B8A3D' : 'none', outlineOffset: '1px' }} />
-                      </div>
-                    ))}
+                    {lg.clubs.map((c: any, i: number) => {
+                      const zc = zoneCol(i + 1, lg.clubs.length)
+                      const band = zc === '#8b9098' ? 'transparent' : hexA(zc, 0.13)   // faint qualification-zone band behind the bar (mid-table = none)
+                      return (
+                        <div key={c.code} style={{ flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', background: band }} title={`${c.abbr} · ${c.Pts} pts · ${c.W}W-${c.D}D-${c.L}L`}>
+                          <div style={{ width: '100%', height: `${100 * c.Pts / maxP}%`, minHeight: '2px', borderRadius: '3px 3px 0 0', background: c.primary, opacity: i >= dimFrom ? 0.4 : 1, outline: i === 0 ? '2px solid #0B8A3D' : 'none', outlineOffset: '1px' }} />
+                        </div>
+                      )
+                    })}
                   </div>
                   <div style={{ display: 'flex', gap: '2px', marginTop: '3px' }}>
                     {lg.clubs.map((c: any, i: number) => (
@@ -683,17 +691,19 @@ export class SeasonTower extends React.Component<Props, State> {
                     </span>
                     <span style={{ color: '#0B8A3D', fontWeight: 900, fontSize: '13px' }}>{v.overviewDomActive ? '✓' : ''}</span>
                   </button>
-                  <button onClick={v.onOverviewUefa} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '9px 12px', border: 'none', borderRadius: '8px', background: v.overviewUefaActive ? '#F1F3F5' : '#fff', color: '#15181d', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'inherit' }}>
-                    <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                      <span style={{ fontSize: '13.5px', fontWeight: v.overviewUefaActive ? 800 : 700 }}>🏆 3 UEFA cups</span>
-                      <span style={{ fontSize: '10px', color: '#9298a1', fontWeight: 600 }}>Champions · Europa · Conference · league phase</span>
-                    </span>
-                    <span style={{ color: '#0B8A3D', fontWeight: 900, fontSize: '13px' }}>{v.overviewUefaActive ? '✓' : ''}</span>
-                  </button>
                   <div style={{ height: '1px', background: '#EDEFF2', margin: '5px 8px' }} />
                   {v.leagueList.map((l: any, i: number) => (
                     <React.Fragment key={l.id}>
-                      {l.uefa && !v.leagueList[i - 1]?.uefa && <div style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 12px 4px' }}><span style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '.6px', textTransform: 'uppercase', color: '#9298a1' }}>UEFA clubs</span><span style={{ flex: 1, height: '1px', background: '#EDEFF2' }} /></div>}
+                      {l.uefa && !v.leagueList[i - 1]?.uefa && <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 12px 4px' }}><span style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '.6px', textTransform: 'uppercase', color: '#9298a1' }}>UEFA clubs</span><span style={{ flex: 1, height: '1px', background: '#EDEFF2' }} /></div>
+                        <button onClick={v.onOverviewUefa} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '9px 12px', border: 'none', borderRadius: '8px', background: v.overviewUefaActive ? '#F1F3F5' : '#fff', color: '#15181d', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'inherit' }}>
+                          <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                            <span style={{ fontSize: '13.5px', fontWeight: v.overviewUefaActive ? 800 : 700 }}>🏆 3 UEFA cups</span>
+                            <span style={{ fontSize: '10px', color: '#9298a1', fontWeight: 600 }}>Champions · Europa · Conference · league phase</span>
+                          </span>
+                          <span style={{ color: '#0B8A3D', fontWeight: 900, fontSize: '13px' }}>{v.overviewUefaActive ? '✓' : ''}</span>
+                        </button>
+                      </>}
                       <button onClick={l.onClick} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '9px 12px', border: 'none', borderRadius: '8px', background: l.active ? '#F1F3F5' : '#fff', color: '#15181d', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'inherit' }}>
                         <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
                           <span style={{ fontSize: '13.5px', fontWeight: l.active ? 800 : 600 }}>{l.name}{!l.has && <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: '#C0A020' }}>soon</span>}</span>
