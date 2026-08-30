@@ -4,7 +4,16 @@ name: Update results
 # and (only if something changed) rebuilds + redeploys GitHub Pages.
 on:
   schedule:
-    - cron: '0 8,16,20,23 * * *'   # a few times a day (UTC); matches finish → next run picks them up
+    # Smart schedule keyed to when matches actually finish (all times UTC), with a buffer for the
+    # football-data.org feed lag (a result can take 20–40 min after full-time to appear). Derived from
+    # the fixture kickoff times in src/data/schedule-*.js: finished matches cluster into an afternoon
+    # peak (~14:00–17:00 UTC, weekends) and an evening peak (~19:00–22:30 UTC, every day — late domestic
+    # kickoffs + all UEFA midweek nights). Public repo → Actions minutes are free, and each run no-ops
+    # (~40s, no deploy) when nothing changed, so we poll densely inside those windows and stay quiet outside.
+    - cron: '0,30 18-22 * * *'     # every day 18:00–22:30 — evening window (late league games + UEFA Tue–Thu)
+    - cron: '0 23 * * *'           # every day 23:00 — tail, catches ~22:xx finishers + feed lag
+    - cron: '0,30 12-17 * * 0,6'   # Sat & Sun 12:00–17:30 — weekend afternoon window (early & mid kickoffs)
+    - cron: '0 8 * * *'            # daily safety net — sweep up anything the feed posted overnight (late FT / corrections)
   workflow_dispatch: {}            # allow a manual run from the Actions tab
 
 permissions:
