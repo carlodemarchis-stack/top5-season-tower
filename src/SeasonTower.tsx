@@ -54,7 +54,8 @@ interface State {
   layout: 'towers' | 'rows'   // vertical towers (portrait) vs horizontal rows (landscape)
   helpOpen: boolean
   creditsOpen: boolean
-  overview: boolean          // "All 5 leagues" points-board view
+  overview: boolean          // points-board overview view (either set)
+  ovKind: 'domestic' | 'uefa'  // which overview: the 5 domestic leagues or the 3 UEFA cups
   ovData: any[] | null       // per-league standings summary for the overview
   chartBox: { w: number; h: number } | null   // measured px size of the club-modal rank-chart panel
 }
@@ -77,6 +78,7 @@ const LEAGUES: { id: LeagueId; name: string; country: string; uefa?: boolean }[]
   { id: 'ECL', name: 'Conference League', country: 'UEFA · Europe', uefa: true },
 ]
 const DOMESTIC = LEAGUES.filter(l => !l.uefa)   // the five domestic leagues (used by the "All 5" overview)
+const UEFACOMPS = LEAGUES.filter(l => l.uefa)   // the three UEFA cups (used by the "UEFA cups" overview)
 const isUefa = (id: LeagueId) => LEAGUES.some(l => l.id === id && l.uefa)
 // crest filename for a club: UEFA competitions namespace their crests (CL_/EL_/ECL_) to avoid code
 // clashes with the domestic sets (e.g. AJA = Auxerre in Ligue 1 but Ajax in the Champions League).
@@ -87,7 +89,8 @@ function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; lay
   if (!h) return {}
   const [lg, se, wk, ly] = h.split('/')
   const out: any = {}
-  if (lg === 'ALL') out.overview = true
+  if (lg === 'ALL') { out.overview = true; out.ovKind = 'domestic' }
+  if (lg === 'UEFA') { out.overview = true; out.ovKind = 'uefa' }
   if (LEAGUES.some(l => l.id === lg)) out.league = lg
   if (SEASONS.some(s => s.id === se)) out.season = se
   if (wk != null && /^\d+$/.test(wk)) out.week = parseInt(wk, 10)
@@ -142,6 +145,7 @@ export class SeasonTower extends React.Component<Props, State> {
     helpOpen: false,
     creditsOpen: false,
     overview: !!this._init!.overview,
+    ovKind: (this._init as any).ovKind || 'domestic',
     ovData: null,
     chartBox: null,
   }
@@ -218,20 +222,21 @@ export class SeasonTower extends React.Component<Props, State> {
     this.loadLeague(id)
   }
 
-  // ---- overview ("All 5 leagues") --------------------------------------------
-  enterOverview() {
-    this.setState({ leagueOpen: false, overview: true, pop: null, teamPop: null, playing: false }, () => this.syncUrl())
-    this.loadOverview(this.state.season)
+  // ---- overview (the 5 domestic leagues, or the 3 UEFA cups) -----------------
+  enterOverview(kind: 'domestic' | 'uefa' = 'domestic') {
+    this.setState({ leagueOpen: false, overview: true, ovKind: kind, ovData: null, pop: null, teamPop: null, playing: false }, () => this.syncUrl())
+    this.loadOverview(this.state.season, kind)
   }
-  // Load every league's schedule + results for one season and reduce to a standings summary each.
-  loadOverview(season: SeasonId) {
-    const jobs = DOMESTIC.map(lg => {
+  // Load every competition's schedule + results for one season and reduce to a standings summary each.
+  loadOverview(season: SeasonId, kind: 'domestic' | 'uefa' = this.state.ovKind) {
+    const set = kind === 'uefa' ? UEFACOMPS : DOMESTIC
+    const jobs = set.map(lg => {
       const sm = SCHED_MODS[`./data/schedule-${lg.id}-${season}.js`]
       const rm = RES_MODS[`./data/results-${lg.id}-${season}.js`]
       return Promise.all([sm ? sm() : Promise.resolve(null), rm ? rm() : Promise.resolve(null)])
-        .then(([s, r]: any[]) => this.summarizeLeague(lg, s?.TEAMS || null, (r && r.RESULTS) || {}, s?.MATCHDAYS || 38))
+        .then(([s, r]: any[]) => this.summarizeLeague(lg, s?.TEAMS || null, (r && r.RESULTS) || {}, s?.MATCHDAYS || (kind === 'uefa' ? 8 : 38)))
     })
-    Promise.all(jobs).then(ovData => { if (this.state.overview) this.setState({ ovData }) })
+    Promise.all(jobs).then(ovData => { if (this.state.overview && this.state.ovKind === kind) this.setState({ ovData }) })
   }
   summarizeLeague(lg: { id: LeagueId; name: string }, TEAMS: Dict | null, REAL: Dict, totalMd: number) {
     if (!TEAMS) return { id: lg.id, name: lg.name, empty: true, clubs: [], leader: null, mw: 0, totalMd, played: 0, goals: 0, wSum: 0, dSum: 0, lSum: 0 }
@@ -261,7 +266,7 @@ export class SeasonTower extends React.Component<Props, State> {
   latestPlayedWeek() { const R = this.activeReal(), T = this.activeTeams(); if (!T) return 0; let mx = 0; for (const c of Object.keys(T)) for (const g of T[c].games) if (R[g.id] && g.w > mx) mx = g.w; return mx }
   scrubMax() { return (this.seasonIsReal() || SIM) ? this.maxW() : this.latestPlayedWeek() } // scrubber ceiling: full for completed/sim; live season stops at the last matchday with a game played
   defaultWeek() { return this.scrubMax() } // open at the ceiling (full season, or the current matchday on the live one)
-  syncUrl() { const s = this.state; try { const hash = s.overview ? `#ALL/${s.season}` : `#${s.league}/${s.season}/${s.throughWeek == null ? 0 : s.throughWeek}/${s.layout}`; history.replaceState(null, '', hash) } catch { /* ignore */ } }
+  syncUrl() { const s = this.state; try { const hash = s.overview ? `#${s.ovKind === 'uefa' ? 'UEFA' : 'ALL'}/${s.season}` : `#${s.league}/${s.season}/${s.throughWeek == null ? 0 : s.throughWeek}/${s.layout}`; history.replaceState(null, '', hash) } catch { /* ignore */ } }
   // begin a scroll-pin window (towers → bottom / rows → labels flush-left); resets any pending release
   startPin() { this._pinBottom = true; if (this._pinTimer != null) { clearTimeout(this._pinTimer); this._pinTimer = null } }
   setLayout(l: 'towers' | 'rows') { if (l === this.state.layout) return; this.startPin(); this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
@@ -340,10 +345,11 @@ export class SeasonTower extends React.Component<Props, State> {
   reset() { if (this._timer) { clearInterval(this._timer); this._timer = null } this.buildThrough(0); this.setState({ playing: false, pop: null, teamPop: null }) }
   // cycle through the overview + the leagues (wraps around), following the dropdown order
   stepLeague(delta: number) {
-    const seq = ['ALL', ...LEAGUES.map(l => l.id)]
-    const cur = this.state.overview ? 'ALL' : this.state.league
+    const seq = ['ALL', 'UEFA', ...LEAGUES.map(l => l.id)]
+    const cur = this.state.overview ? (this.state.ovKind === 'uefa' ? 'UEFA' : 'ALL') : this.state.league
     const next = seq[(seq.indexOf(cur) + delta + seq.length) % seq.length]
-    if (next === 'ALL') { if (!this.state.overview) this.enterOverview() }
+    if (next === 'ALL') { if (!(this.state.overview && this.state.ovKind === 'domestic')) this.enterOverview('domestic') }
+    else if (next === 'UEFA') { if (!(this.state.overview && this.state.ovKind === 'uefa')) this.enterOverview('uefa') }
     else this.pickLeague(next as LeagueId)
   }
   // ← / → change league · ↑ / ↓ step the matchweek (↑ forward)
@@ -477,17 +483,21 @@ export class SeasonTower extends React.Component<Props, State> {
     return []
   }
 
-  // "All 5 leagues" points board — one comparable column per league.
+  // points board — one comparable column per competition (5 domestic leagues, or the 3 UEFA cups).
   renderOverview(v: Dict) {
     const data: any[] = v.ovData
-    if (!data) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9298a1', fontSize: '14px', minHeight: '200px' }}>Loading all five leagues…</div>
+    const uefa = v.ovKind === 'uefa'
+    if (!data) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9298a1', fontSize: '14px', minHeight: '200px' }}>{uefa ? 'Loading the three UEFA cups…' : 'Loading all five leagues…'}</div>
     const maxP = Math.max(10, ...data.map(d => (d.leader ? d.leader.Pts : 0)))
-    // qualification zones by finishing position (indicative): top-4 CL, 5 EL, 6 Conference, bottom-3 relegation.
-    const zoneCol = (rank: number, n: number) => rank <= 4 ? '#0B4DA2' : rank === 5 ? '#E8820B' : rank === 6 ? '#0B8A3D' : rank > n - 3 ? '#C23A2E' : '#8b9098'
+    // qualification zones by finishing position (indicative). Domestic: top-4 CL, 5 EL, 6 Conference, bottom-3 relegation.
+    // UEFA league phase (36 teams): top-8 → Round of 16, 9–24 → knockout play-off, 25–36 → eliminated.
+    const zoneCol = uefa
+      ? (rank: number) => rank <= 8 ? '#0B4DA2' : rank <= 24 ? '#E8820B' : '#C23A2E'
+      : (rank: number, n: number) => rank <= 4 ? '#0B4DA2' : rank === 5 ? '#E8820B' : rank === 6 ? '#0B8A3D' : rank > n - 3 ? '#C23A2E' : '#8b9098'
     return (
       <div style={{ display: 'flex', gap: '10px', height: '100%', minHeight: '420px', alignItems: 'stretch' }}>
         {data.map(lg => {
-          const relFrom = lg.clubs.length - 3   // bottom 3 = relegation (basic zone hint)
+          const dimFrom = uefa ? 24 : lg.clubs.length - 3   // dim the non-qualifying tail (UEFA: 25–36 out · domestic: bottom-3 relegation)
           const leaderCrest = lg.leader ? logoFile(lg.id, lg.leader.code) : ''
           const chip: React.CSSProperties = { fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px', whiteSpace: 'nowrap' }
           return (
@@ -520,7 +530,7 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div style={{ flex: '1 1 0', minHeight: '120px', display: 'flex', alignItems: 'flex-end', gap: '2px', borderBottom: '1px solid #E7E9EC' }}>
                     {lg.clubs.map((c: any, i: number) => (
                       <div key={c.code} style={{ flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} title={`${c.abbr} · ${c.Pts} pts · ${c.W}W-${c.D}D-${c.L}L`}>
-                        <div style={{ width: '100%', height: `${100 * c.Pts / maxP}%`, minHeight: '2px', borderRadius: '3px 3px 0 0', background: c.primary, opacity: i >= relFrom ? 0.4 : 1, outline: i === 0 ? '2px solid #0B8A3D' : 'none', outlineOffset: '1px' }} />
+                        <div style={{ width: '100%', height: `${100 * c.Pts / maxP}%`, minHeight: '2px', borderRadius: '3px 3px 0 0', background: c.primary, opacity: i >= dimFrom ? 0.4 : 1, outline: i === 0 ? '2px solid #0B8A3D' : 'none', outlineOffset: '1px' }} />
                       </div>
                     ))}
                   </div>
@@ -666,12 +676,19 @@ export class SeasonTower extends React.Component<Props, State> {
                 <div onClick={v.onToggleLeague} style={{ position: 'fixed', inset: 0, zIndex: 70 }} />
                 <div style={{ position: 'absolute', top: 'calc(100% + 7px)', left: '0', zIndex: 80, minWidth: '210px', background: '#fff', border: '1px solid #E4E7EB', borderRadius: '12px', boxShadow: '0 14px 36px rgba(20,22,28,.17)', padding: '5px' }}>
                   <div style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '.6px', textTransform: 'uppercase', color: '#9298a1', padding: '5px 10px 7px' }}>League</div>
-                  <button onClick={v.onOverview} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '9px 12px', border: 'none', borderRadius: '8px', background: v.overviewActive ? '#F1F3F5' : '#fff', color: '#15181d', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'inherit' }}>
+                  <button onClick={v.onOverview} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '9px 12px', border: 'none', borderRadius: '8px', background: v.overviewDomActive ? '#F1F3F5' : '#fff', color: '#15181d', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'inherit' }}>
                     <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                      <span style={{ fontSize: '13.5px', fontWeight: v.overviewActive ? 800 : 700 }}>🏆 All 5 leagues</span>
+                      <span style={{ fontSize: '13.5px', fontWeight: v.overviewDomActive ? 800 : 700 }}>🏆 All 5 leagues</span>
                       <span style={{ fontSize: '10px', color: '#9298a1', fontWeight: 600 }}>Season progress · points board</span>
                     </span>
-                    <span style={{ color: '#0B8A3D', fontWeight: 900, fontSize: '13px' }}>{v.overviewActive ? '✓' : ''}</span>
+                    <span style={{ color: '#0B8A3D', fontWeight: 900, fontSize: '13px' }}>{v.overviewDomActive ? '✓' : ''}</span>
+                  </button>
+                  <button onClick={v.onOverviewUefa} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', padding: '9px 12px', border: 'none', borderRadius: '8px', background: v.overviewUefaActive ? '#F1F3F5' : '#fff', color: '#15181d', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'inherit' }}>
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                      <span style={{ fontSize: '13.5px', fontWeight: v.overviewUefaActive ? 800 : 700 }}>🏆 3 UEFA cups</span>
+                      <span style={{ fontSize: '10px', color: '#9298a1', fontWeight: 600 }}>Champions · Europa · Conference · league phase</span>
+                    </span>
+                    <span style={{ color: '#0B8A3D', fontWeight: 900, fontSize: '13px' }}>{v.overviewUefaActive ? '✓' : ''}</span>
                   </button>
                   <div style={{ height: '1px', background: '#EDEFF2', margin: '5px 8px' }} />
                   {v.leagueList.map((l: any, i: number) => (
@@ -1037,18 +1054,19 @@ export class SeasonTower extends React.Component<Props, State> {
 
     const mx = this.maxW()
     const smax = this.scrubMax()   // scrubber ceiling — stops at the last played matchday on the live season
-    const leagueName = S.overview ? 'All 5 leagues' : (LEAGUES.find(x => x.id === S.league) || LEAGUES[0]).name
+    const leagueName = S.overview ? (S.ovKind === 'uefa' ? '3 UEFA cups' : 'All 5 leagues') : (LEAGUES.find(x => x.id === S.league) || LEAGUES[0]).name
     const base: Dict = {
       helpOpen: S.helpOpen,
       creditsOpen: S.creditsOpen,
-      overview: S.overview, ovData: S.ovData,
+      overview: S.overview, ovKind: S.ovKind, ovData: S.ovData,
       playLabel: S.playing ? '❘❘' : '▶',
       stepBackDisabled: tw <= 0, stepFwdDisabled: tw >= smax, sliderMax: mx, scrubMax: smax,   // bar spans the FULL season; navigation is capped at the last played matchday
       throughWeek: tw, weekLabel: tw === 0 ? 'Pre-season' : (tw >= mx ? 'Full season' : ('Through MD ' + tw)),
       resultMode: colorMode !== 'opponent', oppMode: colorMode === 'opponent', zonesOn,
       leagueName, leagueOpen: S.leagueOpen,
       onToggleLeague: () => this.setState(s => ({ leagueOpen: !s.leagueOpen, seasonOpen: false })),
-      overviewActive: S.overview, onOverview: () => this.enterOverview(),
+      overviewDomActive: S.overview && S.ovKind === 'domestic', onOverview: () => this.enterOverview('domestic'),
+      overviewUefaActive: S.overview && S.ovKind === 'uefa', onOverviewUefa: () => this.enterOverview('uefa'),
       leagueList: LEAGUES.map(x => ({ id: x.id, name: x.name, country: x.country, uefa: !!x.uefa, active: !S.overview && x.id === S.league, has: SEASONS.some(s => !!SCHED_MODS[`./data/schedule-${x.id}-${s.id}.js`]), onClick: () => this.pickLeague(x.id) })),
       seasonLabel: (SEASONS.find(x => x.id === S.season) || SEASONS[0]).label,
       seasonTag: isReal ? 'Real' : 'Simulated', seasonOpen: S.seasonOpen,
