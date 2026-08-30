@@ -889,7 +889,7 @@ export class SeasonTower extends React.Component<Props, State> {
           {/* ---------- club modal ---------- */}
           {v.tm && (
             <div onClick={() => this.closeTeam()} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-              <div onClick={mStop} style={{ position: 'relative', width: v.tm.rankPath.length >= 1 ? `min(${(v.tm.rows.length > 20 ? 736 : 430) + Math.max(300, Math.min(560, v.tm.totalMd * 13))}px, 96vw)` : `min(${v.tm.rows.length > 20 ? 752 : 460}px,94vw)`, maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', overflow: 'visible', boxShadow: '0 24px 60px rgba(16,18,22,.32)' }}>
+              <div onClick={mStop} style={{ position: 'relative', width: `min(${(v.tm.rows.length > 20 ? 736 : 430) + Math.max(300, Math.min(560, v.tm.totalMd * 13))}px, 96vw)`, maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', overflow: 'visible', boxShadow: '0 24px 60px rgba(16,18,22,.32)' }}>
                 {/* prev / next club (league-table order) */}
                 <button onClick={() => this.stepTeam(-1)} title="Previous club (←)" aria-label="Previous club" style={{ position: 'absolute', left: '-19px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4E7EB', background: '#fff', color: '#15181d', fontSize: '18px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,18,22,.22)', lineHeight: 1, paddingBottom: '2px' }}>‹</button>
                 <button onClick={() => this.stepTeam(1)} title="Next club (→)" aria-label="Next club" style={{ position: 'absolute', right: '-19px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4E7EB', background: '#fff', color: '#15181d', fontSize: '18px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,18,22,.22)', lineHeight: 1, paddingBottom: '2px' }}>›</button>
@@ -949,14 +949,13 @@ export class SeasonTower extends React.Component<Props, State> {
                     </div>
                   )
                 })()}
-                {v.tm.rankPath.length >= 1 && (
-                  <div style={{ flex: '1 1 auto', borderLeft: '1px solid #EDEFF2', padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                    <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '.5px', textTransform: 'uppercase', color: '#9298a1', marginBottom: '8px' }}>Position by matchday</div>
-                    <div ref={this.setRankChartRef} style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-                      {this.renderRankChart(v.tm)}
-                    </div>
+                {/* always show the chart — empty (season not started) still shows the zone bands + axes */}
+                <div style={{ flex: '1 1 auto', borderLeft: '1px solid #EDEFF2', padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '.5px', textTransform: 'uppercase', color: '#9298a1', marginBottom: '8px' }}>Position by matchday</div>
+                  <div ref={this.setRankChartRef} style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+                    {this.renderRankChart(v.tm)}
                   </div>
-                )}
+                </div>
                 </div>
                 </div>
               </div>
