@@ -42,6 +42,9 @@
     input.mdslider::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#0B8A3D;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.28);margin-top:-9.5px;}
     input.mdslider::-moz-range-track{height:5px;border-radius:5px;background:#DADDE2;}
     input.mdslider::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#0B8A3D;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.28);}
+    /* an upcoming fixture kicking off TODAY gently pulses a green inner ring (any league) */
+    @keyframes todayPulse{0%,100%{box-shadow:inset 0 0 0 1.5px rgba(11,138,61,.18);}50%{box-shadow:inset 0 0 0 2px rgba(11,138,61,.95);}}
+    @media (prefers-reduced-motion: reduce){[style*="todayPulse"]{animation:none !important;box-shadow:inset 0 0 0 2px rgba(11,138,61,.7) !important;}}
   </style>
 </head>
 <body>

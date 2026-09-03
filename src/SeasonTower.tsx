@@ -1198,9 +1198,14 @@ export class SeasonTower extends React.Component<Props, State> {
     const rowsDroppedW = maxDropPx + 2
     if (layout === 'rows') this._droppedW = rowsDroppedW
 
+    // today's local date (YYYY-MM-DD) — an unplayed fixture kicking off today gets a gentle pulsing inner ring
+    const now = new Date()
+    const TODAY = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
     const mkCell = (e: any, g: any, type: string): Dict => {
       const t = e.t
       const r = this.getRes(t.abbr, g.id); const arrow = g.ha === 'A' ? '→' : ''   // away = small right arrow (was @)
+      // an upcoming match happening TODAY (any league) → subtle blink so it stands out
+      const todayCss = (type === 'pend' && typeof g.et === 'string' && g.et.slice(0, 10) === TODAY) ? 'animation:todayPulse 1.4s ease-in-out infinite;' : ''
       const oppPrim = (T[g.opp] && T[g.opp].primary) || '#8A8F98'
       // Every box carries the OPPONENT's colour. Wins fill it; losses (below the line) use the
       // reverse — white with the opponent colour as outline + text. A green/red/amber left stripe
@@ -1240,7 +1245,7 @@ export class SeasonTower extends React.Component<Props, State> {
             : tieRows ? Math.max(5, Math.min(w / 3.2, (rowH - 3) / 4.2))
             : Math.max(5, Math.min(11, w / 3.2))
           const align = pendRows ? 'flex-start' : 'center'
-          const rstyle = `flex:0 0 ${w}px;width:${w}px;min-width:${w}px;height:${rowH}px;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:column;align-items:center;justify-content:${align};overflow:hidden;cursor:pointer;font-size:${fs2}px;font-weight:700;line-height:1.05;letter-spacing:-.3px;padding:1px 0;`
+          const rstyle = `flex:0 0 ${w}px;width:${w}px;min-width:${w}px;height:${rowH}px;background:${bg};color:${color};border:${border};${fade}${todayCss}display:flex;flex-direction:column;align-items:center;justify-content:${align};overflow:hidden;cursor:pointer;font-size:${fs2}px;font-weight:700;line-height:1.05;letter-spacing:-.3px;padding:1px 0;`
           return { key: t.abbr + '-' + g.id, twoLine: true, vTie, tieRows, pendRows, chip: !!chipBg, chipBg, chipText, mdNum: String(g.w), arrowTxt: arrow, oppCode: g.opp, oppLetters: g.opp.split(''), oppTxt, scoreTxt, gf: r ? String(r.gf) : '', ga: r ? String(r.ga) : '', style: rstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
         }
         // UEFA (36 clubs): ALL content on ONE horizontal line so all rows fit vertically without clipping.
@@ -1248,19 +1253,19 @@ export class SeasonTower extends React.Component<Props, State> {
         const fs2 = type === 'draw'
           ? Math.max(5, Math.min(8, Math.min((rowH - 2) * 0.72, w * 0.30)))
           : Math.max(6, Math.min(11, Math.min((rowH - 2) * 0.72, w * 0.44)))
-        const rstyle = `flex:0 0 ${w}px;width:${w}px;min-width:${w}px;height:${rowH}px;background:${bg};color:${color};border:${border};${fade}display:flex;flex-direction:row;align-items:center;justify-content:center;gap:2px;overflow:hidden;cursor:pointer;font-size:${fs2}px;font-weight:700;line-height:1;letter-spacing:-.2px;padding:0 2px;`
+        const rstyle = `flex:0 0 ${w}px;width:${w}px;min-width:${w}px;height:${rowH}px;background:${bg};color:${color};border:${border};${fade}${todayCss}display:flex;flex-direction:row;align-items:center;justify-content:center;gap:2px;overflow:hidden;cursor:pointer;font-size:${fs2}px;font-weight:700;line-height:1;letter-spacing:-.2px;padding:0 2px;`
         return { key: t.abbr + '-' + g.id, oppLab, arrowTxt: (type === 'draw' ? '' : arrow), oppCode: g.opp, sA, sMid, sB, sAStyle, sBStyle, chip: !!chipBg, chipBg, chipText, hideScore: type === 'draw' || type === 'pend', style: rstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
       }
       if (type === 'pend') {
         if (!uefa) {
           // DOMESTIC (original): two lines — matchday number (dim) over the opponent
           const pfs = Math.max(6.5, Math.min(9, h * 0.4))
-          const pstyle = `width:100%;height:${h}px;min-height:${h}px;margin:0;background:${bg};color:${color};border:${border};display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.02;overflow:hidden;cursor:pointer;font-size:${pfs}px;font-weight:700;padding:0 2px;`
+          const pstyle = `width:100%;height:${h}px;min-height:${h}px;margin:0;background:${bg};color:${color};border:${border};${todayCss}display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.02;overflow:hidden;cursor:pointer;font-size:${pfs}px;font-weight:700;padding:0 2px;`
           return { key: t.abbr + '-' + g.id, towerPend: true, domPend: true, mdNum: String(g.w), oppCode: arrow + g.opp, style: pstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
         }
         // UEFA towers upcoming game → 3 lines: opponent · matchday · home/away (mirrors a played box)
         const pfs = Math.max(8, Math.min(11, h * 0.24))
-        const pstyle = `width:100%;height:${h}px;min-height:${h}px;margin:0;background:${bg};color:${color};border:${border};display:flex;flex-direction:column;align-items:center;justify-content:flex-start;line-height:1.05;overflow:hidden;cursor:pointer;font-size:${pfs}px;font-weight:700;padding:1px 2px 0;`
+        const pstyle = `width:100%;height:${h}px;min-height:${h}px;margin:0;background:${bg};color:${color};border:${border};${todayCss}display:flex;flex-direction:column;align-items:center;justify-content:flex-start;line-height:1.05;overflow:hidden;cursor:pointer;font-size:${pfs}px;font-weight:700;padding:1px 2px 0;`
         return { key: t.abbr + '-' + g.id, towerPend: true, mdNum: 'MD' + g.w, oppCode: g.opp, arrowTxt: arrow, style: pstyle, title, onClick: () => this.openPop(t.abbr, g.id) }
       }
       if (!uefa) {
