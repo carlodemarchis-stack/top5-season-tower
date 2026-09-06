@@ -1,0 +1,19 @@
+name: Probe standings
+on: { workflow_dispatch: {} }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe football-data standings
+        env:
+          K: ${{ secrets.FOOTBALL_DATA_API_KEY }}
+        run: |
+          probe () {
+            echo "=== $1 ==="
+            code=$(curl -s -H "X-Auth-Token: $K" -o /tmp/r -w "%{http_code}" "$1")
+            echo "HTTP $code"
+            head -c 700 /tmp/r; echo; echo
+          }
+          probe "https://api.football-data.org/v4/competitions/SA/standings"
+          probe "https://api.football-data.org/v4/competitions/SA/standings?matchday=3"
+          probe "https://api.football-data.org/v4/competitions/SA/standings?season=2026&matchday=2"
