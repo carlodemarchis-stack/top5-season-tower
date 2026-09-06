@@ -844,6 +844,7 @@ export class SeasonTower extends React.Component<Props, State> {
                         </div>
                         <div style={css(t.lblRowStyle)}>
                           <span style={css(t.wdlStyle)}>{t.wdlStr}</span>
+                          <span style={css(t.gdStyle)}>{t.gdStr}</span>
                           <span style={css(t.ptsStyle)}>{t.ptsStr}</span>
                         </div>
                       </>
@@ -888,6 +889,7 @@ export class SeasonTower extends React.Component<Props, State> {
                         </div>
                         <div style={css(t.lblRowStyle)}>
                           <span style={css(t.wdlStyle)}>{t.wdlStr}</span>
+                          <span style={css(t.gdStyle)}>{t.gdStr}</span>
                           <span style={css(t.ptsStyle)}>{t.ptsStr}</span>
                         </div>
                       </>
@@ -1310,6 +1312,7 @@ export class SeasonTower extends React.Component<Props, State> {
       const isZoneStart = zonesOn && i > 0 && zf(i).key !== z.key
       const wdlStr = `${e.W}-${e.D}-${e.L}`
       const ptsStr = `${e.Pts} pts`
+      const gdStr = e.GD > 0 ? `+${e.GD}` : String(e.GD)   // goal difference, sign only — no label
       const labelTitle = `${t.name} · ${rank}${rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th'} · ${e.Pts} pts · ${e.W}W-${e.D}D-${e.L}L · GD ${e.GD >= 0 ? '+' : ''}${e.GD}`
       const zoneBar = zonesOn ? z.color : prim
       // team box = SOLID club colour, 2×2: [rank · team] / [W-D-L smaller · pts], all in contrast ink
@@ -1319,9 +1322,11 @@ export class SeasonTower extends React.Component<Props, State> {
       const teamStyle = `font-size:${narrowLbl ? 10 : 12}px;font-weight:900;color:${ink};letter-spacing:.2px;line-height:1;white-space:nowrap;`
       const wdlStyle = `font-size:${narrowLbl ? 6.5 : 7.5}px;font-weight:800;color:${ink};opacity:.78;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;`
       const ptsStyle = `font-size:${narrowLbl ? 8 : 9}px;font-weight:800;color:${ink};line-height:1;white-space:nowrap;`
+      // GD sits between W-D-L and points — smaller and dimmer so it reads as the secondary figure
+      const gdStyle = `font-size:${narrowLbl ? 6 : 7}px;font-weight:700;color:${ink};opacity:.6;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;`
       const lblRowStyle = `position:relative;z-index:1;display:flex;flex-direction:row;align-items:baseline;justify-content:space-between;width:100%;gap:3px;overflow:hidden;`
       const crest = logoFile(S.league, t.abbr)
-      const base: Dict = { abbr: t.abbr, rank, wdlStr, ptsStr, labelTitle, crest, onLabel: () => this.openTeam(t.abbr), rankStyle, teamStyle, wdlStyle, ptsStyle, lblRowStyle }
+      const base: Dict = { abbr: t.abbr, rank, wdlStr, ptsStr, gdStr, labelTitle, crest, onLabel: () => this.openTeam(t.abbr), rankStyle, teamStyle, wdlStyle, ptsStyle, gdStyle, lblRowStyle }
 
       if (layout === 'rows') {
         // LANDSCAPE: team box in the middle. RIGHT of it = points won (wins 3u nearest the box →
