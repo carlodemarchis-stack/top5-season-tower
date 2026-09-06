@@ -1,0 +1,4 @@
+// OFFICIAL league order per matchday (our club codes), from football-data.org.
+// Auto-updated by scripts/update-standings.mjs — the app reads positions from here instead of
+// re-deriving them (per-country tiebreaks + points deductions are the API's job, not ours).
+export const STANDINGS = {"1":["ROM","INT","NAP","LEC","ATA","MIL","CAG","JUV","LAZ","UDI","COM","SAS","TOR","PAR","FRO","BOL","GEN","VEN","MON","FIO"],"2":["ROM","INT","MIL","JUV","ATA","LAZ","UDI","COM","FRO","NAP","SAS","CAG","LEC","TOR","BOL","GEN","PAR","MON","VEN","FIO"],"3":["ROM","INT","COM","FRO","MIL","JUV","LAZ","ATA","UDI","NAP","SAS","CAG","TOR","LEC","PAR","MON","BOL","VEN","GEN","FIO"]}
