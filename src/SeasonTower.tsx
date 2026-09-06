@@ -289,7 +289,9 @@ export class SeasonTower extends React.Component<Props, State> {
     const clubs = Object.keys(rows).map(k => rows[k]).map((r: any) => ({ ...r, Pts: r.W * 3 + r.D, GD: r.GF - r.GA, played: r.W + r.D + r.L }))
     clubs.sort((x: any, y: any) => (y.Pts - x.Pts) || (y.GD - x.GD) || (y.GF - x.GF) || (x.code < y.code ? -1 : 1))
     const wSum = clubs.reduce((a: number, c: any) => a + c.W, 0)
-    const dSum = clubs.reduce((a: number, c: any) => a + c.D, 0)
+    // a drawn match credits a draw to BOTH clubs, so the raw sum double-counts it. Halve it to get
+    // drawn MATCHES — then wSum (one win per decisive match) + dSum === matches played.
+    const dSum = clubs.reduce((a: number, c: any) => a + c.D, 0) / 2
     const lSum = clubs.reduce((a: number, c: any) => a + c.L, 0)
     return { id: lg.id, name: lg.name, empty: matches === 0, clubs, leader: clubs[0], mw, totalMd, played: matches, goals, wSum, dSum, lSum }
   }
@@ -560,7 +562,7 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '11px' }}>
                     <span style={chip}>Goals <b style={{ color: '#15181d' }}>{lg.goals}</b></span>
                     <span style={chip}>Avg <b style={{ color: '#15181d' }}>{lg.played ? (lg.goals / lg.played).toFixed(2) : '—'}</b></span>
-                    <span style={chip}>W‑D <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.dSum}</b> {(() => { const t = lg.wSum + lg.dSum; return t ? `(${Math.round(100 * lg.wSum / t)}%/${100 - Math.round(100 * lg.wSum / t)}%)` : '' })()}</span>
+                    <span style={chip}>W‑D <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.dSum}</b> {(() => { const t = lg.played; return t ? `(${Math.round(100 * lg.wSum / t)}%/${100 - Math.round(100 * lg.wSum / t)}%)` : '' })()}</span>
                   </div>
                   <div style={{ position: 'relative', flex: '1 1 0', minHeight: '120px', display: 'flex', alignItems: 'flex-end', gap: '2px', borderBottom: '1px solid #E7E9EC' }}>
                     {/* unified qualification-zone bands behind the bars — one continuous block per zone run (not per team) */}
