@@ -288,6 +288,30 @@ export class SeasonTower extends React.Component<Props, State> {
     }
     const clubs = Object.keys(rows).map(k => rows[k]).map((r: any) => ({ ...r, Pts: r.W * 3 + r.D, GD: r.GF - r.GA, played: r.W + r.D + r.L }))
     clubs.sort((x: any, y: any) => (y.Pts - x.Pts) || (y.GD - x.GD) || (y.GF - x.GF) || (x.code < y.code ? -1 : 1))
+    // Serie A & La Liga break equal-points ties by HEAD-TO-HEAD first — same rule as the standings
+    // table, so the overview bar order matches the league table exactly.
+    if (lg.id === 'ITA' || lg.id === 'ESP') {
+      for (let i = 0; i < clubs.length;) {
+        let j = i; while (j < clubs.length && clubs[j].Pts === clubs[i].Pts) j++
+        if (j - i > 1) {
+          const group = clubs.slice(i, j), codes = new Set(group.map((e: any) => e.code))
+          const h: Dict = {}
+          for (const e of group) {
+            const st = { pts: 0, gd: 0, gf: 0 }
+            for (const g of (TEAMS[e.code].games || [])) {
+              if (!codes.has(g.opp)) continue
+              const real = REAL[g.id]; if (!real) continue
+              const gf = g.ha === 'H' ? real.hg : real.ag, ga = g.ha === 'H' ? real.ag : real.hg
+              st.pts += gf > ga ? 3 : gf === ga ? 1 : 0; st.gd += gf - ga; st.gf += gf
+            }
+            h[e.code] = st
+          }
+          group.sort((x: any, y: any) => (h[y.code].pts - h[x.code].pts) || (h[y.code].gd - h[x.code].gd) || (h[y.code].gf - h[x.code].gf) || (y.GD - x.GD) || (y.GF - x.GF) || (x.code < y.code ? -1 : 1))
+          for (let k = 0; k < group.length; k++) clubs[i + k] = group[k]
+        }
+        i = j
+      }
+    }
     const wSum = clubs.reduce((a: number, c: any) => a + c.W, 0)
     // a drawn match credits a draw to BOTH clubs, so the raw sum double-counts it. Halve it to get
     // drawn MATCHES — then wSum (one win per decisive match) + dSum === matches played.
@@ -501,6 +525,31 @@ export class SeasonTower extends React.Component<Props, State> {
       return { c, Pts: W * 3 + D, GD: GF - GA, GF }
     })
     lines.sort((x, y) => (y.Pts - x.Pts) || (y.GD - x.GD) || (y.GF - x.GF) || (x.c < y.c ? -1 : 1))
+    // Serie A & La Liga break equal-points ties by HEAD-TO-HEAD first — apply the same mini-league rule
+    // the standings table uses, otherwise the trajectory chart and the R-chips disagree with the table
+    // (e.g. Frosinone 2026/27 MD3: best GD of the 6-pt group → 4th on a naive sort, but 8th on h2h).
+    if (this.state.league === 'ITA' || this.state.league === 'ESP') {
+      const T2 = T
+      for (let i = 0; i < lines.length;) {
+        let j = i; while (j < lines.length && lines[j].Pts === lines[i].Pts) j++
+        if (j - i > 1) {
+          const group = lines.slice(i, j), codes = new Set(group.map(e => e.c))
+          const h: Dict = {}
+          for (const e of group) {
+            const st = { pts: 0, gd: 0, gf: 0 }
+            for (const g of T2[e.c].games) {
+              if (!codes.has(g.opp) || g.w > w) continue
+              const r = this.getRes(e.c, g.id); if (!r) continue
+              st.pts += r.gf > r.ga ? 3 : r.gf === r.ga ? 1 : 0; st.gd += r.gf - r.ga; st.gf += r.gf
+            }
+            h[e.c] = st
+          }
+          group.sort((x, y) => (h[y.c].pts - h[x.c].pts) || (h[y.c].gd - h[x.c].gd) || (h[y.c].gf - h[x.c].gf) || (y.GD - x.GD) || (y.GF - x.GF) || (x.c < y.c ? -1 : 1))
+          for (let k = 0; k < group.length; k++) lines[i + k] = group[k]
+        }
+        i = j
+      }
+    }
     return lines.findIndex(l => l.c === code) + 1
   }
 
