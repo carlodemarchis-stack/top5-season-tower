@@ -54,6 +54,7 @@ interface State {
   layout: 'towers' | 'rows'   // vertical towers (portrait) vs horizontal rows (landscape)
   helpOpen: boolean
   creditsOpen: boolean
+  moreOpen: boolean          // "+" — the other AGWAS sport experiences
   overview: boolean          // points-board overview view (either set)
   ovKind: 'domestic' | 'uefa'  // which overview: the 5 domestic leagues or the 3 UEFA cups
   ovData: any[] | null       // per-league standings summary for the overview
@@ -76,6 +77,16 @@ const LEAGUES: { id: LeagueId; name: string; country: string; uefa?: boolean }[]
   { id: 'CL', name: 'Champions League', country: 'UEFA · Europe', uefa: true },
   { id: 'EL', name: 'Europa League', country: 'UEFA · Europe', uefa: true },
   { id: 'ECL', name: 'Conference League', country: 'UEFA · Europe', uefa: true },
+]
+// The other AGWAS sport experiences, as listed on dataviz.aguywithascarf.com (same accents/kickers).
+// This app (Football Interactive / top5) is deliberately left out — you're already in it.
+const OTHER_APPS: { name: string; kicker: string; url: string; acc: string }[] = [
+  { name: 'Formula 1', kicker: 'A season read lap by lap', url: 'https://f1.aguywithascarf.com/', acc: '#00d7b6' },
+  { name: 'Tennis', kicker: 'The season, one player at a time', url: 'https://tennis.aguywithascarf.com/', acc: '#f2c14e' },
+  { name: 'NFL', kicker: 'Wins up, losses down', url: 'https://nfl.aguywithascarf.com/', acc: '#4d94e0' },
+  { name: 'World Cup', kicker: 'Road to the Final', url: 'https://worldcupbracket.aguywithascarf.com/', acc: '#3fbe72' },
+  { name: 'PGA TOUR', kicker: 'Season Film', url: 'https://golf.aguywithascarf.com/', acc: '#57a34a' },
+  { name: 'Athletics', kicker: 'World Record Film', url: 'https://athletics.aguywithascarf.com/', acc: '#d98a3d' },
 ]
 const DOMESTIC = LEAGUES.filter(l => !l.uefa)   // the five domestic leagues (used by the "All 5" overview)
 const UEFACOMPS = LEAGUES.filter(l => l.uefa)   // the three UEFA cups (used by the "UEFA cups" overview)
@@ -150,6 +161,7 @@ export class SeasonTower extends React.Component<Props, State> {
     layout: this._init!.layout || 'rows',   // open in the vertical (stacked-rows) view
     helpOpen: false,
     creditsOpen: false,
+    moreOpen: false,
     overview: !!this._init!.overview,
     ovKind: (this._init as any).ovKind || 'domestic',
     ovData: null,
@@ -795,7 +807,8 @@ export class SeasonTower extends React.Component<Props, State> {
           </div>}
 
           {/* help + fullscreen */}
-          <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, marginLeft: 'auto', fontSize: '17px', fontWeight: 800 }}>?</button>
+          <button onClick={() => this.setState({ moreOpen: true })} title="More sports experiences" aria-label="More sports experiences" style={{ ...iconBtn, marginLeft: 'auto', fontSize: '19px', fontWeight: 700 }}>+</button>
+          <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, fontSize: '17px', fontWeight: 800 }}>?</button>
           <button onClick={() => this.toggleFullscreen()} title="Fullscreen" aria-label="Fullscreen" style={iconBtn}>⛶</button>
 
           {/* layout toggle: vertical towers ↔ landscape rows */}
@@ -1063,6 +1076,31 @@ export class SeasonTower extends React.Component<Props, State> {
           )}
 
           {/* ---------- credits modal ---------- */}
+          {v.moreOpen && (
+            <div onClick={() => this.setState({ moreOpen: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 96, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+              <div onClick={mStop} style={{ width: 'min(360px,94vw)', maxHeight: '86vh', overflow: 'auto', background: '#fff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(16,18,22,.32)', padding: '18px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '15px', fontWeight: 900, color: '#15181d' }}>More sports experiences</span>
+                  <button onClick={() => this.setState({ moreOpen: false })} aria-label="Close" style={{ border: 'none', background: '#F1F2F4', borderRadius: '8px', width: '28px', height: '28px', fontSize: '15px', cursor: 'pointer', color: '#5c616b' }}>✕</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  {OTHER_APPS.map(a => (
+                    <a key={a.url} href={a.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 8px', borderRadius: '9px', textDecoration: 'none', color: 'inherit' }}>
+                      <span style={{ flex: '0 0 auto', width: '9px', height: '9px', borderRadius: '50%', background: a.acc }} />
+                      <span style={{ display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0 }}>
+                        <span style={{ fontSize: '13.5px', fontWeight: 800, color: '#15181d' }}>{a.name}</span>
+                        <span style={{ fontSize: '11px', color: '#9298a1', fontWeight: 600 }}>{a.kicker}</span>
+                      </span>
+                      <span style={{ marginLeft: 'auto', color: '#B0B4BC', fontSize: '14px', fontWeight: 700 }}>↗</span>
+                    </a>
+                  ))}
+                </div>
+                <div style={{ marginTop: '12px', paddingTop: '11px', borderTop: '1px solid #EDEFF2', fontSize: '12px', color: '#9298a1', fontWeight: 600 }}>
+                  <a href="https://dataviz.aguywithascarf.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>See them all →</a>
+                </div>
+              </div>
+            </div>
+          )}
           {v.creditsOpen && (
             <div onClick={() => this.setState({ creditsOpen: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 96, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
               <div onClick={mStop} style={{ width: 'min(460px,94vw)', maxHeight: '86vh', overflow: 'auto', background: '#fff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(16,18,22,.32)', padding: '20px 22px' }}>
@@ -1116,6 +1154,7 @@ export class SeasonTower extends React.Component<Props, State> {
     const base: Dict = {
       helpOpen: S.helpOpen,
       creditsOpen: S.creditsOpen,
+      moreOpen: S.moreOpen,
       overview: S.overview, ovKind: S.ovKind, ovData: S.ovData,
       playLabel: S.playing ? '❘❘' : '▶',
       stepBackDisabled: tw <= 0, stepFwdDisabled: tw >= smax, sliderMax: mx, scrubMax: smax,   // bar spans the FULL season; navigation is capped at the last played matchday
