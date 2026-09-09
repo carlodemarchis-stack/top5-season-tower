@@ -68,15 +68,16 @@ const SEASONS: { id: SeasonId; label: string; real: boolean }[] = [
 ]
 
 type LeagueId = 'ITA' | 'ENG' | 'ESP' | 'FRA' | 'GER' | 'CL' | 'EL' | 'ECL'
-const LEAGUES: { id: LeagueId; name: string; country: string; uefa?: boolean }[] = [
-  { id: 'ITA', name: 'Serie A', country: 'Italy' },
-  { id: 'ENG', name: 'Premier League', country: 'England' },
-  { id: 'ESP', name: 'La Liga', country: 'Spain' },
-  { id: 'FRA', name: 'Ligue 1', country: 'France' },
-  { id: 'GER', name: 'Bundesliga', country: 'Germany' },
-  { id: 'CL', name: 'Champions League', country: 'UEFA · Europe', uefa: true },
-  { id: 'EL', name: 'Europa League', country: 'UEFA · Europe', uefa: true },
-  { id: 'ECL', name: 'Conference League', country: 'UEFA · Europe', uefa: true },
+// `ig` = official Instagram handle, `tag` = hashtag — both feed the AGWAS social-capture meta tags.
+const LEAGUES: { id: LeagueId; name: string; country: string; uefa?: boolean; ig: string; tag: string }[] = [
+  { id: 'ITA', name: 'Serie A', country: 'Italy', ig: 'seriea', tag: 'seriea' },
+  { id: 'ENG', name: 'Premier League', country: 'England', ig: 'premierleague', tag: 'premierleague' },
+  { id: 'ESP', name: 'La Liga', country: 'Spain', ig: 'laliga', tag: 'laliga' },
+  { id: 'FRA', name: 'Ligue 1', country: 'France', ig: 'ligue1', tag: 'ligue1' },
+  { id: 'GER', name: 'Bundesliga', country: 'Germany', ig: 'bundesliga', tag: 'bundesliga' },
+  { id: 'CL', name: 'Champions League', country: 'UEFA · Europe', uefa: true, ig: 'championsleague', tag: 'championsleague' },
+  { id: 'EL', name: 'Europa League', country: 'UEFA · Europe', uefa: true, ig: 'europaleague', tag: 'europaleague' },
+  { id: 'ECL', name: 'Conference League', country: 'UEFA · Europe', uefa: true, ig: 'europaconferenceleague', tag: 'conferenceleague' },
 ]
 // The other AGWAS sport experiences, as listed on dataviz.aguywithascarf.com (same accents/kickers).
 // This app (Football Interactive / top5) is deliberately left out — you're already in it.
@@ -203,6 +204,7 @@ export class SeasonTower extends React.Component<Props, State> {
     requestAnimationFrame(() => this._measure())
     window.addEventListener('keydown', this.onKey)
     window.addEventListener('hashchange', this.applyHash)
+    this.updateSocialMeta()
   }
   componentWillUnmount() { if (this._ro) this._ro.disconnect(); if (this._rco) this._rco.disconnect(); if (this._mt) clearInterval(this._mt); if (this._timer) clearInterval(this._timer); if (this._pinTimer != null) clearTimeout(this._pinTimer); window.removeEventListener('keydown', this.onKey); window.removeEventListener('hashchange', this.applyHash) }
 
@@ -326,7 +328,28 @@ export class SeasonTower extends React.Component<Props, State> {
   latestPlayedWeek() { const R = this.activeReal(), T = this.activeTeams(); if (!T) return 0; let mx = 0; for (const c of Object.keys(T)) for (const g of T[c].games) if (R[g.id] && g.w > mx) mx = g.w; return mx }
   scrubMax() { return (this.seasonIsReal() || SIM) ? this.maxW() : this.latestPlayedWeek() } // scrubber ceiling: full for completed/sim; live season stops at the last matchday with a game played
   defaultWeek() { return this.scrubMax() } // open at the ceiling (full season, or the current matchday on the live one)
-  syncUrl() { const s = this.state; try { const hash = s.overview ? `#${s.ovKind === 'uefa' ? 'UEFA' : 'ALL'}/${s.season}` : `#${s.league}/${s.season}/${s.throughWeek == null ? 0 : s.throughWeek}/${s.layout}`; history.replaceState(null, '', hash) } catch { /* ignore */ } }
+  // AGWAS social capture: cta / tags / mentions track the competition on screen (title + bg stay put).
+  updateSocialMeta() {
+    try {
+      const S = this.state
+      const setM = (n: string, v: string) => {
+        let el = document.head.querySelector(`meta[name="${n}"]`)
+        if (!el) { el = document.createElement('meta'); el.setAttribute('name', n); document.head.appendChild(el) }
+        el.setAttribute('content', v)
+      }
+      const lg = LEAGUES.find(l => l.id === S.league)
+      const subject = S.overview ? (S.ovKind === 'uefa' ? 'UEFA club competitions' : 'The top 5 European leagues') : (lg ? lg.name : 'Football')
+      const tag = S.overview ? (S.ovKind === 'uefa' ? 'uefa' : 'top5leagues') : (lg ? lg.tag : '')
+      const ment = S.overview
+        ? (S.ovKind === 'uefa' ? UEFACOMPS.map(l => l.ig).join(',') : DOMESTIC.map(l => l.ig).join(','))
+        : (lg ? lg.ig : '')
+      setM('agwas:cta', `${subject} — Full interactive football experience below`)
+      setM('agwas:tags', `football dataviz ${tag}`.trim())
+      setM('agwas:mentions', ment)
+    } catch { /* meta is cosmetic — never break navigation over it */ }
+  }
+  syncUrl() { const s = this.state; try { const hash = s.overview ? `#${s.ovKind === 'uefa' ? 'UEFA' : 'ALL'}/${s.season}` : `#${s.league}/${s.season}/${s.throughWeek == null ? 0 : s.throughWeek}/${s.layout}`; history.replaceState(null, '', hash) } catch { /* ignore */ }
+    this.updateSocialMeta() }
   // begin a scroll-pin window (towers → bottom / rows → labels flush-left); resets any pending release
   startPin() { this._pinBottom = true; if (this._pinTimer != null) { clearTimeout(this._pinTimer); this._pinTimer = null } }
   setLayout(l: 'towers' | 'rows') { if (l === this.state.layout) return; this.startPin(); this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
