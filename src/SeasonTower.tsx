@@ -1282,7 +1282,7 @@ export class SeasonTower extends React.Component<Props, State> {
     const rowH = uefa
       ? Math.max(14, Math.min(50, (chartH - 6 - (nTeams - 1) * 2) / nTeams))   // 36 rows fit the height (2px inter-row gap accounted for)
       : Math.max(22, Math.min(50, (chartH - 40) / nTeams))                     // domestic — original taller rows
-    const rowLabelW = uefa ? 104 : 80   // UEFA one-line team box; domestic 2-row box (original)
+    const rowLabelW = uefa ? 140 : 80   // UEFA one-line box: worst case measured at a full league phase is 2-digit rank + flag + FOUR-letter code (PAOK/FCSB) + 2-digit pts + W-D-L = 129px; domestic 2-row box (original)
     // Landscape px-per-point — widen the boxes to use the horizontal space (win/loss = 3u, drawn-won
     // = 1u, drawn-lost = 2u stays intact). Sized so the widest WON side fills the room right of the box.
     const wonUnits = Math.max(24, ...list.map((e: any) => e.W * 3 + e.D))
