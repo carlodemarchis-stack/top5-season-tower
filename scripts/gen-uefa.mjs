@@ -84,7 +84,7 @@ const { md, n } = matchdayMap(lp)
 const TEAMS = {}, RESULTS = {}, crests = {}
 const ensure = (t) => {
   const c = code(t)
-  if (!TEAMS[c]) { TEAMS[c] = { name: cfg.short[c] || t.internationalName, abbr: c, primary: cfg.colors[c] || '#8A8F98', games: [] }; crests[c] = `https://img.uefa.com/imgml/TP/teams/logos/700x700/${t.id}.png` }
+  if (!TEAMS[c]) { TEAMS[c] = { name: cfg.short[c] || t.internationalName, abbr: c, primary: cfg.colors[c] || '#8A8F98', cc: t.countryCode || '', games: [] }; crests[c] = `https://img.uefa.com/imgml/TP/teams/logos/700x700/${t.id}.png` }
   return c
 }
 for (const m of lp) {

@@ -89,6 +89,16 @@ const OTHER_APPS: { name: string; kicker: string; url: string; acc: string }[] =
   { name: 'PGA TOUR', kicker: 'Season Film', url: 'https://golf.aguywithascarf.com/', acc: '#57a34a' },
   { name: 'Athletics', kicker: 'World Record Film', url: 'https://athletics.aguywithascarf.com/', acc: '#d98a3d' },
 ]
+// UEFA clubs carry a 3-letter country code (`cc` in the schedule); map it to a flag for the team box.
+// ENG/SCO are subdivision tag sequences, not regional-indicator pairs.
+const CC_FLAG: Record<string, string> = {
+  ALB: '🇦🇱', AND: '🇦🇩', ARM: '🇦🇲', AUT: '🇦🇹', AZE: '🇦🇿', BEL: '🇧🇪', BIH: '🇧🇦', BUL: '🇧🇬',
+  CRO: '🇭🇷', CYP: '🇨🇾', CZE: '🇨🇿', DEN: '🇩🇰', ENG: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', ESP: '🇪🇸', FIN: '🇫🇮', FRA: '🇫🇷',
+  GEO: '🇬🇪', GER: '🇩🇪', GIB: '🇬🇮', GRE: '🇬🇷', HUN: '🇭🇺', IRL: '🇮🇪', ISL: '🇮🇸', ISR: '🇮🇱',
+  ITA: '🇮🇹', KAZ: '🇰🇿', KOS: '🇽🇰', LTU: '🇱🇹', LVA: '🇱🇻', MKD: '🇲🇰', MLT: '🇲🇹', NED: '🇳🇱',
+  NOR: '🇳🇴', POL: '🇵🇱', POR: '🇵🇹', ROU: '🇷🇴', SCO: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', SRB: '🇷🇸', SUI: '🇨🇭', SVK: '🇸🇰',
+  SVN: '🇸🇮', SWE: '🇸🇪', TUR: '🇹🇷', UKR: '🇺🇦',
+}
 const DOMESTIC = LEAGUES.filter(l => !l.uefa)   // the five domestic leagues (used by the "All 5" overview)
 const UEFACOMPS = LEAGUES.filter(l => l.uefa)   // the three UEFA cups (used by the "UEFA cups" overview)
 const isUefa = (id: LeagueId) => LEAGUES.some(l => l.id === id && l.uefa)
@@ -867,6 +877,7 @@ export class SeasonTower extends React.Component<Props, State> {
                       /* UEFA: one line — rank · team · points · W-D-L (compact so 36 rows fit) */
                       <>
                         <span style={{ ...css(t.rankStyle), position: 'relative', zIndex: 1, fontSize: '11px' }}>{t.rank}</span>
+                        {t.flag && <span style={{ ...css(t.flagStyle), position: 'relative', zIndex: 1 }}>{t.flag}</span>}
                         <span style={{ ...css(t.teamStyle), position: 'relative', zIndex: 1, fontSize: '11.5px' }}>{t.abbr}</span>
                         <span style={{ ...css(t.ptsStyle), position: 'relative', zIndex: 1, marginLeft: 'auto', fontSize: '10px' }}>{String(t.ptsStr).replace(' pts', '')}<span style={{ opacity: .7, fontSize: '.8em' }}>p</span></span>
                         <span style={{ ...css(t.wdlStyle), position: 'relative', zIndex: 1, fontSize: '9px' }}>{t.wdlStr}</span>
@@ -912,6 +923,7 @@ export class SeasonTower extends React.Component<Props, State> {
                       /* UEFA: 4 stacked lines: rank · team · points · W-D-L */
                       <>
                         <span style={{ ...css(t.rankStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.rank}</span>
+                        {t.flag && <span style={{ ...css(t.flagStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.flag}</span>}
                         <span style={{ ...css(t.teamStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.abbr}</span>
                         <span style={{ ...css(t.ptsStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.ptsStr}</span>
                         <span style={{ ...css(t.wdlStyle), position: 'relative', zIndex: 1, textAlign: 'center', width: '100%' }}>{t.wdlStr}</span>
@@ -1388,7 +1400,9 @@ export class SeasonTower extends React.Component<Props, State> {
       const gdStyle = `font-size:${narrowLbl ? 6 : 7}px;font-weight:700;color:${ink};opacity:.6;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;`
       const lblRowStyle = `position:relative;z-index:1;display:flex;flex-direction:row;align-items:baseline;justify-content:space-between;width:100%;gap:3px;overflow:hidden;`
       const crest = logoFile(S.league, t.abbr)
-      const base: Dict = { abbr: t.abbr, rank, wdlStr, ptsStr, gdStr, labelTitle, crest, onLabel: () => this.openTeam(t.abbr), rankStyle, teamStyle, wdlStyle, ptsStyle, gdStyle, lblRowStyle }
+      const flag = uefa ? (CC_FLAG[t.cc] || '') : ''
+      const flagStyle = `font-size:${narrowLbl ? 9 : 10}px;line-height:1;flex:0 0 auto;`
+      const base: Dict = { abbr: t.abbr, rank, flag, flagStyle, wdlStr, ptsStr, gdStr, labelTitle, crest, onLabel: () => this.openTeam(t.abbr), rankStyle, teamStyle, wdlStyle, ptsStyle, gdStyle, lblRowStyle }
 
       if (layout === 'rows') {
         // LANDSCAPE: team box in the middle. RIGHT of it = points won (wins 3u nearest the box →
