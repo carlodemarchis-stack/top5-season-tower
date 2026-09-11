@@ -881,6 +881,7 @@ export class SeasonTower extends React.Component<Props, State> {
                         <span style={{ ...css(t.teamStyle), position: 'relative', zIndex: 1, fontSize: '11.5px' }}>{t.abbr}</span>
                         <span style={{ ...css(t.ptsStyle), position: 'relative', zIndex: 1, marginLeft: 'auto', fontSize: '10px' }}>{String(t.ptsStr).replace(' pts', '')}<span style={{ opacity: .7, fontSize: '.8em' }}>p</span></span>
                         <span style={{ ...css(t.wdlStyle), position: 'relative', zIndex: 1, fontSize: '9px' }}>{t.wdlStr}</span>
+                        <span style={{ ...css(t.gdStyle), position: 'relative', zIndex: 1 }}>{t.gdStr}</span>
                       </>
                     ) : (
                       /* DOMESTIC (original): 2 rows — [rank · team] / [W-D-L · pts] */
@@ -1282,7 +1283,7 @@ export class SeasonTower extends React.Component<Props, State> {
     const rowH = uefa
       ? Math.max(14, Math.min(50, (chartH - 6 - (nTeams - 1) * 2) / nTeams))   // 36 rows fit the height (2px inter-row gap accounted for)
       : Math.max(22, Math.min(50, (chartH - 40) / nTeams))                     // domestic — original taller rows
-    const rowLabelW = uefa ? 140 : 80   // UEFA one-line box: worst case measured at a full league phase is 2-digit rank + flag + FOUR-letter code (PAOK/FCSB) + 2-digit pts + W-D-L = 129px; domestic 2-row box (original)
+    const rowLabelW = uefa ? 154 : 80   // UEFA one-line box: worst case measured at a full league phase is 2-digit rank + flag + FOUR-letter code (PAOK/FCSB) + 2-digit pts + W-D-L + signed GD = 141px; domestic 2-row box (original)
     // Landscape px-per-point — widen the boxes to use the horizontal space (win/loss = 3u, drawn-won
     // = 1u, drawn-lost = 2u stays intact). Sized so the widest WON side fills the room right of the box.
     const wonUnits = Math.max(24, ...list.map((e: any) => e.W * 3 + e.D))
@@ -1312,7 +1313,7 @@ export class SeasonTower extends React.Component<Props, State> {
       if (type === 'pend') { bg = '#ffffff'; color = this.mix(oppPrim, '#ffffff', 0.15); border = '1px solid ' + this.mix(oppPrim, '#ffffff', 0.6) }
       else if (type === 'draw') { bg = this.mix(oppPrim, '#ffffff', 0.90); color = this.ink(oppPrim); border = '1.5px solid ' + oppPrim; chipBg = oppPrim; chipText = this.contrast(oppPrim) }   // won-side tie — very light opponent tint
       else if (type === 'loss' || type === 'drawlost') { bg = '#ffffff'; color = this.ink(oppPrim); border = '1.5px solid ' + oppPrim }   // reverse (below the line) — stays white
-      else { bg = this.mix(oppPrim, '#ffffff', 0.90); color = this.ink(oppPrim); border = '1.5px solid ' + oppPrim; chipBg = oppPrim; chipText = this.contrast(oppPrim) }   // win — opponent on colour chip, score on a very light opponent tint
+      else { bg = this.mix(oppPrim, '#ffffff', 0.82); color = this.ink(oppPrim); border = '1.5px solid ' + oppPrim; chipBg = oppPrim; chipText = this.contrast(oppPrim) }   // win — opponent on colour chip, score on a light opponent tint (18% colour; draws stay lighter at 10%)
 
       const h = type === 'draw' ? DRAWH : type === 'drawlost' ? DLOSTH : type === 'pend' ? PENDH : DECH
       const fs = uefa ? (type === 'draw' ? 8 : Math.max(9, Math.min(12, h * 0.30))) : (type === 'draw' ? 7 : Math.max(8.5, Math.min(11, h * 0.42)))
