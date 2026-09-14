@@ -131,6 +131,20 @@ const HL_MODS = import.meta.glob('./data/highlights-*.js') as Record<string, () 
 // OFFICIAL league order per matchday (football-data) — positions come from here, never re-derived
 const STAND_MODS = import.meta.glob('./data/standings-*.js') as Record<string, () => Promise<any>>
 
+// Every deploy renames the hashed data chunks, so a tab left open across one (we redeploy whenever
+// results land) 404s on its NEXT lazy import: the promise rejects and the view sits on "Loading…"
+// forever. Reload once to pull a fresh index.html, and with it the current chunk names. The session
+// flag stops a reload loop if the failure turns out not to be staleness.
+const STALE_KEY = 'st:staleReload'
+const staleTried = () => { try { return sessionStorage.getItem(STALE_KEY) === '1' } catch { return false } }
+const markStale = (on: boolean) => { try { on ? sessionStorage.setItem(STALE_KEY, '1') : sessionStorage.removeItem(STALE_KEY) } catch {} }
+function onChunkError(err: any) {
+  console.error('data chunk failed to load', err)
+  if (staleTried()) return          // already reloaded once this session — don't loop
+  markStale(true)
+  location.reload()
+}
+
 // European / relegation bands by finishing position (1-based rank). `total` = teams in the league so
 // the relegation band tracks the bottom 3 whether it's a 20- or 18-team league.
 function zoneOf(rank: number, total = 20): { key: string; label: string; color: string } {
@@ -235,13 +249,14 @@ export class SeasonTower extends React.Component<Props, State> {
         // open on a season that actually has data (prefer the current one)
         let season = this.state.season
         if (!seasons![season].TEAMS) season = (SEASONS.find(x => seasons![x.id].TEAMS)?.id) || season
+        markStale(false)
         this.startPin()
         this.setState({ league: id, seasons, season }, () => {
           // honor the URL scrub week on mount (survives StrictMode's double loadLeague); cleared on user nav
           const w = this._wantWeek != null ? Math.min(this._wantWeek, this.maxW()) : this.defaultWeek()
           this.buildThrough(w)
         })
-      }).catch(err => console.error('league load failed', err))
+      }).catch(onChunkError)
   }
   pickLeague(id: LeagueId) {
     this.setState({ leagueOpen: false, overview: false })
@@ -297,7 +312,7 @@ export class SeasonTower extends React.Component<Props, State> {
       return Promise.all([sm ? sm() : Promise.resolve(null), rm ? rm() : Promise.resolve(null)])
         .then(([s, r]: any[]) => this.summarizeLeague(lg, s?.TEAMS || null, (r && r.RESULTS) || {}, s?.MATCHDAYS || (kind === 'uefa' ? 8 : 38)))
     })
-    Promise.all(jobs).then(ovData => { if (this.state.overview && this.state.ovKind === kind) this.setState({ ovData }) })
+    Promise.all(jobs).then(ovData => { markStale(false); if (this.state.overview && this.state.ovKind === kind) this.setState({ ovData }) }).catch(onChunkError)
   }
   summarizeLeague(lg: { id: LeagueId; name: string }, TEAMS: Dict | null, REAL: Dict, totalMd: number) {
     if (!TEAMS) return { id: lg.id, name: lg.name, empty: true, clubs: [], leader: null, mw: 0, totalMd, played: 0, goals: 0, wSum: 0, dSum: 0, lSum: 0 }
