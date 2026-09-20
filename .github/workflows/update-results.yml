@@ -32,7 +32,12 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # Check out the BRANCH TIP, not the trigger-time SHA. Runs serialize on the `pages` concurrency
+      # group, so a queued run would otherwise start from a commit an earlier run has already moved
+      # past — and its push would be rejected with "! [rejected] main -> main (fetch first)".
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: 20
