@@ -315,15 +315,16 @@ export class SeasonTower extends React.Component<Props, State> {
     Promise.all(jobs).then(ovData => { markStale(false); if (this.state.overview && this.state.ovKind === kind) this.setState({ ovData }) }).catch(onChunkError)
   }
   summarizeLeague(lg: { id: LeagueId; name: string }, TEAMS: Dict | null, REAL: Dict, totalMd: number) {
-    if (!TEAMS) return { id: lg.id, name: lg.name, empty: true, clubs: [], leader: null, mw: 0, totalMd, played: 0, goals: 0, wSum: 0, dSum: 0, lSum: 0 }
+    if (!TEAMS) return { id: lg.id, name: lg.name, empty: true, clubs: [], leader: null, mw: 0, totalMd, played: 0, goals: 0, wSum: 0, dSum: 0, lSum: 0, nilNil: 0 }
     const rows: Dict = {}
     for (const code of Object.keys(TEAMS)) { const t = TEAMS[code]; rows[code] = { code, abbr: t.abbr || code, name: t.name || code, primary: t.primary || '#8A8F98', W: 0, D: 0, L: 0, GF: 0, GA: 0 } }
-    let matches = 0, goals = 0, mw = 0
+    let matches = 0, goals = 0, mw = 0, nilNil = 0
     for (const code of Object.keys(TEAMS)) for (const g of TEAMS[code].games) {
       if (g.ha !== 'H') continue
       const real = REAL[g.id]; if (!real) continue
       const hg = real.hg, ag = real.ag, H = rows[code], A = rows[g.opp]; if (!H || !A) continue
       matches++; goals += hg + ag; if (g.w > mw) mw = g.w
+      if (hg === 0 && ag === 0) nilNil++
       H.GF += hg; H.GA += ag; A.GF += ag; A.GA += hg
       if (hg > ag) { H.W++; A.L++ } else if (hg < ag) { H.L++; A.W++ } else { H.D++; A.D++ }
     }
@@ -334,7 +335,7 @@ export class SeasonTower extends React.Component<Props, State> {
     // drawn MATCHES — then wSum (one win per decisive match) + dSum === matches played.
     const dSum = clubs.reduce((a: number, c: any) => a + c.D, 0) / 2
     const lSum = clubs.reduce((a: number, c: any) => a + c.L, 0)
-    return { id: lg.id, name: lg.name, empty: matches === 0, clubs, leader: clubs[0], mw, totalMd, played: matches, goals, wSum, dSum, lSum }
+    return { id: lg.id, name: lg.name, empty: matches === 0, clubs, leader: clubs[0], mw, totalMd, played: matches, goals, wSum, dSum, lSum, nilNil }
   }
   activeTeams(): Dict | null { const s = this.state.seasons; return s ? s[this.state.season].TEAMS : null }
   activeReal(): Dict { const s = this.state.seasons; return s ? s[this.state.season].REAL : {} }
@@ -635,7 +636,8 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '11px' }}>
                     <span style={chip}>Goals <b style={{ color: '#15181d' }}>{lg.goals}</b></span>
                     <span style={chip}>Avg <b style={{ color: '#15181d' }}>{lg.played ? (lg.goals / lg.played).toFixed(2) : '—'}</b></span>
-                    <span style={chip}>W‑D <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.dSum}</b> {(() => { const t = lg.played; return t ? `(${Math.round(100 * lg.wSum / t)}%/${100 - Math.round(100 * lg.wSum / t)}%)` : '' })()}</span>
+                    <span style={chip}>W‑D <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.dSum}</b> {lg.played ? `Won ${Math.round(100 * lg.wSum / lg.played)}%` : ''}</span>
+                    <span style={chip}>0‑0 <b style={{ color: '#15181d' }}>{lg.nilNil}</b></span>
                   </div>
                   <div style={{ position: 'relative', flex: '1 1 0', minHeight: '120px', display: 'flex', alignItems: 'flex-end', gap: '2px', borderBottom: '1px solid #E7E9EC' }}>
                     {/* unified qualification-zone bands behind the bars — one continuous block per zone run (not per team) */}
