@@ -908,8 +908,8 @@ export class SeasonTower extends React.Component<Props, State> {
                             <span style={{ ...css(t.teamStyle), marginLeft: 'auto', textAlign: 'right' }}>{t.abbr}</span>
                           </div>
                           <div style={css(t.lblRowStyle)}>
-                            <span style={css(t.wdlStyle)}>{t.wdlStr}</span>
-                            <span style={{ ...css(t.gdStyle), marginLeft: 'auto', textAlign: 'right' }}><span style={{ opacity: .75 }}>GD </span>{t.gdStr}</span>
+                            <span style={{ ...css(t.wdlStyle), fontSize: '8px', fontWeight: 900, opacity: 1 }}>{t.wdlStr}</span>
+                            <span style={{ ...css(t.gdStyle), marginLeft: 'auto', textAlign: 'right', fontSize: '8px', fontWeight: 900, opacity: 1 }}><span style={{ opacity: .6, fontWeight: 800 }}>GD </span>{t.gdStr}</span>
                           </div>
                         </div>
                       </>
@@ -1300,7 +1300,7 @@ export class SeasonTower extends React.Component<Props, State> {
     const rowH = uefa
       ? Math.max(14, Math.min(50, (chartH - 6 - (nTeams - 1) * 2) / nTeams))   // 36 rows fit the height (2px inter-row gap accounted for)
       : Math.max(22, Math.min(50, (chartH - 40) / nTeams))                     // domestic — original taller rows
-    const rowLabelW = uefa ? 154 : 94   // UEFA one-line box: worst case measured at a full league phase is 2-digit rank + flag + FOUR-letter code (PAOK/FCSB) + 2-digit pts + W-D-L + signed GD = 141px. Domestic 2-row box: 15px rank strip + [2-digit pts + 3-letter code] over [2-digit W-D-L + signed GD], measured on a completed season
+    const rowLabelW = uefa ? 154 : 104   // UEFA one-line box: worst case measured at a full league phase is 2-digit rank + flag + FOUR-letter code (PAOK/FCSB) + 2-digit pts + W-D-L + signed GD = 141px. Domestic 2-row box: 15px rank strip + [2-digit pts + 3-letter code] over [2-digit W-D-L + signed GD], measured on a completed season
     // Landscape px-per-point — widen the boxes to use the horizontal space (win/loss = 3u, drawn-won
     // = 1u, drawn-lost = 2u stays intact). Sized so the widest WON side fills the room right of the box.
     const wonUnits = Math.max(24, ...list.map((e: any) => e.W * 3 + e.D))
