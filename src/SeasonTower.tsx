@@ -899,16 +899,18 @@ export class SeasonTower extends React.Component<Props, State> {
                         <span style={{ ...css(t.gdStyle), position: 'relative', zIndex: 1 }}>{t.gdStr}</span>
                       </>
                     ) : (
-                      /* DOMESTIC (original): 2 rows — [rank · team] / [W-D-L · pts] */
+                      /* DOMESTIC: rank strip | [pts · team] / [W-D-L · GD] */
                       <>
-                        <div style={css(t.lblRowStyle)}>
-                          <span style={css(t.rankStyle)}>{t.rank}</span>
-                          <span style={css(t.teamStyle)}>{t.abbr}</span>
-                        </div>
-                        <div style={css(t.lblRowStyle)}>
-                          <span style={css(t.wdlStyle)}>{t.wdlStr}</span>
-                          <span style={css(t.gdStyle)}>{t.gdStr}</span>
-                          <span style={css(t.ptsStyle)}>{t.ptsStr}</span>
+                        <div style={css(t.rankStripStyle)}><span style={css(t.rankNumStyle)}>{t.rank}</span></div>
+                        <div style={css(t.lblColStyle)}>
+                          <div style={css(t.lblRowStyle)}>
+                            <span style={css(t.ptsBigStyle)}>{t.ptsNum}<span style={{ opacity: .7, fontSize: '.6em', fontWeight: 800 }}>p</span></span>
+                            <span style={css(t.teamStyle)}>{t.abbr}</span>
+                          </div>
+                          <div style={css(t.lblRowStyle)}>
+                            <span style={css(t.wdlStyle)}>{t.wdlStr}</span>
+                            <span style={css(t.gdStyle)}>{t.gdStr}</span>
+                          </div>
                         </div>
                       </>
                     )}
@@ -1298,7 +1300,7 @@ export class SeasonTower extends React.Component<Props, State> {
     const rowH = uefa
       ? Math.max(14, Math.min(50, (chartH - 6 - (nTeams - 1) * 2) / nTeams))   // 36 rows fit the height (2px inter-row gap accounted for)
       : Math.max(22, Math.min(50, (chartH - 40) / nTeams))                     // domestic — original taller rows
-    const rowLabelW = uefa ? 154 : 80   // UEFA one-line box: worst case measured at a full league phase is 2-digit rank + flag + FOUR-letter code (PAOK/FCSB) + 2-digit pts + W-D-L + signed GD = 141px; domestic 2-row box (original)
+    const rowLabelW = uefa ? 154 : 94   // UEFA one-line box: worst case measured at a full league phase is 2-digit rank + flag + FOUR-letter code (PAOK/FCSB) + 2-digit pts + W-D-L + signed GD = 141px. Domestic 2-row box: 15px rank strip + [2-digit pts + 3-letter code] over [2-digit W-D-L + signed GD], measured on a completed season
     // Landscape px-per-point — widen the boxes to use the horizontal space (win/loss = 3u, drawn-won
     // = 1u, drawn-lost = 2u stays intact). Sized so the widest WON side fills the room right of the box.
     const wonUnits = Math.max(24, ...list.map((e: any) => e.W * 3 + e.D))
@@ -1415,10 +1417,16 @@ export class SeasonTower extends React.Component<Props, State> {
       // GD sits between W-D-L and points — smaller and dimmer so it reads as the secondary figure
       const gdStyle = `font-size:${narrowLbl ? 6 : 7}px;font-weight:700;color:${ink};opacity:.6;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;`
       const lblRowStyle = `position:relative;z-index:1;display:flex;flex-direction:row;align-items:baseline;justify-content:space-between;width:100%;gap:3px;overflow:hidden;`
+      // Domestic rows box: rank lives in a slim full-height strip on the left (mirroring the zone bar on
+      // the right), which frees the headline slot for POINTS — the number you actually read off a table.
+      const rankStripStyle = `position:relative;z-index:1;flex:0 0 15px;align-self:stretch;margin:-2px 4px -2px -5px;display:flex;align-items:center;justify-content:center;background:${this.mix(prim, '#000000', 0.30)};border-radius:3px 0 0 3px;`
+      const rankNumStyle = `font-size:10px;font-weight:900;color:${ink};opacity:.92;line-height:1;font-variant-numeric:tabular-nums;`
+      const lblColStyle = `position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;gap:2px;flex:1 1 auto;min-width:0;`
+      const ptsBigStyle = `font-size:14px;font-weight:900;color:${ink};line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;`
       const crest = logoFile(S.league, t.abbr)
       const flag = uefa ? (CC_FLAG[t.cc] || '') : ''
       const flagStyle = `font-size:${narrowLbl ? 9 : 10}px;line-height:1;flex:0 0 auto;`
-      const base: Dict = { abbr: t.abbr, rank, flag, flagStyle, wdlStr, ptsStr, gdStr, labelTitle, crest, onLabel: () => this.openTeam(t.abbr), rankStyle, teamStyle, wdlStyle, ptsStyle, gdStyle, lblRowStyle }
+      const base: Dict = { abbr: t.abbr, rank, flag, flagStyle, wdlStr, ptsStr, ptsNum: String(e.Pts), gdStr, labelTitle, crest, onLabel: () => this.openTeam(t.abbr), rankStyle, teamStyle, wdlStyle, ptsStyle, gdStyle, lblRowStyle, rankStripStyle, rankNumStyle, lblColStyle, ptsBigStyle }
 
       if (layout === 'rows') {
         // LANDSCAPE: team box in the middle. RIGHT of it = points won (wins 3u nearest the box →
@@ -1437,7 +1445,7 @@ export class SeasonTower extends React.Component<Props, State> {
         // UEFA: one row (fits 36 teams tightly); domestic: two rows (original)
         const labelStyle = uefa
           ? `position:sticky;left:2px;right:2px;z-index:5;flex:0 0 ${rowLabelW}px;height:${rowH}px;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:4px;padding:0 5px;overflow:hidden;background:${prim};border:1px solid ${this.mix(prim, '#000000', 0.22)};border-right:3px solid ${zoneBar};border-radius:4px;box-shadow:0 0 6px rgba(20,22,28,.18);cursor:pointer;`
-          : `position:sticky;left:2px;right:2px;z-index:5;flex:0 0 ${rowLabelW}px;height:${rowH}px;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:2px;padding:2px 5px;overflow:hidden;background:${prim};border:1px solid ${this.mix(prim, '#000000', 0.22)};border-right:3px solid ${zoneBar};border-radius:4px;box-shadow:0 0 6px rgba(20,22,28,.18);cursor:pointer;`
+          : `position:sticky;left:2px;right:2px;z-index:5;flex:0 0 ${rowLabelW}px;height:${rowH}px;display:flex;flex-direction:row;align-items:stretch;justify-content:flex-start;gap:0;padding:2px 5px;overflow:hidden;background:${prim};border:1px solid ${this.mix(prim, '#000000', 0.22)};border-right:3px solid ${zoneBar};border-radius:4px;box-shadow:0 0 6px rgba(20,22,28,.18);cursor:pointer;`
         return { ...base, won, dropped, rowStyle, droppedStyle, wonStyle, labelStyle }
       }
 
