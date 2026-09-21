@@ -904,12 +904,12 @@ export class SeasonTower extends React.Component<Props, State> {
                         <div style={css(t.rankStripStyle)}><span style={css(t.rankNumStyle)}>{t.rank}</span></div>
                         <div style={css(t.lblColStyle)}>
                           <div style={css(t.lblRowStyle)}>
-                            <span style={css(t.ptsBigStyle)}>{t.ptsNum}<span style={{ opacity: .7, fontSize: '.6em', fontWeight: 800 }}>p</span></span>
-                            <span style={css(t.teamStyle)}>{t.abbr}</span>
+                            <span style={css(t.ptsBigStyle)}>{t.ptsNum}</span>
+                            <span style={{ ...css(t.teamStyle), marginLeft: 'auto', textAlign: 'right' }}>{t.abbr}</span>
                           </div>
                           <div style={css(t.lblRowStyle)}>
                             <span style={css(t.wdlStyle)}>{t.wdlStr}</span>
-                            <span style={css(t.gdStyle)}>{t.gdStr}</span>
+                            <span style={{ ...css(t.gdStyle), marginLeft: 'auto', textAlign: 'right' }}><span style={{ opacity: .75 }}>GD </span>{t.gdStr}</span>
                           </div>
                         </div>
                       </>
