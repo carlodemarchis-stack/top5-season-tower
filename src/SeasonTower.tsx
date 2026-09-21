@@ -636,8 +636,8 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '11px' }}>
                     <span style={chip}>Goals <b style={{ color: '#15181d' }}>{lg.goals}</b></span>
                     <span style={chip}>Avg <b style={{ color: '#15181d' }}>{lg.played ? (lg.goals / lg.played).toFixed(2) : '—'}</b></span>
-                    <span style={chip}>W‑D <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.dSum}</b> {lg.played ? `Won ${Math.round(100 * lg.wSum / lg.played)}%` : ''}</span>
-                    <span style={chip}>0‑0 <b style={{ color: '#15181d' }}>{lg.nilNil}</b></span>
+                    <span style={chip}>W‑D <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.dSum}</b> {lg.played ? `W ${Math.round(100 * lg.wSum / lg.played)}%` : ''}</span>
+                    <span style={chip}><b style={{ color: '#15181d' }}>{lg.nilNil}</b> (0‑0)</span>
                   </div>
                   <div style={{ position: 'relative', flex: '1 1 0', minHeight: '120px', display: 'flex', alignItems: 'flex-end', gap: '2px', borderBottom: '1px solid #E7E9EC' }}>
                     {/* unified qualification-zone bands behind the bars — one continuous block per zone run (not per team) */}
