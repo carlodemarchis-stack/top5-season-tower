@@ -85,9 +85,10 @@ const OTHER_APPS: { name: string; kicker: string; url: string; acc: string }[] =
   { name: 'Formula 1', kicker: 'A season read lap by lap', url: 'https://f1.aguywithascarf.com/', acc: '#00d7b6' },
   { name: 'Tennis', kicker: 'The season, one player at a time', url: 'https://tennis.aguywithascarf.com/', acc: '#f2c14e' },
   { name: 'NFL', kicker: 'Wins up, losses down', url: 'https://nfl.aguywithascarf.com/', acc: '#4d94e0' },
+  { name: 'NBA', kicker: 'Season film and towers', url: 'https://nba.aguywithascarf.com/', acc: '#e0453f' },
   { name: 'World Cup', kicker: 'Road to the Final', url: 'https://worldcupbracket.aguywithascarf.com/', acc: '#3fbe72' },
   { name: 'PGA TOUR', kicker: 'Season Film', url: 'https://golf.aguywithascarf.com/', acc: '#57a34a' },
-  { name: 'Athletics', kicker: 'World Record Film', url: 'https://athletics.aguywithascarf.com/', acc: '#d98a3d' },
+  { name: 'Athletics', kicker: 'World Record Film', url: 'https://athletics.aguywithascarf.com/', acc: '#d98a3d' }
 ]
 // UEFA clubs carry a 3-letter country code (`cc` in the schedule); map it to a flag for the team box.
 // ENG/SCO are subdivision tag sequences, not regional-indicator pairs.
