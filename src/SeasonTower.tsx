@@ -1126,6 +1126,7 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div>Switch <b>league &amp; season</b> with the dropdowns, flip <b>vertical towers / landscape rows</b> with ⊤ / ⊢, and go <b>fullscreen</b> with ⛶.</div>
                   <div><b>Keyboard:</b> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>←</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>→</kbd> change league, <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>↑</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>↓</kbd> step the matchday.</div>
                   <div><b>Click a match</b> for the scoreline &amp; details, or a <b>team's label</b> for its full record.</div>
+                  <p className="agwas-rel"><a href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener">Release notes</a> <a className="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>
                 </div>
               </div>
             </div>
@@ -1184,6 +1185,7 @@ export class SeasonTower extends React.Component<Props, State> {
             <a href="https://www.linkedin.com/in/carlodemarchis" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>Carlo De Marchis</a>
             {' · '}
             <button onClick={() => this.setState({ creditsOpen: true })} style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', color: '#9298a1', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: '2px', cursor: 'pointer' }}>Credits</button>
+            <a className="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a>
           </div>
         </div>
       </div>
