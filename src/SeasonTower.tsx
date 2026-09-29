@@ -598,47 +598,70 @@ export class SeasonTower extends React.Component<Props, State> {
   }
 
   // points board — one comparable column per competition (5 domestic leagues, or the 3 UEFA cups).
+  // The domestic team box body — rank strip | [pts · code] / [W-D-L · GD]. One definition shared by the
+  // rows view and the barcode, so a change to the box lands in both.
+  domBoxBody(t: any) {
+    return (
+      <>
+        <div style={css(t.rankStripStyle)}><span style={css(t.rankNumStyle)}>{t.rank}</span></div>
+        <div style={css(t.lblColStyle)}>
+          <div style={css(t.lblRowStyle)}>
+            <span style={css(t.ptsBigStyle)}>{t.ptsNum}</span>
+            <span style={{ ...css(t.teamStyle), marginLeft: 'auto', textAlign: 'right' }}>{t.abbr}</span>
+          </div>
+          <div style={css(t.lblRowStyle)}>
+            <span style={{ ...css(t.wdlStyle), fontSize: '8px', fontWeight: 900, opacity: 1 }}>{t.wdlStr}</span>
+            <span style={{ ...css(t.gdStyle), marginLeft: 'auto', textAlign: 'right', fontSize: '8px', fontWeight: 900, opacity: 1 }}><span style={{ opacity: .6, fontWeight: 800 }}>GD </span>{t.gdStr}</span>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   // ---- the season barcode --------------------------------------------------
-  // Every club's season as a strip of cells, one per matchday, rows in standings order. Cell colours use
-  // the same W / D / L palette as the team modal's rank chart. Rows carry data-team so the FLIP pass in
+  // Every club's season as a strip of cells, one per matchday, rows in standings order, each cell carrying
+  // the opponent's code. The team box is the rows view's own — same size and spacing, so toggling
+  // rows ↔ barcode only slides the block down past the legend — and stays pinned left when the strip scrolls sideways. Cell colours use the
+  // same W / D / L palette as the team modal's rank chart. Rows carry data-team so the FLIP pass in
   // componentDidUpdate slides them into their new place as the matchday scrubber moves.
-  renderBarcode(v: Dict) {
-    const N = v.bcN as number, tw = v.throughWeek as number
+  renderBarcode(v: Dict, crestWatermark: React.CSSProperties) {
+    const N = v.bcN as number, tw = v.throughWeek as number, boxW = v.rowLabelW as number
     const RES: Dict = { W: '#1f8a4c', D: '#EAB308', L: '#d0454a', P: '#E7E9ED', none: 'transparent' }
+    const INK: Dict = { W: '#ffffff', D: '#3d3000', L: '#ffffff', P: '#8b909a', none: 'transparent' }
+    const CELL_MIN = 26   // three letters at 9px/800 need ~21px
     const ticks = Array.from(new Set([1, 5, 10, 15, 20, 25, 30, 35, N].concat(tw > 0 && tw < N ? [tw] : []).filter(n => n <= N))).sort((a, b) => a - b)
     const dim = '#8b909a'
-    const rowBase: React.CSSProperties = { display: 'grid', gridTemplateColumns: '20px 4px 18px 36px minmax(0,1fr) 26px 50px 30px', alignItems: 'center', columnGap: '6px', fontVariantNumeric: 'tabular-nums' }
+    const byAbbr: Dict = {}; for (const t of v.teamsSorted) byAbbr[t.abbr] = t
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', height: '100%', minHeight: `${v.bcRows.length * 15 + 56}px`, minWidth: '640px' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', fontSize: '11px', color: '#5c616b', padding: '0 0 6px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: `${v.rowGap}px`, minWidth: `${boxW + 8 + N * (CELL_MIN + 2)}px` }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', fontSize: '11px', color: '#5c616b', padding: '0 0 4px' }}>
           {[['W', 'Win'], ['D', 'Draw'], ['L', 'Loss'], ['P', 'To play']].map(([k, l]) => (
             <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><i style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '2px', background: RES[k] }} />{l}</span>
           ))}
-          <span style={{ color: dim }}>One cell per matchday · rows in standings order · click a cell for the match</span>
+          <span style={{ color: dim }}>One cell per matchday, labelled with the opponent · rows in standings order · click a cell for the match</span>
         </div>
-        <div style={{ ...rowBase, flex: '0 0 auto', fontSize: '9px', letterSpacing: '.08em', textTransform: 'uppercase', color: dim }}>
-          <span /><span /><span /><span />
-          <span style={{ position: 'relative', height: '11px' }}>
-            {ticks.map(n => <span key={n} style={{ position: 'absolute', left: `${((n - .5) / N * 100).toFixed(2)}%`, transform: 'translateX(-50%)', letterSpacing: 0, fontWeight: n === tw ? 900 : 600, color: n === tw ? '#15181d' : dim }}>{n}</span>)}
+        <div style={{ display: 'flex', gap: '8px', fontSize: '9px', color: dim }}>
+          <span style={{ flex: `0 0 ${boxW}px` }} />
+          <span style={{ position: 'relative', flex: '1 1 0', height: '11px' }}>
+            {ticks.map(n => <span key={n} style={{ position: 'absolute', left: `${((n - .5) / N * 100).toFixed(2)}%`, transform: 'translateX(-50%)', fontWeight: n === tw ? 900 : 600, color: n === tw ? '#15181d' : dim, fontVariantNumeric: 'tabular-nums' }}>{n}</span>)}
           </span>
-          <span style={{ textAlign: 'right' }}>Pts</span><span style={{ textAlign: 'right' }}>W-D-L</span><span style={{ textAlign: 'right' }}>GD</span>
         </div>
-        {v.bcRows.map((r: any) => (
-          <div key={r.abbr} data-team={r.abbr} style={{ ...rowBase, flex: '1 1 0', minHeight: '13px', fontSize: '11px' }}>
-            <span style={{ textAlign: 'right', color: dim }}>{r.rank}</span>
-            <span style={{ alignSelf: 'stretch', background: r.zone, borderRadius: '2px' }} />
-            <img src={`logos/${r.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden' }} style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
-            <span onClick={r.onLabel} title={r.name} style={{ fontWeight: 800, color: '#15181d', cursor: 'pointer' }}>{r.abbr}</span>
-            <span style={{ display: 'flex', gap: '2px', alignSelf: 'stretch', alignItems: 'center' }}>
-              {r.cells.map((c: any) => (
-                <i key={c.key} className="bc-cell" title={c.title} onClick={c.onClick} style={{ flex: '1 1 0', minWidth: 0, height: '100%', maxHeight: '22px', minHeight: '9px', borderRadius: '2px', background: RES[c.cls], cursor: c.onClick ? 'pointer' : 'default' }} />
-              ))}
-            </span>
-            <span style={{ textAlign: 'right', fontWeight: 800, color: '#15181d' }}>{r.played ? r.Pts : ''}</span>
-            <span style={{ textAlign: 'right', color: '#5c616b' }}>{r.played ? r.wdl : ''}</span>
-            <span style={{ textAlign: 'right', color: '#5c616b' }}>{r.played ? r.gd : ''}</span>
-          </div>
-        ))}
+        {v.bcRows.map((r: any) => {
+          const t = byAbbr[r.abbr]; if (!t) return null
+          return (
+            <div key={r.abbr} data-team={r.abbr} style={{ display: 'flex', alignItems: 'stretch', gap: '8px', height: `${v.rowH}px` }}>
+              <div style={css(t.labelStyle)} onClick={t.onLabel} title={t.labelTitle}>
+                <img src={`logos/${t.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={crestWatermark} />
+                {this.domBoxBody(t)}
+              </div>
+              <span style={{ display: 'flex', gap: '2px', flex: '1 1 0', minWidth: 0 }}>
+                {r.cells.map((c: any) => (
+                  <i key={c.key} className="bc-cell" title={c.title} onClick={c.onClick} style={{ flex: '1 1 0', minWidth: `${CELL_MIN}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '2px', background: RES[c.cls], color: INK[c.cls], fontStyle: 'normal', fontSize: '9px', fontWeight: 800, letterSpacing: '.1px', lineHeight: 1, overflow: 'hidden', whiteSpace: 'nowrap', cursor: c.onClick ? 'pointer' : 'default' }}>{c.opp}</i>
+                ))}
+              </span>
+            </div>
+          )
+        })}
       </div>
     )
   }
@@ -928,7 +951,7 @@ export class SeasonTower extends React.Component<Props, State> {
 
         {/* ---------- chart ---------- */}
         <div ref={this.chartRef} style={{ position: 'relative', flex: '1 1 0', minHeight: 0, overflow: 'auto', padding: '6px 8px 14px' }}>
-          {v.overview ? this.renderOverview(v) : v.barcode ? this.renderBarcode(v) : v.layout === 'rows' ? (
+          {v.overview ? this.renderOverview(v) : v.barcode ? this.renderBarcode(v, crestWatermark) : v.layout === 'rows' ? (
             <div style={css(v.rowsWrapStyle)}>
               {/* qualification bands — light zone backdrop BEHIND the rank rows (matches the towers view) */}
               {(v.zoneBands || []).map((b: any, i: number) => (
@@ -951,19 +974,7 @@ export class SeasonTower extends React.Component<Props, State> {
                       </>
                     ) : (
                       /* DOMESTIC: rank strip | [pts · team] / [W-D-L · GD] */
-                      <>
-                        <div style={css(t.rankStripStyle)}><span style={css(t.rankNumStyle)}>{t.rank}</span></div>
-                        <div style={css(t.lblColStyle)}>
-                          <div style={css(t.lblRowStyle)}>
-                            <span style={css(t.ptsBigStyle)}>{t.ptsNum}</span>
-                            <span style={{ ...css(t.teamStyle), marginLeft: 'auto', textAlign: 'right' }}>{t.abbr}</span>
-                          </div>
-                          <div style={css(t.lblRowStyle)}>
-                            <span style={{ ...css(t.wdlStyle), fontSize: '8px', fontWeight: 900, opacity: 1 }}>{t.wdlStr}</span>
-                            <span style={{ ...css(t.gdStyle), marginLeft: 'auto', textAlign: 'right', fontSize: '8px', fontWeight: 900, opacity: 1 }}><span style={{ opacity: .6, fontWeight: 800 }}>GD </span>{t.gdStr}</span>
-                          </div>
-                        </div>
-                      </>
+                      this.domBoxBody(t)
                     )}
                   </div>
                   <div style={css(t.wonStyle)}>{t.won.map((c: any) => <Cell key={c.key} c={c} />)}</div>
@@ -1340,23 +1351,20 @@ export class SeasonTower extends React.Component<Props, State> {
     // matchday rather than kick-off date on purpose — the schedule's kick-off times are placeholders
     // for matchdays not yet confirmed, but the matchday a fixture belongs to never moves.
     const bcN = barcode ? this.maxW() : 0
-    const bcRows = !barcode ? [] : list.map((e, i) => {
+    const bcRows = !barcode ? [] : list.map(e => {
       const byW: Dict = {}; for (const g of e.t.games) byW[g.w] = g
-      const zf = zoneFor(S.league, Object.keys(T).length)
       const cells = []
       for (let w = 1; w <= bcN; w++) {
         const g = byW[w]; if (!g) { cells.push({ key: e.code + '-w' + w, cls: 'none', title: `MD${w}` }); continue }
         const r = this.getRes(e.code, g.id)
         const opp = g.opp, where = g.ha === 'H' ? 'v' : '@'
         cells.push({
-          key: e.code + '-' + g.id, cls: r ? r.res : 'P',
+          key: e.code + '-' + g.id, cls: r ? r.res : 'P', opp,
           title: r ? `MD${w} · ${e.code} ${where} ${opp} · ${r.gf}-${r.ga}` : `MD${w} · ${e.code} ${where} ${opp} · to play`,
           onClick: () => this.openPop(e.code, g.id),
         })
       }
-      return { abbr: e.code, rank: i + 1, zone: zonesOn ? zf(i + 1).color : (e.t.primary || '#8A8F98'), crest: logoFile(S.league, e.code),
-               name: e.t.name || e.code, Pts: e.Pts, wdl: `${e.W}-${e.D}-${e.L}`, gd: e.GD > 0 ? `+${e.GD}` : String(e.GD),
-               played: e.played, cells, onLabel: () => this.openTeam(e.code) }
+      return { abbr: e.code, cells }
     })
 
     // Fixed cell sizes — the tower no longer squeezes to fit; it grows as tall as the games
@@ -1653,7 +1661,7 @@ export class SeasonTower extends React.Component<Props, State> {
 
     return {
       ...base, loading: false, orient, teamsSorted, layout, uefa, zoneBands, colW, colGap: uefa ? 1 : 2, rowH, rowGap: 2,
-      barcode, bcN, bcRows, viewMode: barcode ? 'barcode' : layout,
+      barcode, bcN, bcRows, viewMode: barcode ? 'barcode' : layout, rowLabelW,
       colsWrapStyle: `position:relative;display:flex;flex-direction:row;gap:${uefa ? 1 : 2}px;align-items:flex-end;min-width:100%;min-height:100%;`,
       rowsWrapStyle: `position:relative;display:flex;flex-direction:column;gap:2px;width:max-content;min-width:100%;padding-right:${chartW}px;`,
       playedStr: `${decided} / ${mx * Math.floor(list.length / 2)}`, leaderAbbr: leader.code, leaderPts: leader.Pts,
