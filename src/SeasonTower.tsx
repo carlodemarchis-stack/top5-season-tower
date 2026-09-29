@@ -51,7 +51,7 @@ interface State {
   playing: boolean
   groupBy: 'table' | 'zones'
   rankBy: 'points' | 'gd'
-  layout: 'towers' | 'rows'   // vertical towers (portrait) vs horizontal rows (landscape)
+  layout: 'towers' | 'rows' | 'barcode'   // vertical towers (portrait) vs horizontal rows (landscape) vs the season barcode
   helpOpen: boolean
   creditsOpen: boolean
   moreOpen: boolean          // "+" — the other AGWAS sport experiences
@@ -108,7 +108,7 @@ const isUefa = (id: LeagueId) => LEAGUES.some(l => l.id === id && l.uefa)
 // clashes with the domestic sets (e.g. AJA = Auxerre in Ligue 1 but Ajax in the Champions League).
 const logoFile = (league: LeagueId, code: string) => isUefa(league) ? `${league}_${code}` : (league === 'FRA' && code === 'BRE' ? 'FRA_BRE' : code)
 // URL state (#league/season/week/layout) so a reload restores exactly where the user was.
-function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; layout?: 'towers' | 'rows'; overview?: boolean } {
+function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; layout?: 'towers' | 'rows' | 'barcode'; overview?: boolean } {
   const h = (typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '')
   if (!h) return {}
   const [lg, se, wk, ly] = h.split('/')
@@ -118,7 +118,7 @@ function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; lay
   if (LEAGUES.some(l => l.id === lg)) out.league = lg
   if (SEASONS.some(s => s.id === se)) out.season = se
   if (wk != null && /^\d+$/.test(wk)) out.week = parseInt(wk, 10)
-  if (ly === 'towers' || ly === 'rows') out.layout = ly
+  if (ly === 'towers' || ly === 'rows' || ly === 'barcode') out.layout = ly
   return out
 }
 
@@ -380,7 +380,7 @@ export class SeasonTower extends React.Component<Props, State> {
     this.updateSocialMeta() }
   // begin a scroll-pin window (towers → bottom / rows → labels flush-left); resets any pending release
   startPin() { this._pinBottom = true; if (this._pinTimer != null) { clearTimeout(this._pinTimer); this._pinTimer = null } }
-  setLayout(l: 'towers' | 'rows') { if (l === this.state.layout) return; this.startPin(); this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
+  setLayout(l: 'towers' | 'rows' | 'barcode') { if (l === this.state.layout) return; this.startPin(); this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
   pickSeason(id: SeasonId) {
     if (id === this.state.season) { this.setState({ seasonOpen: false }); return }
     if (this._timer) { clearInterval(this._timer); this._timer = null }
@@ -507,7 +507,8 @@ export class SeasonTower extends React.Component<Props, State> {
         // rows → team column flush-left (losses hidden off to the left, wins fill to the right).
         // towers → team labels anchored at the BOTTOM with the wins tower rising above, the losses block
         // (height = _droppedW = belowH in towers mode) scrolled off below the fold. Mirrors the rows framing.
-        if (this.state.layout === 'rows') { if (c.querySelector('[data-team]')) { c.scrollLeft = this._droppedW; pinned = true } }
+        if (this.state.layout === 'barcode' && !isUefa(this.state.league)) { if (c.querySelector('[data-team]')) { c.scrollTop = 0; c.scrollLeft = 0; pinned = true } }
+        else if (this.state.layout === 'rows') { if (c.querySelector('[data-team]')) { c.scrollLeft = this._droppedW; pinned = true } }
         else if (c.scrollHeight > c.clientHeight + 20) { c.scrollTop = Math.max(0, c.scrollHeight - this._droppedW - c.clientHeight); pinned = true }
         if (pinned && this._pinTimer == null) this._pinTimer = window.setTimeout(() => { this._pinBottom = false; this._pinTimer = null }, 500)
       }
@@ -597,6 +598,51 @@ export class SeasonTower extends React.Component<Props, State> {
   }
 
   // points board — one comparable column per competition (5 domestic leagues, or the 3 UEFA cups).
+  // ---- the season barcode --------------------------------------------------
+  // Every club's season as a strip of cells, one per matchday, rows in standings order. Cell colours use
+  // the same W / D / L palette as the team modal's rank chart. Rows carry data-team so the FLIP pass in
+  // componentDidUpdate slides them into their new place as the matchday scrubber moves.
+  renderBarcode(v: Dict) {
+    const N = v.bcN as number, tw = v.throughWeek as number
+    const RES: Dict = { W: '#1f8a4c', D: '#EAB308', L: '#d0454a', P: '#E7E9ED', none: 'transparent' }
+    const ticks = Array.from(new Set([1, 5, 10, 15, 20, 25, 30, 35, N].concat(tw > 0 && tw < N ? [tw] : []).filter(n => n <= N))).sort((a, b) => a - b)
+    const dim = '#8b909a'
+    const rowBase: React.CSSProperties = { display: 'grid', gridTemplateColumns: '20px 4px 18px 36px minmax(0,1fr) 26px 50px 30px', alignItems: 'center', columnGap: '6px', fontVariantNumeric: 'tabular-nums' }
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', height: '100%', minHeight: `${v.bcRows.length * 15 + 56}px`, minWidth: '640px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', fontSize: '11px', color: '#5c616b', padding: '0 0 6px' }}>
+          {[['W', 'Win'], ['D', 'Draw'], ['L', 'Loss'], ['P', 'To play']].map(([k, l]) => (
+            <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><i style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '2px', background: RES[k] }} />{l}</span>
+          ))}
+          <span style={{ color: dim }}>One cell per matchday · rows in standings order · click a cell for the match</span>
+        </div>
+        <div style={{ ...rowBase, flex: '0 0 auto', fontSize: '9px', letterSpacing: '.08em', textTransform: 'uppercase', color: dim }}>
+          <span /><span /><span /><span />
+          <span style={{ position: 'relative', height: '11px' }}>
+            {ticks.map(n => <span key={n} style={{ position: 'absolute', left: `${((n - .5) / N * 100).toFixed(2)}%`, transform: 'translateX(-50%)', letterSpacing: 0, fontWeight: n === tw ? 900 : 600, color: n === tw ? '#15181d' : dim }}>{n}</span>)}
+          </span>
+          <span style={{ textAlign: 'right' }}>Pts</span><span style={{ textAlign: 'right' }}>W-D-L</span><span style={{ textAlign: 'right' }}>GD</span>
+        </div>
+        {v.bcRows.map((r: any) => (
+          <div key={r.abbr} data-team={r.abbr} style={{ ...rowBase, flex: '1 1 0', minHeight: '13px', fontSize: '11px' }}>
+            <span style={{ textAlign: 'right', color: dim }}>{r.rank}</span>
+            <span style={{ alignSelf: 'stretch', background: r.zone, borderRadius: '2px' }} />
+            <img src={`logos/${r.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden' }} style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
+            <span onClick={r.onLabel} title={r.name} style={{ fontWeight: 800, color: '#15181d', cursor: 'pointer' }}>{r.abbr}</span>
+            <span style={{ display: 'flex', gap: '2px', alignSelf: 'stretch', alignItems: 'center' }}>
+              {r.cells.map((c: any) => (
+                <i key={c.key} className="bc-cell" title={c.title} onClick={c.onClick} style={{ flex: '1 1 0', minWidth: 0, height: '100%', maxHeight: '22px', minHeight: '9px', borderRadius: '2px', background: RES[c.cls], cursor: c.onClick ? 'pointer' : 'default' }} />
+              ))}
+            </span>
+            <span style={{ textAlign: 'right', fontWeight: 800, color: '#15181d' }}>{r.played ? r.Pts : ''}</span>
+            <span style={{ textAlign: 'right', color: '#5c616b' }}>{r.played ? r.wdl : ''}</span>
+            <span style={{ textAlign: 'right', color: '#5c616b' }}>{r.played ? r.gd : ''}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   renderOverview(v: Dict) {
     const data: any[] = v.ovData
     const uefa = v.ovKind === 'uefa'
@@ -863,10 +909,11 @@ export class SeasonTower extends React.Component<Props, State> {
           <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, fontSize: '17px', fontWeight: 800 }}>?</button>
           <button onClick={() => this.toggleFullscreen()} title="Fullscreen" aria-label="Fullscreen" style={iconBtn}>⛶</button>
 
-          {/* layout toggle: vertical towers ↔ landscape rows */}
+          {/* layout toggle: vertical towers ↔ landscape rows ↔ season barcode (domestic only) */}
           {!v.overview && <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
-            <button onClick={() => this.setLayout('towers')} title="Vertical towers" style={{ padding: '6px 10px', border: 'none', background: v.layout === 'towers' ? '#15181d' : '#fff', color: v.layout === 'towers' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊤</button>
-            <button onClick={() => this.setLayout('rows')} title="Landscape rows" style={{ padding: '6px 10px', border: 'none', background: v.layout === 'rows' ? '#15181d' : '#fff', color: v.layout === 'rows' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊢</button>
+            <button onClick={() => this.setLayout('towers')} title="Vertical towers" style={{ padding: '6px 10px', border: 'none', background: (v.viewMode || v.layout) === 'towers' ? '#15181d' : '#fff', color: (v.viewMode || v.layout) === 'towers' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊤</button>
+            <button onClick={() => this.setLayout('rows')} title="Landscape rows" style={{ padding: '6px 10px', border: 'none', background: (v.viewMode || v.layout) === 'rows' ? '#15181d' : '#fff', color: (v.viewMode || v.layout) === 'rows' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊢</button>
+            {!isUefa(this.state.league) && <button onClick={() => this.setLayout('barcode')} title="Season barcode — every game, W / D / L" style={{ padding: '6px 10px', border: 'none', background: v.viewMode === 'barcode' ? '#15181d' : '#fff', color: v.viewMode === 'barcode' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>▥</button>}
           </div>}
 
           {/* match count */}
@@ -881,7 +928,7 @@ export class SeasonTower extends React.Component<Props, State> {
 
         {/* ---------- chart ---------- */}
         <div ref={this.chartRef} style={{ position: 'relative', flex: '1 1 0', minHeight: 0, overflow: 'auto', padding: '6px 8px 14px' }}>
-          {v.overview ? this.renderOverview(v) : v.layout === 'rows' ? (
+          {v.overview ? this.renderOverview(v) : v.barcode ? this.renderBarcode(v) : v.layout === 'rows' ? (
             <div style={css(v.rowsWrapStyle)}>
               {/* qualification bands — light zone backdrop BEHIND the rank rows (matches the towers view) */}
               {(v.zoneBands || []).map((b: any, i: number) => (
@@ -1125,6 +1172,7 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div>A <b>draw is deliberately shown twice</b> — once above the baseline and once below. It's the honest picture of a tie: <b>+1 point earned</b> (better than a loss), but also <b>2 points dropped</b> versus the win it could have been. Showing both sides is the whole idea — the tower isn't just where you stand, it's <b>the points you gathered and the points you let slip</b>. That's why the negatives are drawn at all: a team can sit on the same total from very different seasons, and only the down‑side reveals how many wins turned into draws or losses along the way.</div>
                   <div>Drag the <b>matchday slider</b> (or <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>‹</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>›</kbd>) to move through the season — it stops at the <b>last played matchday</b>.</div>
                   <div>Switch <b>league &amp; season</b> with the dropdowns, flip <b>vertical towers / landscape rows</b> with ⊤ / ⊢, and go <b>fullscreen</b> with ⛶.</div>
+                  <div><b>▥ Season barcode</b> (the five leagues): every club's season as a strip of cells, one per matchday — <b style={{ color: '#1f8a4c' }}>win</b>, <b style={{ color: '#b58a06' }}>draw</b>, <b style={{ color: '#d0454a' }}>loss</b>, grey still to play — rows in standings order. Columns line up, so a postponed game shows as a hole. Click a cell for the match.</div>
                   <div><b>Keyboard:</b> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>←</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>→</kbd> change league, <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>↑</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>↓</kbd> step the matchday.</div>
                   <div><b>Click a match</b> for the scoreline &amp; details, or a <b>team's label</b> for its full record.</div>
                   <p className="agwas-rel"><a href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener">Release notes</a> <a className="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>
@@ -1203,7 +1251,10 @@ export class SeasonTower extends React.Component<Props, State> {
     const orientProp = this.props.orientation || 'auto'
     const showScore = this.props.scoreLabels !== false
     const zonesOn = S.groupBy === 'zones'
-    const layout = S.layout
+    // The barcode is domestic-only (a UEFA league phase is 8 games — nothing to read in a strip); on a
+    // UEFA comp it falls back to rows. Geometry below is computed as for rows either way.
+    const barcode = S.layout === 'barcode' && !isUefa(S.league)
+    const layout = S.layout === 'barcode' ? 'rows' : S.layout
     const tw = S.throughWeek == null ? 0 : S.throughWeek
     const orient = orientProp === 'towers' ? 'v' : orientProp === 'rows' ? 'h' : ((S.cw || 1280) < 820 ? 'h' : 'v')
 
@@ -1282,6 +1333,31 @@ export class SeasonTower extends React.Component<Props, State> {
         i = j
       }
     }
+
+    // SEASON BARCODE — one row per club in standings order, one cell per MATCHDAY. Every club plays
+    // exactly once per matchday in all five leagues, so column N is matchday N for everyone: the grid
+    // reads down a column as well as along a row, and a postponed game is a visible hole. Ordered by
+    // matchday rather than kick-off date on purpose — the schedule's kick-off times are placeholders
+    // for matchdays not yet confirmed, but the matchday a fixture belongs to never moves.
+    const bcN = barcode ? this.maxW() : 0
+    const bcRows = !barcode ? [] : list.map((e, i) => {
+      const byW: Dict = {}; for (const g of e.t.games) byW[g.w] = g
+      const zf = zoneFor(S.league, Object.keys(T).length)
+      const cells = []
+      for (let w = 1; w <= bcN; w++) {
+        const g = byW[w]; if (!g) { cells.push({ key: e.code + '-w' + w, cls: 'none', title: `MD${w}` }); continue }
+        const r = this.getRes(e.code, g.id)
+        const opp = g.opp, where = g.ha === 'H' ? 'v' : '@'
+        cells.push({
+          key: e.code + '-' + g.id, cls: r ? r.res : 'P',
+          title: r ? `MD${w} · ${e.code} ${where} ${opp} · ${r.gf}-${r.ga}` : `MD${w} · ${e.code} ${where} ${opp} · to play`,
+          onClick: () => this.openPop(e.code, g.id),
+        })
+      }
+      return { abbr: e.code, rank: i + 1, zone: zonesOn ? zf(i + 1).color : (e.t.primary || '#8A8F98'), crest: logoFile(S.league, e.code),
+               name: e.t.name || e.code, Pts: e.Pts, wdl: `${e.W}-${e.D}-${e.L}`, gd: e.GD > 0 ? `+${e.GD}` : String(e.GD),
+               played: e.played, cells, onLabel: () => this.openTeam(e.code) }
+    })
 
     // Fixed cell sizes — the tower no longer squeezes to fit; it grows as tall as the games
     // need and the canvas scrolls. Win and loss are 3× the height of a draw (per request).
@@ -1577,6 +1653,7 @@ export class SeasonTower extends React.Component<Props, State> {
 
     return {
       ...base, loading: false, orient, teamsSorted, layout, uefa, zoneBands, colW, colGap: uefa ? 1 : 2, rowH, rowGap: 2,
+      barcode, bcN, bcRows, viewMode: barcode ? 'barcode' : layout,
       colsWrapStyle: `position:relative;display:flex;flex-direction:row;gap:${uefa ? 1 : 2}px;align-items:flex-end;min-width:100%;min-height:100%;`,
       rowsWrapStyle: `position:relative;display:flex;flex-direction:column;gap:2px;width:max-content;min-width:100%;padding-right:${chartW}px;`,
       playedStr: `${decided} / ${mx * Math.floor(list.length / 2)}`, leaderAbbr: leader.code, leaderPts: leader.Pts,
