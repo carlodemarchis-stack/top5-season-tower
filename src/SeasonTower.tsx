@@ -652,7 +652,9 @@ export class SeasonTower extends React.Component<Props, State> {
                 {r.cells.map((c: any) => (
                   <i key={c.key} className="bc-cell" title={c.title} onClick={c.onClick} style={{ flex: '1 1 0', minWidth: `${CELL_MIN}px`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', borderRadius: '2px', background: RES[c.cls], color: INK[c.cls], fontStyle: 'normal', fontSize: '9px', fontWeight: 800, letterSpacing: '.1px', lineHeight: 1, overflow: 'hidden', whiteSpace: 'nowrap', cursor: c.onClick ? 'pointer' : 'default' }}>
                     <span>{c.opp}</span>
-                    {c.score && <span style={{ fontSize: '7.5px', fontWeight: 700, opacity: .85, fontVariantNumeric: 'tabular-nums' }}>{c.score}</span>}
+                    {/* away = the app's → marker, carried on the score line: "→MON" inline is ~30px, wider than the
+                        28px a 38-matchday cell gets at 1280px; the score line has room for it */}
+                    {(c.score || c.away) && <span style={{ fontSize: '7.5px', fontWeight: 700, opacity: .85, fontVariantNumeric: 'tabular-nums' }}>{c.away ? '→' : ''}{c.score}</span>}
                   </i>
                 ))}
               </span>
@@ -1356,7 +1358,7 @@ export class SeasonTower extends React.Component<Props, State> {
         const r = this.getRes(e.code, g.id)
         const opp = g.opp, where = g.ha === 'H' ? 'v' : '@'
         cells.push({
-          key: e.code + '-' + g.id, cls: r ? r.res : 'P', opp, score: r ? `${r.gf}-${r.ga}` : '',
+          key: e.code + '-' + g.id, cls: r ? r.res : 'P', opp, away: g.ha === 'A', score: r ? `${r.gf}-${r.ga}` : '',
           title: r ? `MD${w} · ${e.code} ${where} ${opp} · ${r.gf}-${r.ga}` : `MD${w} · ${e.code} ${where} ${opp} · to play`,
           onClick: () => this.openPop(e.code, g.id),
         })
