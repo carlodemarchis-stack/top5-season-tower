@@ -620,8 +620,8 @@ export class SeasonTower extends React.Component<Props, State> {
 
   // ---- the season barcode --------------------------------------------------
   // Every club's season as a strip of cells, one per matchday, rows in standings order, each cell carrying
-  // the opponent's code. The team box is the rows view's own — same size and spacing, so toggling
-  // rows ↔ barcode only slides the block down past the legend — and stays pinned left when the strip scrolls sideways. Cell colours use the
+  // the opponent's code. The team box is the rows view's own (a hair shorter, to leave room for the matchday
+  // axis) and stays pinned left when the strip scrolls sideways. Cell colours use the
   // same W / D / L palette as the team modal's rank chart. Rows carry data-team so the FLIP pass in
   // componentDidUpdate slides them into their new place as the matchday scrubber moves.
   renderBarcode(v: Dict, crestWatermark: React.CSSProperties) {
@@ -634,12 +634,6 @@ export class SeasonTower extends React.Component<Props, State> {
     const byAbbr: Dict = {}; for (const t of v.teamsSorted) byAbbr[t.abbr] = t
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: `${v.rowGap}px`, minWidth: `${boxW + 8 + N * (CELL_MIN + 2)}px` }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', fontSize: '11px', color: '#5c616b', padding: '0 0 4px' }}>
-          {[['W', 'Win'], ['D', 'Draw'], ['L', 'Loss'], ['P', 'To play']].map(([k, l]) => (
-            <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><i style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '2px', background: RES[k] }} />{l}</span>
-          ))}
-          <span style={{ color: dim }}>One cell per matchday, labelled with the opponent · rows in standings order · click a cell for the match</span>
-        </div>
         <div style={{ display: 'flex', gap: '8px', fontSize: '9px', color: dim }}>
           <span style={{ flex: `0 0 ${boxW}px` }} />
           <span style={{ position: 'relative', flex: '1 1 0', height: '11px' }}>
@@ -649,8 +643,8 @@ export class SeasonTower extends React.Component<Props, State> {
         {v.bcRows.map((r: any) => {
           const t = byAbbr[r.abbr]; if (!t) return null
           return (
-            <div key={r.abbr} data-team={r.abbr} style={{ display: 'flex', alignItems: 'stretch', gap: '8px', height: `${v.rowH}px` }}>
-              <div style={css(t.labelStyle)} onClick={t.onLabel} title={t.labelTitle}>
+            <div key={r.abbr} data-team={r.abbr} style={{ display: 'flex', alignItems: 'stretch', gap: '8px', height: `${v.bcRowH}px` }}>
+              <div style={{ ...css(t.labelStyle), height: `${v.bcRowH}px` }} onClick={t.onLabel} title={t.labelTitle}>
                 <img src={`logos/${t.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={crestWatermark} />
                 {this.domBoxBody(t)}
               </div>
@@ -1662,6 +1656,9 @@ export class SeasonTower extends React.Component<Props, State> {
     return {
       ...base, loading: false, orient, teamsSorted, layout, uefa, zoneBands, colW, colGap: uefa ? 1 : 2, rowH, rowGap: 2,
       barcode, bcN, bcRows, viewMode: barcode ? 'barcode' : layout, rowLabelW,
+      // the barcode also carries an 11px matchday axis (+2px gap) above its rows; shave that off the row
+      // height so the whole table fits the chart without a vertical scroll
+      bcRowH: Math.max(22, Math.min(rowH, Math.floor((chartH - 13 - (nTeams - 1) * 2) / nTeams))),
       colsWrapStyle: `position:relative;display:flex;flex-direction:row;gap:${uefa ? 1 : 2}px;align-items:flex-end;min-width:100%;min-height:100%;`,
       rowsWrapStyle: `position:relative;display:flex;flex-direction:column;gap:2px;width:max-content;min-width:100%;padding-right:${chartW}px;`,
       playedStr: `${decided} / ${mx * Math.floor(list.length / 2)}`, leaderAbbr: leader.code, leaderPts: leader.Pts,
