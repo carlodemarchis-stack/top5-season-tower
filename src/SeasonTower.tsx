@@ -57,6 +57,7 @@ interface State {
   moreOpen: boolean          // "+" — the other AGWAS sport experiences
   overview: boolean          // points-board overview view (either set)
   ovKind: 'domestic' | 'uefa'  // which overview: the 5 domestic leagues or the 3 UEFA cups
+  ovMode: 'bars' | 'barcode'   // top-5 overview chart: points bars, or each club's results stacked bottom-up
   ovData: any[] | null       // per-league standings summary for the overview
   chartBox: { w: number; h: number } | null   // measured px size of the club-modal rank-chart panel
 }
@@ -113,7 +114,7 @@ function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; lay
   if (!h) return {}
   const [lg, se, wk, ly] = h.split('/')
   const out: any = {}
-  if (lg === 'ALL') { out.overview = true; out.ovKind = 'domestic' }
+  if (lg === 'ALL') { out.overview = true; out.ovKind = 'domestic'; if (wk === 'barcode') out.ovMode = 'barcode' }
   if (lg === 'UEFA') { out.overview = true; out.ovKind = 'uefa' }
   if (LEAGUES.some(l => l.id === lg)) out.league = lg
   if (SEASONS.some(s => s.id === se)) out.season = se
@@ -191,6 +192,7 @@ export class SeasonTower extends React.Component<Props, State> {
     moreOpen: false,
     overview: !!this._init!.overview,
     ovKind: (this._init as any).ovKind || 'domestic',
+    ovMode: (this._init as any).ovMode || 'bars',
     ovData: null,
     chartBox: null,
   }
@@ -278,6 +280,8 @@ export class SeasonTower extends React.Component<Props, State> {
     const seasonChanged = season !== this.state.season
     if (p.overview) {   // ALL / UEFA overview
       const kind = (((p as any).ovKind) || 'domestic') as 'domestic' | 'uefa'
+      const mode = (((p as any).ovMode) || 'bars') as 'bars' | 'barcode'
+      if (mode !== this.state.ovMode) this.setState({ ovMode: mode })
       if (this.state.overview && this.state.ovKind === kind && !seasonChanged) return
       const enter = () => this.enterOverview(kind)
       if (seasonChanged) this.setState({ season, ovData: null }, enter); else enter()
@@ -319,7 +323,7 @@ export class SeasonTower extends React.Component<Props, State> {
   summarizeLeague(lg: { id: LeagueId; name: string }, TEAMS: Dict | null, REAL: Dict, totalMd: number) {
     if (!TEAMS) return { id: lg.id, name: lg.name, empty: true, clubs: [], leader: null, mw: 0, totalMd, played: 0, goals: 0, wSum: 0, dSum: 0, lSum: 0, nilNil: 0 }
     const rows: Dict = {}
-    for (const code of Object.keys(TEAMS)) { const t = TEAMS[code]; rows[code] = { code, abbr: t.abbr || code, name: t.name || code, primary: t.primary || '#8A8F98', W: 0, D: 0, L: 0, GF: 0, GA: 0 } }
+    for (const code of Object.keys(TEAMS)) { const t = TEAMS[code]; rows[code] = { code, abbr: t.abbr || code, name: t.name || code, primary: t.primary || '#8A8F98', W: 0, D: 0, L: 0, GF: 0, GA: 0, seq: new Array(totalMd).fill('') } }
     let matches = 0, goals = 0, mw = 0, nilNil = 0
     for (const code of Object.keys(TEAMS)) for (const g of TEAMS[code].games) {
       if (g.ha !== 'H') continue
@@ -329,6 +333,8 @@ export class SeasonTower extends React.Component<Props, State> {
       if (hg === 0 && ag === 0) nilNil++
       H.GF += hg; H.GA += ag; A.GF += ag; A.GA += hg
       if (hg > ag) { H.W++; A.L++ } else if (hg < ag) { H.L++; A.W++ } else { H.D++; A.D++ }
+      // results by matchday for the overview's barcode mode (one game per club per matchday)
+      H.seq[g.w - 1] = hg > ag ? 'W' : hg < ag ? 'L' : 'D'; A.seq[g.w - 1] = hg > ag ? 'L' : hg < ag ? 'W' : 'D'
     }
     const clubs = Object.keys(rows).map(k => rows[k]).map((r: any) => ({ ...r, Pts: r.W * 3 + r.D, GD: r.GF - r.GA, played: r.W + r.D + r.L }))
     clubs.sort((x: any, y: any) => (y.Pts - x.Pts) || (y.GD - x.GD) || (y.GF - x.GF) || (x.code < y.code ? -1 : 1))
@@ -376,10 +382,11 @@ export class SeasonTower extends React.Component<Props, State> {
       setM('agwas:mentions', ment)
     } catch { /* meta is cosmetic — never break navigation over it */ }
   }
-  syncUrl() { const s = this.state; try { const hash = s.overview ? `#${s.ovKind === 'uefa' ? 'UEFA' : 'ALL'}/${s.season}` : `#${s.league}/${s.season}/${s.throughWeek == null ? 0 : s.throughWeek}/${s.layout}`; history.replaceState(null, '', hash) } catch { /* ignore */ }
+  syncUrl() { const s = this.state; try { const hash = s.overview ? `#${s.ovKind === 'uefa' ? 'UEFA' : 'ALL'}/${s.season}${s.ovKind !== 'uefa' && s.ovMode === 'barcode' ? '/barcode' : ''}` : `#${s.league}/${s.season}/${s.throughWeek == null ? 0 : s.throughWeek}/${s.layout}`; history.replaceState(null, '', hash) } catch { /* ignore */ }
     this.updateSocialMeta() }
   // begin a scroll-pin window (towers → bottom / rows → labels flush-left); resets any pending release
   startPin() { this._pinBottom = true; if (this._pinTimer != null) { clearTimeout(this._pinTimer); this._pinTimer = null } }
+  setOvMode(m: 'bars' | 'barcode') { if (m !== this.state.ovMode) this.setState({ ovMode: m }, () => this.syncUrl()) }
   setLayout(l: 'towers' | 'rows' | 'barcode') { if (l === this.state.layout) return; this.startPin(); this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
   pickSeason(id: SeasonId) {
     if (id === this.state.season) { this.setState({ seasonOpen: false }); return }
@@ -672,6 +679,8 @@ export class SeasonTower extends React.Component<Props, State> {
     const uefa = v.ovKind === 'uefa'
     if (!data) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9298a1', fontSize: '14px', minHeight: '200px' }}>{uefa ? 'Loading the three UEFA cups…' : 'Loading all five leagues…'}</div>
     const maxP = Math.max(10, ...data.map(d => (d.leader ? d.leader.Pts : 0)))
+    const barcode = !uefa && v.ovMode === 'barcode'
+    const RES_COL: Dict = { W: '#1f8a4c', D: '#EAB308', L: '#d0454a' }   // same W / D / L palette as the season barcode
     // qualification zones by finishing position (indicative). Domestic: top-4 CL, 5 EL, 6 Conference, bottom-3 relegation.
     // UEFA league phase (36 teams): top-8 → Round of 16, 9–24 → knockout play-off, 25–36 → eliminated.
     const zoneCol = uefa
@@ -716,7 +725,14 @@ export class SeasonTower extends React.Component<Props, State> {
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 0 }}>
                       {(() => { const runs: { zc: string; n: number }[] = []; lg.clubs.forEach((_: any, i: number) => { const zc = zoneCol(i + 1, lg.clubs.length); const last = runs[runs.length - 1]; if (last && last.zc === zc) last.n++; else runs.push({ zc, n: 1 }) }); return runs.map((r, ri) => <div key={ri} style={{ flex: r.n, background: r.zc === '#8b9098' ? 'transparent' : hexA(r.zc, 0.13) }} />) })()}
                     </div>
-                    {lg.clubs.map((c: any, i: number) => (
+                    {lg.clubs.map((c: any, i: number) => barcode ? (
+                      /* barcode mode: one slot per matchday, matchday 1 at the bottom, so a row of boxes is the same
+                         matchday for every club; a game not yet played (or postponed) is a faint slot, as in the barcode,
+                         translucent so the zone bands still read through */
+                      <div key={c.code} style={{ position: 'relative', zIndex: 1, flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column-reverse', gap: '1px' }} title={`${c.abbr} · ${c.Pts} pts · ${c.W}W-${c.D}D-${c.L}L`}>
+                        {c.seq.map((r: string, k: number) => <div key={k} style={{ flex: '1 1 0', minHeight: 0, borderRadius: '1.5px', background: r ? RES_COL[r] : 'rgba(21,24,29,.06)' }} />)}
+                      </div>
+                    ) : (
                       <div key={c.code} style={{ position: 'relative', zIndex: 1, flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} title={`${c.abbr} · ${c.Pts} pts · ${c.W}W-${c.D}D-${c.L}L`}>
                         <div style={{ width: '100%', height: `${100 * c.Pts / maxP}%`, minHeight: '2px', borderRadius: '3px 3px 0 0', background: c.primary, opacity: i >= dimFrom ? 0.4 : 1, outline: i === 0 ? '2px solid #0B8A3D' : 'none', outlineOffset: '1px' }} />
                       </div>
@@ -932,6 +948,14 @@ export class SeasonTower extends React.Component<Props, State> {
           <button onClick={() => this.setState({ moreOpen: true })} title="More sports experiences" aria-label="More sports experiences" style={{ ...iconBtn, marginLeft: 'auto', fontSize: '19px', fontWeight: 700 }}>+</button>
           <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, fontSize: '17px', fontWeight: 800 }}>?</button>
           <button onClick={() => this.toggleFullscreen()} title="Fullscreen" aria-label="Fullscreen" style={iconBtn}>⛶</button>
+
+          {/* top-5 overview: points bars ↔ results stacked bottom-up */}
+          {v.overview && v.ovKind !== 'uefa' && <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
+            <button onClick={() => this.setOvMode('bars')} title="Points" aria-label="Points bars" style={{ padding: '6px 10px', border: 'none', background: v.ovMode !== 'barcode' ? '#15181d' : '#fff', color: v.ovMode !== 'barcode' ? '#fff' : '#727781', cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center' }}>
+              <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden><rect x="0.5" y="1" width="3" height="12" fill="currentColor" /><rect x="5" y="4" width="3" height="9" fill="currentColor" /><rect x="9.5" y="8" width="3" height="5" fill="currentColor" /></svg>
+            </button>
+            <button onClick={() => this.setOvMode('barcode')} title="Results — every match, W / D / L, from the bottom up" aria-label="Results barcode" style={{ padding: '6px 10px', border: 'none', background: v.ovMode === 'barcode' ? '#15181d' : '#fff', color: v.ovMode === 'barcode' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>▥</button>
+          </div>}
 
           {/* layout toggle: vertical towers ↔ landscape rows ↔ season barcode (domestic only) */}
           {!v.overview && <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
@@ -1277,7 +1301,7 @@ export class SeasonTower extends React.Component<Props, State> {
       helpOpen: S.helpOpen,
       creditsOpen: S.creditsOpen,
       moreOpen: S.moreOpen,
-      overview: S.overview, ovKind: S.ovKind, ovData: S.ovData,
+      overview: S.overview, ovKind: S.ovKind, ovData: S.ovData, ovMode: S.ovMode,
       playLabel: S.playing ? '❘❘' : '▶',
       stepBackDisabled: tw <= 0, stepFwdDisabled: tw >= smax, sliderMax: mx, scrubMax: smax,   // bar spans the FULL season; navigation is capped at the last played matchday
       throughWeek: tw, weekLabel: tw === 0 ? 'Pre-season' : (tw >= mx ? 'Full season' : ('Through MD ' + tw)),
