@@ -709,47 +709,82 @@ export class SeasonTower extends React.Component<Props, State> {
 
   // ---- league comparison (Stats modal) ------------------------------------------
   // Every match counted once, read from the HOME side, so all six shades carry meaning at league level:
-  // green = home win, red = away win, darker = by 2+ goals, amber = score draw, grey = 0-0.
+  // green = home win, red = away win, darker = by 2+ goals, amber = score draw, grey = 0-0. Green and red are
+  // NOT mirror images here — the gap between them is the home advantage. Goals keep the same mapping
+  // (green = home side, red = away side); goals-per-match bands use their own blue ramp, 0 in the 0-0 grey.
   renderStats(v: Dict) {
     const close = () => this.setState({ statsOpen: false })
     const KEYS = ['bigW', 'W1', 'D', 'nil', 'L1', 'bigL']
     const LABEL: Dict = { bigW: 'Home won by 2+', W1: 'Home won by 1', D: 'Draw', nil: '0-0', L1: 'Away won by 1', bigL: 'Away won by 2+' }
+    const TG: [string, string][] = [['#9aa0a8', '#22262d'], ['#c7d7ee', '#1d2b44'], ['#93b3de', '#1d2b44'], ['#5f8ccb', '#fff'], ['#3565a8', '#fff'], ['#1d4178', '#fff']]   // 0 … 5+ goals
+    const HOME = '#3a9e62', AWAY = '#dc5c5e'
     const data: any[] = (v.ovData || []).map((lg: any) => {
-      const n: Dict = { bigW: 0, W1: 0, D: 0, nil: 0, L1: 0, bigL: 0 }; let played = 0
-      for (const c of lg.clubs) for (const r of c.seq) if (r && r.res && r.ha === 'H') { n[res6(r.gf, r.ga)]++; played++ }
-      return { id: lg.id, name: lg.name, n, played }
+      const n: Dict = { bigW: 0, W1: 0, D: 0, nil: 0, L1: 0, bigL: 0 }, tg = [0, 0, 0, 0, 0, 0]
+      let played = 0, hg = 0, ag = 0
+      for (const c of lg.clubs) for (const r of c.seq) if (r && r.res && r.ha === 'H') {
+        n[res6(r.gf, r.ga)]++; played++; hg += r.gf; ag += r.ga; tg[Math.min(5, r.gf + r.ga)]++
+      }
+      return { id: lg.id, name: lg.name, n, played, hg, ag, tg }
     })
     const maxPlayed = Math.max(1, ...data.map(d => d.played))
+    const maxGpm = Math.max(0.01, ...data.map(d => d.played ? (d.hg + d.ag) / d.played : 0))
     const pct = (x: number, of: number) => of ? Math.round(100 * x / of) : 0
-    const row = (d: any, scale: number, showPct: boolean) => (
+    // one league row: name · bar of segments (scaled) · figure at the end
+    const bar = (d: any, scale: number, segs: { k: string; val: number; fill: string; ink: string; text: string; title: string }[], right: string) => (
       <div key={d.id} style={{ display: 'grid', gridTemplateColumns: '112px minmax(0,1fr) 44px', alignItems: 'center', gap: '10px' }}>
         <span style={{ fontSize: '12px', fontWeight: 800, color: '#15181d' }}>{d.name}</span>
         <div style={{ height: '22px', display: 'flex', width: `${100 * scale}%`, borderRadius: '4px', overflow: 'hidden', background: d.played ? 'transparent' : '#F1F2F4' }}>
-          {KEYS.map(k => {
-            const x = d.n[k]; if (!x) return null
-            const p = pct(x, d.played)
-            return <div key={k} title={`${d.name} · ${LABEL[k]} · ${x} match${x === 1 ? '' : 'es'} (${p}%)`} style={{ flex: `${x} 1 0`, minWidth: 0, background: RES6[k][0], color: RES6[k][1], fontSize: '10px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{showPct ? (p >= 7 ? `${p}%` : '') : (x / d.played >= .07 ? x : '')}</div>
-          })}
+          {segs.filter(s => s.val > 0).map(s => (
+            <div key={s.k} title={s.title} style={{ flex: `${s.val} 1 0`, minWidth: 0, background: s.fill, color: s.ink, fontSize: '10px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{s.text}</div>
+          ))}
         </div>
-        <span style={{ fontSize: '11px', fontWeight: 800, color: '#5c616b', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.played || '—'}</span>
+        <span style={{ fontSize: '11px', fontWeight: 800, color: '#5c616b', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.played ? right : '—'}</span>
       </div>
     )
-    const h3: React.CSSProperties = { fontSize: '12px', fontWeight: 900, letterSpacing: '.02em', color: '#15181d', margin: '18px 0 8px' }
+    const resSegs = (d: any, asPct: boolean) => KEYS.map(k => {
+      const x = d.n[k], p = pct(x, d.played)
+      return { k, val: x, fill: RES6[k][0], ink: RES6[k][1], text: x / (d.played || 1) >= .07 ? (asPct ? `${p}%` : String(x)) : '', title: `${d.name} · ${LABEL[k]} · ${x} match${x === 1 ? '' : 'es'} (${p}%)` }
+    })
+    const legend = (items: [string, string][]) => (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', fontSize: '11px', fontWeight: 700, color: '#5c616b', marginBottom: '8px' }}>
+        {items.map(([fill, label]) => <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><i style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '2px', background: fill }} />{label}</span>)}
+      </div>
+    )
+    const h3: React.CSSProperties = { fontSize: '12px', fontWeight: 900, letterSpacing: '.02em', color: '#15181d', margin: '20px 0 8px' }
+    const rows: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '6px' }
     return (
       <div onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 95, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
         <div onClick={e => e.stopPropagation()} style={{ width: 'min(760px,94vw)', maxHeight: '86vh', overflow: 'auto', background: '#fff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(16,18,22,.32)', padding: '20px 22px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
             <span style={{ fontSize: '17px', fontWeight: 900, color: '#15181d' }}>League comparison · {v.seasonLabel}</span>
             <button onClick={close} aria-label="Close" style={{ border: 'none', background: '#F1F2F4', borderRadius: '8px', width: '28px', height: '28px', fontSize: '15px', cursor: 'pointer', color: '#5c616b' }}>✕</button>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', fontSize: '11px', fontWeight: 700, color: '#5c616b' }}>
-            {KEYS.map(k => <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><i style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '2px', background: RES6[k][0] }} />{LABEL[k]}</span>)}
-          </div>
-          <div style={h3}>Matches played, by result</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>{data.map(d => row(d, d.played / maxPlayed, false))}</div>
-          <div style={h3}>Share of results</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>{data.map(d => row(d, 1, true))}</div>
-          <div style={{ fontSize: '11px', color: '#8b909a', marginTop: '14px', lineHeight: 1.5 }}>Each match counted once, from the home side's point of view. Numbers inside the bars are match counts (top) and shares (bottom); hover a segment for the exact figure.</div>
+
+          <div style={h3}>Results · matches played</div>
+          {legend(KEYS.map(k => [RES6[k][0], LABEL[k]] as [string, string]))}
+          <div style={rows}>{data.map(d => bar(d, d.played / maxPlayed, resSegs(d, false), String(d.played)))}</div>
+
+          <div style={h3}>Results · share</div>
+          <div style={rows}>{data.map(d => bar(d, 1, resSegs(d, true), String(d.played)))}</div>
+
+          <div style={h3}>Goals per match · home and away</div>
+          {legend([[HOME, 'Home goals'], [AWAY, 'Away goals']])}
+          <div style={rows}>{data.map(d => {
+            const h = d.played ? d.hg / d.played : 0, a = d.played ? d.ag / d.played : 0
+            return bar(d, (h + a) / maxGpm, [
+              { k: 'h', val: h, fill: HOME, ink: '#fff', text: h.toFixed(2), title: `${d.name} · home goals · ${d.hg} (${h.toFixed(2)} a match)` },
+              { k: 'a', val: a, fill: AWAY, ink: '#fff', text: a.toFixed(2), title: `${d.name} · away goals · ${d.ag} (${a.toFixed(2)} a match)` },
+            ], (h + a).toFixed(2))
+          })}</div>
+
+          <div style={h3}>Matches by total goals · share</div>
+          {legend(TG.map(([fill], i) => [fill, i === 5 ? '5+ goals' : `${i} goal${i === 1 ? '' : 's'}`] as [string, string]))}
+          <div style={rows}>{data.map(d => bar(d, 1, d.tg.map((x: number, i: number) => {
+            const p = pct(x, d.played)
+            return { k: String(i), val: x, fill: TG[i][0], ink: TG[i][1], text: x / (d.played || 1) >= .07 ? `${p}%` : '', title: `${d.name} · ${i === 5 ? '5+' : i} goals · ${x} match${x === 1 ? '' : 'es'} (${p}%)` }
+          }), String(d.hg + d.ag)))}</div>
+
+          <div style={{ fontSize: '11px', color: '#8b909a', marginTop: '14px', lineHeight: 1.5 }}>Each match counted once, from the home side's point of view. Right-hand figures: matches played (results), goals per match, total goals. Hover any segment for the exact figure.</div>
         </div>
       </div>
     )
