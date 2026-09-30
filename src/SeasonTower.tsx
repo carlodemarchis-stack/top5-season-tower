@@ -127,6 +127,8 @@ function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; lay
 // only enabled with the secret ?sim=1 query param. Public sees unplayed matches as "to be played".
 const SIM = typeof location !== 'undefined' && new URLSearchParams(location.search).get('sim') === '1'
 
+const escHtml = (s: string) => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Dict)[ch])
+const ordSuffix = (n: number) => (n % 100 >= 11 && n % 100 <= 13) ? 'th' : n % 10 === 1 ? 'st' : n % 10 === 2 ? 'nd' : n % 10 === 3 ? 'rd' : 'th'
 // Vite statically globs every league/season data file that exists on disk.
 const SCHED_MODS = import.meta.glob('./data/schedule-*.js') as Record<string, () => Promise<any>>
 const RES_MODS = import.meta.glob('./data/results-*.js') as Record<string, () => Promise<any>>
@@ -171,6 +173,8 @@ const zoneFor = (league: LeagueId, total = 20) => isUefa(league) ? zoneUefa : (r
 
 export class SeasonTower extends React.Component<Props, State> {
   chartRef = React.createRef<HTMLDivElement>()
+  ovTipRef = React.createRef<HTMLDivElement>()   // the overview's hover card, updated directly (no re-render per mouse move)
+  _towerLayout: 'towers' | 'rows' = 'rows'       // last non-barcode layout — where a points-bars card click lands
   sliderRef = React.createRef<HTMLInputElement>()
   _measure!: () => void
   _ro?: ResizeObserver
@@ -267,7 +271,9 @@ export class SeasonTower extends React.Component<Props, State> {
     if (id === this.state.league && !this.state.overview) return
     if (this._timer) { clearInterval(this._timer); this._timer = null }
     this._wantWeek = null   // user navigation → drop the initial URL week
-    if (id === this.state.league) { this.syncUrl(); return }   // drilling from overview into the already-loaded league
+    // drilling from overview into the already-loaded league: sync the URL only once overview:false has applied —
+    // calling syncUrl() here directly read the stale state and rewrote the overview hash
+    if (id === this.state.league) { this.setState({}, () => this.syncUrl()); return }
     this.setState({ playing: false, pop: null, teamPop: null, seasons: null })
     this.loadLeague(id)
   }
@@ -323,7 +329,9 @@ export class SeasonTower extends React.Component<Props, State> {
   summarizeLeague(lg: { id: LeagueId; name: string }, TEAMS: Dict | null, REAL: Dict, totalMd: number) {
     if (!TEAMS) return { id: lg.id, name: lg.name, empty: true, clubs: [], leader: null, mw: 0, totalMd, played: 0, goals: 0, wSum: 0, dSum: 0, lSum: 0, nilNil: 0 }
     const rows: Dict = {}
-    for (const code of Object.keys(TEAMS)) { const t = TEAMS[code]; rows[code] = { code, abbr: t.abbr || code, name: t.name || code, primary: t.primary || '#8A8F98', W: 0, D: 0, L: 0, GF: 0, GA: 0, seq: new Array(totalMd).fill('') } }
+    for (const code of Object.keys(TEAMS)) { const t = TEAMS[code]; rows[code] = { code, abbr: t.abbr || code, name: t.name || code, primary: t.primary || '#8A8F98', W: 0, D: 0, L: 0, GF: 0, GA: 0, seq: new Array(totalMd).fill(null) } }
+    // every fixture first (so an unplayed slot still knows its opponent), results filled in below
+    for (const code of Object.keys(TEAMS)) for (const g of TEAMS[code].games) if (g.w >= 1 && g.w <= totalMd) rows[code].seq[g.w - 1] = { w: g.w, opp: g.opp, ha: g.ha, res: '', gf: 0, ga: 0 }
     let matches = 0, goals = 0, mw = 0, nilNil = 0
     for (const code of Object.keys(TEAMS)) for (const g of TEAMS[code].games) {
       if (g.ha !== 'H') continue
@@ -334,7 +342,9 @@ export class SeasonTower extends React.Component<Props, State> {
       H.GF += hg; H.GA += ag; A.GF += ag; A.GA += hg
       if (hg > ag) { H.W++; A.L++ } else if (hg < ag) { H.L++; A.W++ } else { H.D++; A.D++ }
       // results by matchday for the overview's barcode mode (one game per club per matchday)
-      H.seq[g.w - 1] = hg > ag ? 'W' : hg < ag ? 'L' : 'D'; A.seq[g.w - 1] = hg > ag ? 'L' : hg < ag ? 'W' : 'D'
+      const hr = hg > ag ? 'W' : hg < ag ? 'L' : 'D', ar = hg > ag ? 'L' : hg < ag ? 'W' : 'D'
+      H.seq[g.w - 1] = { w: g.w, opp: g.opp, ha: 'H', res: hr, gf: hg, ga: ag }
+      A.seq[g.w - 1] = { w: g.w, opp: code, ha: 'A', res: ar, gf: ag, ga: hg }
     }
     const clubs = Object.keys(rows).map(k => rows[k]).map((r: any) => ({ ...r, Pts: r.W * 3 + r.D, GD: r.GF - r.GA, played: r.W + r.D + r.L }))
     clubs.sort((x: any, y: any) => (y.Pts - x.Pts) || (y.GD - x.GD) || (y.GF - x.GF) || (x.code < y.code ? -1 : 1))
@@ -387,6 +397,65 @@ export class SeasonTower extends React.Component<Props, State> {
   // begin a scroll-pin window (towers → bottom / rows → labels flush-left); resets any pending release
   startPin() { this._pinBottom = true; if (this._pinTimer != null) { clearTimeout(this._pinTimer); this._pinTimer = null } }
   setOvMode(m: 'bars' | 'barcode') { if (m !== this.state.ovMode) this.setState({ ovMode: m }, () => this.syncUrl()) }
+  // Overview card → that league, in the view matching the overview's mode: points bars open the tower chart
+  // (whichever of towers / rows was used last), the results view opens the season barcode.
+  openFromOverview(id: LeagueId) {
+    this.ovHide()
+    const layout = this.state.ovMode === 'barcode' && this.state.ovKind !== 'uefa' ? 'barcode' : this._towerLayout   // no barcode for the UEFA cups
+    if (layout !== this.state.layout) this.startPin()
+    this.setState({ layout, pop: null, teamPop: null }, () => this.pickLeague(id))
+  }
+
+  // ---- overview hover card ----------------------------------------------------
+  // Points bars: the club's whole run of results. Results view: the one match under the pointer.
+  ovHover = (e: React.MouseEvent) => {
+    const tip = this.ovTipRef.current; if (!tip) return
+    const el = e.target as HTMLElement
+    const col = el.closest('[data-ovc]') as HTMLElement | null
+    if (!col) { this.ovHide(); return }
+    const box = el.closest('[data-ovm]') as HTMLElement | null
+    const barcode = this.state.ovMode === 'barcode'
+    if (barcode && !box) return   // in the 1px gap between two boxes — keep the card that's showing
+    const [lgId, code] = (col.dataset.ovc || '').split(':')
+    const lg = (this.state.ovData || []).find((d: any) => d.id === lgId); if (!lg) return
+    const ci = lg.clubs.findIndex((x: any) => x.code === code); if (ci < 0) return
+    const key = `${lgId}:${code}:${box ? box.dataset.ovm : 'club'}`
+    if (tip.dataset.key !== key) {
+      tip.innerHTML = box ? this.ovMatchTip(lg, lg.clubs[ci], lg.clubs[ci].seq[+(box.dataset.ovm || 0)]) : this.ovClubTip(lg, lg.clubs[ci], ci + 1)
+      tip.dataset.key = key
+    }
+    tip.style.display = 'block'
+    const pad = 14, r = tip.getBoundingClientRect()
+    let x = e.clientX + pad, y = e.clientY + pad
+    if (x + r.width > window.innerWidth - 8) x = e.clientX - r.width - pad
+    if (y + r.height > window.innerHeight - 8) y = Math.max(8, window.innerHeight - r.height - 8)
+    tip.style.left = `${Math.max(8, x)}px`; tip.style.top = `${y}px`
+  }
+  ovHide = () => { const tip = this.ovTipRef.current; if (tip) { tip.style.display = 'none'; tip.dataset.key = '' } }
+  ovChip(res: string, text: string) {
+    const bg = res === 'W' ? '#1f8a4c' : res === 'L' ? '#d0454a' : '#EAB308', ink = res === 'D' ? '#3d3000' : '#fff'
+    return `<span style="background:${bg};color:${ink};border-radius:3px;padding:2px 4px;font-weight:800;font-size:9.5px;white-space:nowrap;font-variant-numeric:tabular-nums">${text}</span>`
+  }
+  ovClubTip(lg: Dict, c: Dict, rank: number) {
+    const played = (c.seq as any[]).filter(r => r && r.res)
+    const gd = c.GD > 0 ? `+${c.GD}` : String(c.GD)
+    const chips = played.map(r => this.ovChip(r.res, `${r.ha === 'A' ? '<span style="opacity:.75">→</span>' : ''}${escHtml(r.opp)} ${r.gf}-${r.ga}`)).join('')
+    return `<div style="font-size:13px;font-weight:900">${escHtml(c.name)}</div>
+      <div style="color:#727781;margin:2px 0 8px;font-variant-numeric:tabular-nums">${rank}${ordSuffix(rank)} · <b style="color:#15181d">${c.Pts} pts</b> · ${c.W}-${c.D}-${c.L} · GD ${gd}</div>
+      ${played.length ? `<div style="display:grid;grid-template-columns:repeat(4,auto);justify-content:start;gap:3px">${chips}</div>` : '<div style="color:#8b909a">No games yet</div>'}`
+  }
+  ovMatchTip(lg: Dict, c: Dict, r: Dict | null) {
+    if (!r) return ''
+    const byCode = (x: string) => (lg.clubs as any[]).find(k => k.code === x) || { abbr: x, name: x }
+    const me = c, opp = byCode(r.opp)
+    const home = r.ha === 'H' ? me : opp, away = r.ha === 'H' ? opp : me
+    const hs = r.ha === 'H' ? r.gf : r.ga, as = r.ha === 'H' ? r.ga : r.gf
+    const line = r.res ? `${escHtml(home.abbr)} ${hs}–${as} ${escHtml(away.abbr)}` : `${escHtml(home.abbr)} v ${escHtml(away.abbr)}`
+    const verdict = r.res ? this.ovChip(r.res, r.res === 'W' ? 'Win' : r.res === 'L' ? 'Loss' : 'Draw') : '<span style="color:#8b909a;font-weight:700">To play</span>'
+    return `<div style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:#8b909a;font-weight:700">Matchday ${r.w}</div>
+      <div style="font-size:14px;font-weight:900;margin:3px 0 5px;font-variant-numeric:tabular-nums">${line}</div>
+      <div style="display:flex;align-items:center;gap:6px">${verdict}<span style="color:#727781">${escHtml(me.name)}, ${r.ha === 'H' ? 'at home' : 'away'}</span></div>`
+  }
   setLayout(l: 'towers' | 'rows' | 'barcode') { if (l === this.state.layout) return; this.startPin(); this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
   pickSeason(id: SeasonId) {
     if (id === this.state.season) { this.setState({ seasonOpen: false }); return }
@@ -496,6 +565,7 @@ export class SeasonTower extends React.Component<Props, State> {
     return m
   }
   componentDidUpdate(_pp: Props, ps: State, snap: Dict | null) {
+    if (this.state.layout !== 'barcode') this._towerLayout = this.state.layout
     // keep the range thumb pinned to the (clamped) matchday even when React skips the controlled update
     if (this.sliderRef.current) this.sliderRef.current.value = String(this.state.throughWeek ?? 0)
     // a full reshuffle (layout / season / league / overview switch) should NOT FLIP-animate — every row
@@ -688,14 +758,15 @@ export class SeasonTower extends React.Component<Props, State> {
       : (rank: number, n: number) => rank <= 4 ? '#0B4DA2' : rank === 5 ? '#E8820B' : rank === 6 ? '#0B8A3D' : rank > n - 3 ? '#C23A2E' : '#8b9098'
     return (
       <div style={{ display: 'flex', gap: '10px', height: '100%', minHeight: '420px', alignItems: 'stretch' }}>
+        <div ref={this.ovTipRef} style={{ position: 'fixed', zIndex: 60, pointerEvents: 'none', display: 'none', background: '#fff', border: '1px solid #E1E4E8', borderRadius: '10px', boxShadow: '0 8px 24px rgba(20,22,28,.16)', padding: '9px 10px', fontSize: '11px', color: '#15181d', maxWidth: '320px' }} />
         {data.map(lg => {
           const dimFrom = uefa ? 24 : lg.clubs.length - 3   // dim the non-qualifying tail (UEFA: 25–36 out · domestic: bottom-3 relegation)
           const leaderCrest = lg.leader ? logoFile(lg.id, lg.leader.code) : ''
           const chip: React.CSSProperties = { fontSize: '9.5px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px', whiteSpace: 'nowrap' }
           return (
-            <div key={lg.id} onClick={() => this.pickLeague(lg.id)} title={`Open ${lg.name}`} style={{ flex: '1 1 0', minWidth: '176px', display: 'flex', flexDirection: 'column', background: '#fff', border: '1px solid #E7E9EC', borderRadius: '14px', padding: '12px 12px 10px', cursor: 'pointer' }}>
+            <div key={lg.id} onClick={() => this.openFromOverview(lg.id)} style={{ flex: '1 1 0', minWidth: '176px', display: 'flex', flexDirection: 'column', background: '#fff', border: '1px solid #E7E9EC', borderRadius: '14px', padding: '12px 12px 10px', cursor: 'pointer' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 900, letterSpacing: '-.2px', color: '#15181d' }}>{lg.name}</span>
+                <span title={`Open ${lg.name}`} style={{ fontSize: '14px', fontWeight: 900, letterSpacing: '-.2px', color: '#15181d' }}>{lg.name}</span>
                 <span style={{ marginLeft: 'auto', fontSize: '10px', fontWeight: 800, color: '#9298a1', background: '#F1F2F4', borderRadius: '6px', padding: '3px 6px', whiteSpace: 'nowrap' }}>{lg.empty ? 'not started' : `MD ${lg.mw}/${lg.totalMd}`}</span>
               </div>
               {lg.empty ? (
@@ -720,7 +791,7 @@ export class SeasonTower extends React.Component<Props, State> {
                     <span style={chip}>W‑D <b style={{ color: '#15181d' }}>{lg.wSum}·{lg.dSum}</b> {lg.played ? `${Math.round(100 * lg.wSum / lg.played)}%` : ''}</span>
                     <span style={chip}><b style={{ color: '#15181d' }}>{lg.nilNil}</b> (0‑0)</span>
                   </div>
-                  <div style={{ position: 'relative', flex: '1 1 0', minHeight: '120px', display: 'flex', alignItems: 'flex-end', gap: '2px', borderBottom: '1px solid #E7E9EC' }}>
+                  <div onMouseMove={this.ovHover} onMouseLeave={this.ovHide} style={{ position: 'relative', flex: '1 1 0', minHeight: '120px', display: 'flex', alignItems: 'flex-end', gap: '2px', borderBottom: '1px solid #E7E9EC' }}>
                     {/* unified qualification-zone bands behind the bars — one continuous block per zone run (not per team) */}
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 0 }}>
                       {(() => { const runs: { zc: string; n: number }[] = []; lg.clubs.forEach((_: any, i: number) => { const zc = zoneCol(i + 1, lg.clubs.length); const last = runs[runs.length - 1]; if (last && last.zc === zc) last.n++; else runs.push({ zc, n: 1 }) }); return runs.map((r, ri) => <div key={ri} style={{ flex: r.n, background: r.zc === '#8b9098' ? 'transparent' : hexA(r.zc, 0.13) }} />) })()}
@@ -729,11 +800,11 @@ export class SeasonTower extends React.Component<Props, State> {
                       /* barcode mode: one slot per matchday, matchday 1 at the bottom, so a row of boxes is the same
                          matchday for every club; a game not yet played (or postponed) is a faint slot, as in the barcode,
                          translucent so the zone bands still read through */
-                      <div key={c.code} style={{ position: 'relative', zIndex: 1, flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column-reverse', gap: '1px' }} title={`${c.abbr} · ${c.Pts} pts · ${c.W}W-${c.D}D-${c.L}L`}>
-                        {c.seq.map((r: string, k: number) => <div key={k} style={{ flex: '1 1 0', minHeight: 0, borderRadius: '1.5px', background: r ? RES_COL[r] : 'rgba(21,24,29,.06)' }} />)}
+                      <div key={c.code} data-ovc={`${lg.id}:${c.code}`} style={{ position: 'relative', zIndex: 1, flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column-reverse', gap: '1px' }}>
+                        {c.seq.map((r: any, k: number) => <div key={k} data-ovm={k} style={{ flex: '1 1 0', minHeight: 0, borderRadius: '1.5px', background: r && r.res ? RES_COL[r.res] : 'rgba(21,24,29,.06)' }} />)}
                       </div>
                     ) : (
-                      <div key={c.code} style={{ position: 'relative', zIndex: 1, flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} title={`${c.abbr} · ${c.Pts} pts · ${c.W}W-${c.D}D-${c.L}L`}>
+                      <div key={c.code} data-ovc={`${lg.id}:${c.code}`} style={{ position: 'relative', zIndex: 1, flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                         <div style={{ width: '100%', height: `${100 * c.Pts / maxP}%`, minHeight: '2px', borderRadius: '3px 3px 0 0', background: c.primary, opacity: i >= dimFrom ? 0.4 : 1, outline: i === 0 ? '2px solid #0B8A3D' : 'none', outlineOffset: '1px' }} />
                       </div>
                     ))}
