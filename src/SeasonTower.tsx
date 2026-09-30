@@ -58,6 +58,7 @@ interface State {
   overview: boolean          // points-board overview view (either set)
   ovKind: 'domestic' | 'uefa'  // which overview: the 5 domestic leagues or the 3 UEFA cups
   ovMode: 'bars' | 'barcode'   // top-5 overview chart: points bars, or each club's results stacked bottom-up
+  statsOpen: boolean           // league-comparison modal (top-5 overview)
   ovData: any[] | null       // per-league standings summary for the overview
   chartBox: { w: number; h: number } | null   // measured px size of the club-modal rank-chart panel
 }
@@ -199,6 +200,7 @@ export class SeasonTower extends React.Component<Props, State> {
     pop: null, teamPop: null, throughWeek: null, playing: false, groupBy: 'table', rankBy: 'points',
     layout: this._init!.layout || 'rows',   // open in the vertical (stacked-rows) view
     helpOpen: false,
+    statsOpen: false,
     creditsOpen: false,
     moreOpen: false,
     overview: !!this._init!.overview,
@@ -705,6 +707,54 @@ export class SeasonTower extends React.Component<Props, State> {
     )
   }
 
+  // ---- league comparison (Stats modal) ------------------------------------------
+  // Every match counted once, read from the HOME side, so all six shades carry meaning at league level:
+  // green = home win, red = away win, darker = by 2+ goals, amber = score draw, grey = 0-0.
+  renderStats(v: Dict) {
+    const close = () => this.setState({ statsOpen: false })
+    const KEYS = ['bigW', 'W1', 'D', 'nil', 'L1', 'bigL']
+    const LABEL: Dict = { bigW: 'Home won by 2+', W1: 'Home won by 1', D: 'Draw', nil: '0-0', L1: 'Away won by 1', bigL: 'Away won by 2+' }
+    const data: any[] = (v.ovData || []).map((lg: any) => {
+      const n: Dict = { bigW: 0, W1: 0, D: 0, nil: 0, L1: 0, bigL: 0 }; let played = 0
+      for (const c of lg.clubs) for (const r of c.seq) if (r && r.res && r.ha === 'H') { n[res6(r.gf, r.ga)]++; played++ }
+      return { id: lg.id, name: lg.name, n, played }
+    })
+    const maxPlayed = Math.max(1, ...data.map(d => d.played))
+    const pct = (x: number, of: number) => of ? Math.round(100 * x / of) : 0
+    const row = (d: any, scale: number, showPct: boolean) => (
+      <div key={d.id} style={{ display: 'grid', gridTemplateColumns: '112px minmax(0,1fr) 44px', alignItems: 'center', gap: '10px' }}>
+        <span style={{ fontSize: '12px', fontWeight: 800, color: '#15181d' }}>{d.name}</span>
+        <div style={{ height: '22px', display: 'flex', width: `${100 * scale}%`, borderRadius: '4px', overflow: 'hidden', background: d.played ? 'transparent' : '#F1F2F4' }}>
+          {KEYS.map(k => {
+            const x = d.n[k]; if (!x) return null
+            const p = pct(x, d.played)
+            return <div key={k} title={`${d.name} · ${LABEL[k]} · ${x} match${x === 1 ? '' : 'es'} (${p}%)`} style={{ flex: `${x} 1 0`, minWidth: 0, background: RES6[k][0], color: RES6[k][1], fontSize: '10px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{showPct ? (p >= 7 ? `${p}%` : '') : (x / d.played >= .07 ? x : '')}</div>
+          })}
+        </div>
+        <span style={{ fontSize: '11px', fontWeight: 800, color: '#5c616b', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.played || '—'}</span>
+      </div>
+    )
+    const h3: React.CSSProperties = { fontSize: '12px', fontWeight: 900, letterSpacing: '.02em', color: '#15181d', margin: '18px 0 8px' }
+    return (
+      <div onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 95, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div onClick={e => e.stopPropagation()} style={{ width: 'min(760px,94vw)', maxHeight: '86vh', overflow: 'auto', background: '#fff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(16,18,22,.32)', padding: '20px 22px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <span style={{ fontSize: '17px', fontWeight: 900, color: '#15181d' }}>League comparison · {v.seasonLabel}</span>
+            <button onClick={close} aria-label="Close" style={{ border: 'none', background: '#F1F2F4', borderRadius: '8px', width: '28px', height: '28px', fontSize: '15px', cursor: 'pointer', color: '#5c616b' }}>✕</button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', fontSize: '11px', fontWeight: 700, color: '#5c616b' }}>
+            {KEYS.map(k => <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><i style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '2px', background: RES6[k][0] }} />{LABEL[k]}</span>)}
+          </div>
+          <div style={h3}>Matches played, by result</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>{data.map(d => row(d, d.played / maxPlayed, false))}</div>
+          <div style={h3}>Share of results</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>{data.map(d => row(d, 1, true))}</div>
+          <div style={{ fontSize: '11px', color: '#8b909a', marginTop: '14px', lineHeight: 1.5 }}>Each match counted once, from the home side's point of view. Numbers inside the bars are match counts (top) and shares (bottom); hover a segment for the exact figure.</div>
+        </div>
+      </div>
+    )
+  }
+
   // ---- the season barcode --------------------------------------------------
   // Every club's season as a strip of cells, one per matchday, rows in standings order, each cell carrying
   // the opponent's code. The team box is the rows view's own (a hair shorter, to leave room for the matchday
@@ -1036,6 +1086,7 @@ export class SeasonTower extends React.Component<Props, State> {
           <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, fontSize: '17px', fontWeight: 800 }}>?</button>
           <button onClick={() => this.toggleFullscreen()} title="Fullscreen" aria-label="Fullscreen" style={iconBtn}>⛶</button>
 
+          {v.overview && v.ovKind !== 'uefa' && <button onClick={() => this.setState({ statsOpen: true })} title="League comparison" style={{ padding: '6px 11px', border: '1px solid #D7DAE0', borderRadius: '8px', background: '#fff', color: '#15181d', fontSize: '12px', fontWeight: 800, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit' }}>Stats</button>}
           {/* top-5 overview: points bars ↔ results stacked bottom-up */}
           {v.overview && v.ovKind !== 'uefa' && <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
             <button onClick={() => this.setOvMode('bars')} title="Points" aria-label="Points bars" style={{ padding: '6px 10px', border: 'none', background: v.ovMode !== 'barcode' ? '#15181d' : '#fff', color: v.ovMode !== 'barcode' ? '#fff' : '#727781', cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center' }}>
@@ -1282,6 +1333,7 @@ export class SeasonTower extends React.Component<Props, State> {
           )}
 
           {/* ---------- help ---------- */}
+          {this.state.statsOpen && v.overview && v.ovKind !== 'uefa' && this.renderStats(v)}
           {v.helpOpen && (
             <div onClick={() => this.setState({ helpOpen: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 95, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
               <div onClick={mStop} style={{ width: 'min(440px,94vw)', maxHeight: '86vh', overflow: 'auto', background: '#fff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(16,18,22,.32)', padding: '20px 22px' }}>
