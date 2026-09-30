@@ -650,11 +650,13 @@ export class SeasonTower extends React.Component<Props, State> {
               </div>
               <span style={{ display: 'flex', gap: '2px', flex: '1 1 0', minWidth: 0 }}>
                 {r.cells.map((c: any) => (
-                  <i key={c.key} className="bc-cell" title={c.title} onClick={c.onClick} style={{ flex: '1 1 0', minWidth: `${CELL_MIN}px`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', borderRadius: '2px', background: RES[c.cls], color: INK[c.cls], fontStyle: 'normal', fontSize: '9px', fontWeight: 800, letterSpacing: '.1px', lineHeight: 1, overflow: 'hidden', whiteSpace: 'nowrap', cursor: c.onClick ? 'pointer' : 'default' }}>
+                  <i key={c.key} className="bc-cell" title={c.title} onClick={c.onClick} style={{ flex: '1 1 0', minWidth: `${CELL_MIN}px`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px', borderRadius: '2px', background: RES[c.cls], color: INK[c.cls], fontStyle: 'normal', fontSize: '9px', fontWeight: 800, letterSpacing: '.1px', lineHeight: 1, overflow: 'hidden', whiteSpace: 'nowrap', cursor: c.onClick ? 'pointer' : 'default' }}>
+                    {/* three fixed slots so every code sits at the same height: away arrow (the app's → marker —
+                        above the code, since "→MON" inline is ~30px, wider than the 28px a 38-matchday cell gets at
+                        1280px) · opponent · score. Empty slots hold a no-break space. */}
+                    <span style={{ fontSize: '7px', fontWeight: 700, opacity: .8 }}>{c.away ? '→' : '\u00a0'}</span>
                     <span>{c.opp}</span>
-                    {/* away = the app's → marker, carried on the score line: "→MON" inline is ~30px, wider than the
-                        28px a 38-matchday cell gets at 1280px; the score line has room for it */}
-                    {(c.score || c.away) && <span style={{ fontSize: '7.5px', fontWeight: 700, opacity: .85, fontVariantNumeric: 'tabular-nums' }}>{c.away ? '→' : ''}{c.score}</span>}
+                    <span style={{ fontSize: '7.5px', fontWeight: 700, opacity: .85, fontVariantNumeric: 'tabular-nums' }}>{c.score || '\u00a0'}</span>
                   </i>
                 ))}
               </span>
