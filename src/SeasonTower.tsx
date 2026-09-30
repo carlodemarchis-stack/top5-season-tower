@@ -708,96 +708,118 @@ export class SeasonTower extends React.Component<Props, State> {
   }
 
   // ---- league comparison (Stats modal) ------------------------------------------
-  // Home and away as TWO bars per league, each read from that side, in the overview legend's own colours:
-  // green = won, amber = draw, grey = 0-0, red = lost. Red only ever means a lost game, and the home
-  // advantage is the H bar being greener than the A bar. Goals are blue (dark = home, light = away), and the
-  // 0 … 5+ ramp keeps 0 in the 0-0 grey. Three charts side by side so the modal fits without scrolling.
+  // Small multiples: one column per league, one row per chart. Every match counted once.
+  //   1. Results donut — won by 2+ · won by 1 · draw with goals · 0-0 (legend colours; no losses — at
+  //      league level every loss is only the other side of a win).
+  //   2. Goals per match — one vertical bar, home goals stacked under away goals.
+  //   3. Matches by total goals donut — 0 … 5+, 0 in the 0-0 grey.
+  // Every slice keeps its label: inside when there's room, outside (nudged apart) when there isn't.
   renderStats(v: Dict) {
     const close = () => this.setState({ statsOpen: false })
-    const KEYS = ['bigW', 'W1', 'D', 'nil', 'L1', 'bigL']
-    const WORD: Dict = { bigW: 'won by 2+', W1: 'won by 1', D: 'drew', nil: 'drew 0-0', L1: 'lost by 1', bigL: 'lost by 2+' }
+    const RKEYS = ['bigW', 'W1', 'D', 'nil']
+    const RLABEL: Dict = { bigW: 'Won 2+', W1: 'Won 1', D: 'Draw with goals', nil: '0-0' }
     const TG: [string, string][] = [['#9aa0a8', '#22262d'], ['#c7d7ee', '#1d2b44'], ['#93b3de', '#1d2b44'], ['#5f8ccb', '#fff'], ['#3565a8', '#fff'], ['#1d4178', '#fff']]   // 0 … 5+ goals
-    const GH = '#3565a8', GA = '#93b3de'   // home / away goals
+    const GH = '#3565a8', GA = '#93b3de'
     const data: any[] = (v.ovData || []).map((lg: any) => {
-      const h: Dict = { bigW: 0, W1: 0, D: 0, nil: 0, L1: 0, bigL: 0 }, a: Dict = { ...h }, tg = [0, 0, 0, 0, 0, 0]
+      const n: Dict = { bigW: 0, W1: 0, D: 0, nil: 0 }, tg = [0, 0, 0, 0, 0, 0]
       let played = 0, hg = 0, ag = 0
       for (const c of lg.clubs) for (const r of c.seq) if (r && r.res && r.ha === 'H') {
-        h[res6(r.gf, r.ga)]++; a[res6(r.ga, r.gf)]++; played++; hg += r.gf; ag += r.ga; tg[Math.min(5, r.gf + r.ga)]++
+        const m = Math.abs(r.gf - r.ga)
+        n[m >= 2 ? 'bigW' : m === 1 ? 'W1' : r.gf === 0 ? 'nil' : 'D']++
+        played++; hg += r.gf; ag += r.ga; tg[Math.min(5, r.gf + r.ga)]++
       }
-      return { id: lg.id, name: lg.name, h, a, played, hg, ag, tg }
+      return { id: lg.id, name: lg.name, n, played, hg, ag, tg }
     })
-    const maxGpm = Math.max(0.01, ...data.map(d => d.played ? Math.max(d.hg, d.ag) / d.played : 0))
-    const pct = (x: number, of: number) => of ? Math.round(100 * x / of) : 0
-    type Seg = { k: string; val: number; fill: string; ink: string; text: string; title: string }
-    const track = (segs: Seg[], scale: number, empty: boolean) => (
-      <div style={{ height: '15px', display: 'flex', width: `${100 * scale}%`, borderRadius: '3px', overflow: 'hidden', background: empty ? '#F1F2F4' : 'transparent' }}>
-        {segs.filter(s => s.val > 0).map(s => (
-          <div key={s.k} className="st-seg" title={s.title} style={{ flex: `${s.val} 1 0`, minWidth: 0, background: s.fill, color: s.ink, fontSize: '9.5px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{s.text && <span>{s.text}</span>}</div>
-        ))}
+    const pctTxt = (x: number, of: number) => { const p = of ? 100 * x / of : 0; return p > 0 && p < 1 ? '<1%' : `${Math.round(p)}%` }
+
+    // donut: slices clockwise from 12 o'clock; label inside the ring if the slice is ≥ 9%, else outside
+    type Slice = { k: string; val: number; fill: string; ink: string; title: string }
+    const donut = (slices: Slice[], total: number, center: string, caption: string) => {
+      const S = 132, c = S / 2, ro = 42, ri = 24, TAU = Math.PI * 2
+      const live = slices.filter(s => s.val > 0)
+      if (!total || !live.length) return (
+        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{ maxWidth: '100%', height: 'auto' }}>
+          <circle cx={c} cy={c} r={(ro + ri) / 2} fill="none" stroke="#EEF0F2" strokeWidth={ro - ri} />
+          <text x={c} y={c + 4} textAnchor="middle" fontSize="12" fontWeight="800" fill="#9aa0a8">—</text>
+        </svg>
+      )
+      const pt = (a: number, r: number) => [c + r * Math.sin(a), c - r * Math.cos(a)]
+      let a0 = 0, lastOut = -9, bump = 0
+      const parts = live.map(s => {
+        const share = s.val / total, a1 = a0 + share * TAU, mid = (a0 + a1) / 2
+        let d: string
+        if (share >= 0.9999) d = `M ${c} ${c - ro} A ${ro} ${ro} 0 1 1 ${c - 0.01} ${c - ro} L ${c - 0.01} ${c - ri} A ${ri} ${ri} 0 1 0 ${c} ${c - ri} Z`
+        else {
+          const [x0, y0] = pt(a0, ro), [x1, y1] = pt(a1, ro), [x2, y2] = pt(a1, ri), [x3, y3] = pt(a0, ri), big = a1 - a0 > Math.PI ? 1 : 0
+          d = `M ${x0} ${y0} A ${ro} ${ro} 0 ${big} 1 ${x1} ${y1} L ${x2} ${y2} A ${ri} ${ri} 0 ${big} 0 ${x3} ${y3} Z`
+        }
+        const inside = share >= 0.09
+        if (!inside) { bump = mid - lastOut < 0.42 ? bump + 11 : 0; lastOut = mid }
+        const [lx, ly] = pt(mid, inside ? (ro + ri) / 2 : ro + 9 + bump)
+        const anchor: 'middle' | 'start' | 'end' = inside ? 'middle' : Math.sin(mid) >= 0 ? 'start' : 'end'
+        a0 = a1
+        return { s, d, lx, ly, anchor, inside }
+      })
+      return (
+        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{ maxWidth: '100%', height: 'auto', overflow: 'visible' }}>
+          {parts.map(p => <path key={p.s.k} d={p.d} fill={p.s.fill} stroke="#fff" strokeWidth="1"><title>{p.s.title}</title></path>)}
+          {parts.map(p => <text key={'t' + p.s.k} x={p.lx} y={p.ly + 3.5} textAnchor={p.anchor} fontSize="10" fontWeight="800" fill={p.inside ? p.s.ink : '#3a3f47'} style={{ fontVariantNumeric: 'tabular-nums', pointerEvents: 'none' }}>{pctTxt(p.s.val, total)}</text>)}
+          <text x={c} y={c + 2} textAnchor="middle" fontSize="13" fontWeight="900" fill="#15181d" style={{ fontVariantNumeric: 'tabular-nums' }}>{center}</text>
+          <text x={c} y={c + 13} textAnchor="middle" fontSize="8" fontWeight="700" fill="#8b909a">{caption}</text>
+        </svg>
+      )
+    }
+
+    // goals per match: one vertical bar, home (bottom) + away (top), total above
+    const maxGpm = Math.max(0.01, ...data.map(d => d.played ? (d.hg + d.ag) / d.played : 0))
+    const BAR_H = 104
+    const gbar = (d: any) => {
+      if (!d.played) return <div style={{ height: `${BAR_H + 16}px`, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', color: '#9aa0a8', fontWeight: 800 }}>—</div>
+      const h = d.hg / d.played, a = d.ag / d.played
+      const seg = (val: number, fill: string, ink: string, title: string) => (
+        <div title={title} style={{ height: `${BAR_H * val / maxGpm}px`, background: fill, color: ink, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{val.toFixed(2)}</div>
+      )
+      return (
+        <div style={{ height: `${BAR_H + 16}px`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <span style={{ fontSize: '12px', fontWeight: 900, color: '#15181d', marginBottom: '2px', fontVariantNumeric: 'tabular-nums' }}>{(h + a).toFixed(2)}</span>
+          <div style={{ width: '40px', borderRadius: '3px 3px 0 0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            {seg(a, GA, '#1d2b44', `${d.name} · away sides scored ${d.ag} (${a.toFixed(2)} a match)`)}
+            {seg(h, GH, '#fff', `${d.name} · home sides scored ${d.hg} (${h.toFixed(2)} a match)`)}
+          </div>
+        </div>
+      )
+    }
+
+    const rowHead = (title: string, items: [string, string][]) => (
+      <div style={{ alignSelf: 'center' }}>
+        <div style={{ fontSize: '12px', fontWeight: 900, color: '#15181d', marginBottom: '6px' }}>{title}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '10.5px', fontWeight: 700, color: '#5c616b' }}>
+          {items.map(([fill, label]) => <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}><i style={{ display: 'inline-block', width: '9px', height: '9px', borderRadius: '2px', background: fill }} />{label}</span>)}
+        </div>
       </div>
     )
-    const fig: React.CSSProperties = { fontSize: '10.5px', fontWeight: 800, color: '#5c616b', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }
-    const side: React.CSSProperties = { fontSize: '9.5px', fontWeight: 900, color: '#9298a1', textAlign: 'center' }
-    const GRID = '92px 12px minmax(0,1fr) 34px'
-    // a league as two rows, H over A
-    const pair = (d: any, H: [Seg[], number, string], A: [Seg[], number, string]) => (
-      <div key={d.id} style={{ display: 'grid', gridTemplateColumns: GRID, columnGap: '6px', rowGap: '2px', alignItems: 'center' }}>
-        <span style={{ gridRow: '1 / span 2', fontSize: '11px', fontWeight: 800, color: '#15181d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.name}</span>
-        <span style={side}>H</span>{track(H[0], H[1], !d.played)}<span style={fig}>{d.played ? H[2] : '—'}</span>
-        <span style={side}>A</span>{track(A[0], A[1], !d.played)}<span style={fig}>{d.played ? A[2] : ''}</span>
-      </div>
-    )
-    const single = (d: any, segs: Seg[], right: string) => (
-      <div key={d.id} style={{ display: 'grid', gridTemplateColumns: GRID, columnGap: '6px', alignItems: 'center' }}>
-        <span style={{ fontSize: '11px', fontWeight: 800, color: '#15181d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.name}</span>
-        <span />{track(segs, 1, !d.played)}<span style={fig}>{d.played ? right : '—'}</span>
-      </div>
-    )
-    const resSegs = (d: any, n: Dict, who: string): Seg[] => KEYS.map(k => {
-      const x = n[k], p = pct(x, d.played)
-      return { k, val: x, fill: RES6[k][0], ink: RES6[k][1], text: `${p}%`, title: `${d.name} · ${who} ${WORD[k]} · ${x} of ${d.played} (${p}%)` }
-    })
-    const legend = (items: [string, string][]) => (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', fontSize: '10.5px', fontWeight: 700, color: '#5c616b', margin: '0 0 8px', minHeight: '28px', alignContent: 'flex-start' }}>
-        {items.map(([fill, label]) => <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><i style={{ display: 'inline-block', width: '9px', height: '9px', borderRadius: '2px', background: fill }} />{label}</span>)}
-      </div>
-    )
-    const h3: React.CSSProperties = { fontSize: '12px', fontWeight: 900, color: '#15181d', margin: '0 0 6px' }
-    const col: React.CSSProperties = { minWidth: 0, display: 'flex', flexDirection: 'column' }
-    const rows: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '7px' }
+    const cell: React.CSSProperties = { display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: 0 }
     return (
       <div onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(16,18,22,.42)', zIndex: 95, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-        <div onClick={e => e.stopPropagation()} style={{ width: 'min(1180px,96vw)', maxHeight: '94vh', overflow: 'auto', background: '#fff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(16,18,22,.32)', padding: '16px 20px 14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div onClick={e => e.stopPropagation()} style={{ width: 'min(1000px,96vw)', maxHeight: '94vh', overflow: 'auto', background: '#fff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(16,18,22,.32)', padding: '16px 20px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
             <span style={{ fontSize: '17px', fontWeight: 900, color: '#15181d' }}>League comparison · {v.seasonLabel}</span>
             <button onClick={close} aria-label="Close" style={{ border: 'none', background: '#F1F2F4', borderRadius: '8px', width: '28px', height: '28px', fontSize: '15px', cursor: 'pointer', color: '#5c616b' }}>✕</button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', gap: '14px 26px' }}>
-            <div style={col}>
-              <div style={h3}>Results · home and away sides</div>
-              {legend(KEYS.map(k => [RES6[k][0], RES6[k][2]] as [string, string]))}
-              <div style={rows}>{data.map(d => pair(d, [resSegs(d, d.h, 'home side'), 1, String(d.played)], [resSegs(d, d.a, 'away side'), 1, '']))}</div>
-            </div>
-            <div style={col}>
-              <div style={h3}>Goals per match · home and away</div>
-              {legend([[GH, 'Home side'], [GA, 'Away side']])}
-              <div style={rows}>{data.map(d => {
-                const h = d.played ? d.hg / d.played : 0, a = d.played ? d.ag / d.played : 0
-                return pair(d,
-                  [[{ k: 'h', val: 1, fill: GH, ink: '#fff', text: '', title: `${d.name} · home sides scored ${d.hg} in ${d.played} matches (${h.toFixed(2)} a match)` }], h / maxGpm, h.toFixed(2)],
-                  [[{ k: 'a', val: 1, fill: GA, ink: '#1d2b44', text: '', title: `${d.name} · away sides scored ${d.ag} in ${d.played} matches (${a.toFixed(2)} a match)` }], a / maxGpm, a.toFixed(2)])
-              })}</div>
-            </div>
-            <div style={col}>
-              <div style={h3}>Matches by total goals · share</div>
-              {legend(TG.map(([fill], i) => [fill, i === 5 ? '5+' : String(i)] as [string, string]))}
-              <div style={rows}>{data.map(d => single(d, d.tg.map((x: number, i: number) => {
-                const p = pct(x, d.played)
-                return { k: String(i), val: x, fill: TG[i][0], ink: TG[i][1], text: `${p}%`, title: `${d.name} · ${i === 5 ? '5+' : i} goals · ${x} of ${d.played} matches (${p}%)` }
-              }), String(d.hg + d.ag)))}</div>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: `140px repeat(${data.length}, minmax(0,1fr))`, columnGap: '8px', rowGap: '6px', alignItems: 'center' }}>
+            <span />
+            {data.map(d => <div key={d.id} style={{ textAlign: 'center', fontSize: '12px', fontWeight: 900, color: '#15181d', lineHeight: 1.15 }}>{d.name}</div>)}
+
+            {rowHead('Results', RKEYS.map(k => [RES6[k][0], RLABEL[k]] as [string, string]))}
+            {data.map(d => <div key={'r' + d.id} style={cell}>{donut(RKEYS.map(k => ({ k, val: d.n[k], fill: RES6[k][0], ink: RES6[k][1], title: `${d.name} · ${RLABEL[k]} · ${d.n[k]} of ${d.played} matches` })), d.played, String(d.played), 'matches')}</div>)}
+
+            {rowHead('Goals per match', [[GA, 'Away side'], [GH, 'Home side']])}
+            {data.map(d => <div key={'g' + d.id} style={cell}>{gbar(d)}</div>)}
+
+            {rowHead('Matches by total goals', TG.map(([fill], i) => [fill, i === 5 ? '5+ goals' : `${i} goal${i === 1 ? '' : 's'}`] as [string, string]))}
+            {data.map(d => <div key={'t' + d.id} style={cell}>{donut(d.tg.map((x: number, i: number) => ({ k: String(i), val: x, fill: TG[i][0], ink: TG[i][1], title: `${d.name} · ${i === 5 ? '5+' : i} goals · ${x} of ${d.played} matches` })), d.played, String(d.hg + d.ag), 'goals')}</div>)}
           </div>
-          <div style={{ fontSize: '10.5px', color: '#8b909a', marginTop: '12px', lineHeight: 1.45 }}>H and A are the same matches seen from each side, so each bar is 100%. Right-hand figures: matches played · goals per match · total goals. Hover any segment for the count.</div>
+          <div style={{ fontSize: '10.5px', color: '#8b909a', marginTop: '8px' }}>Each match counted once. Hover any slice or bar for the count.</div>
         </div>
       </div>
     )
