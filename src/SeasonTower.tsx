@@ -129,6 +129,13 @@ const SIM = typeof location !== 'undefined' && new URLSearchParams(location.sear
 
 const escHtml = (s: string) => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Dict)[ch])
 const ordSuffix = (n: number) => (n % 100 >= 11 && n % 100 <= 13) ? 'th' : n % 10 === 1 ? 'st' : n % 10 === 2 ? 'nd' : n % 10 === 3 ? 'rd' : 'th'
+// Overview results view: six shades by margin. Each pair brackets the app's single win / loss colour
+// (#1f8a4c / #d0454a) so the headline stays green-amber-red and the margin reads as texture.
+const RES6: Record<string, [string, string, string]> = {   // key → [fill, text ink, legend label]
+  bigW: ['#177a41', '#fff', 'Won 2+'], W1: ['#3a9e62', '#fff', 'Won 1'], D: ['#EAB308', '#3d3000', 'Draw'],
+  nil: ['#9aa0a8', '#22262d', '0-0'], L1: ['#dc5c5e', '#fff', 'Lost 1'], bigL: ['#b3323a', '#fff', 'Lost 2+'],
+}
+const res6 = (gf: number, ga: number) => { const d = gf - ga; return d >= 2 ? 'bigW' : d === 1 ? 'W1' : d === 0 ? (gf === 0 ? 'nil' : 'D') : d === -1 ? 'L1' : 'bigL' }
 // Vite statically globs every league/season data file that exists on disk.
 const SCHED_MODS = import.meta.glob('./data/schedule-*.js') as Record<string, () => Promise<any>>
 const RES_MODS = import.meta.glob('./data/results-*.js') as Record<string, () => Promise<any>>
@@ -451,7 +458,10 @@ export class SeasonTower extends React.Component<Props, State> {
     const home = r.ha === 'H' ? me : opp, away = r.ha === 'H' ? opp : me
     const hs = r.ha === 'H' ? r.gf : r.ga, as = r.ha === 'H' ? r.ga : r.gf
     const line = r.res ? `${escHtml(home.abbr)} ${hs}–${as} ${escHtml(away.abbr)}` : `${escHtml(home.abbr)} v ${escHtml(away.abbr)}`
-    const verdict = r.res ? this.ovChip(r.res, r.res === 'W' ? 'Win' : r.res === 'L' ? 'Loss' : 'Draw') : '<span style="color:#8b909a;font-weight:700">To play</span>'
+    const k6 = r.res ? res6(r.gf, r.ga) : ''
+    const verdict = r.res
+      ? `<span style="background:${RES6[k6][0]};color:${RES6[k6][1]};border-radius:3px;padding:2px 4px;font-weight:800;font-size:9.5px;white-space:nowrap">${({ bigW: 'Win by 2+', W1: 'Win by 1', D: 'Draw', nil: '0-0 draw', L1: 'Loss by 1', bigL: 'Loss by 2+' } as Dict)[k6]}</span>`
+      : '<span style="color:#8b909a;font-weight:700">To play</span>'
     return `<div style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:#8b909a;font-weight:700">Matchday ${r.w}</div>
       <div style="font-size:14px;font-weight:900;margin:3px 0 5px;font-variant-numeric:tabular-nums">${line}</div>
       <div style="display:flex;align-items:center;gap:6px">${verdict}<span style="color:#727781">${escHtml(me.name)}, ${r.ha === 'H' ? 'at home' : 'away'}</span></div>`
@@ -750,7 +760,6 @@ export class SeasonTower extends React.Component<Props, State> {
     if (!data) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9298a1', fontSize: '14px', minHeight: '200px' }}>{uefa ? 'Loading the three UEFA cups…' : 'Loading all five leagues…'}</div>
     const maxP = Math.max(10, ...data.map(d => (d.leader ? d.leader.Pts : 0)))
     const barcode = !uefa && v.ovMode === 'barcode'
-    const RES_COL: Dict = { W: '#1f8a4c', D: '#EAB308', L: '#d0454a' }   // same W / D / L palette as the season barcode
     // qualification zones by finishing position (indicative). Domestic: top-4 CL, 5 EL, 6 Conference, bottom-3 relegation.
     // UEFA league phase (36 teams): top-8 → Round of 16, 9–24 → knockout play-off, 25–36 → eliminated.
     const zoneCol = uefa
@@ -801,7 +810,7 @@ export class SeasonTower extends React.Component<Props, State> {
                          matchday for every club; a game not yet played (or postponed) is a faint slot, as in the barcode,
                          translucent so the zone bands still read through */
                       <div key={c.code} data-ovc={`${lg.id}:${c.code}`} style={{ position: 'relative', zIndex: 1, flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column-reverse', gap: '1px' }}>
-                        {c.seq.map((r: any, k: number) => <div key={k} data-ovm={k} style={{ flex: '1 1 0', minHeight: 0, borderRadius: '1.5px', background: r && r.res ? RES_COL[r.res] : 'rgba(21,24,29,.06)' }} />)}
+                        {c.seq.map((r: any, k: number) => <div key={k} data-ovm={k} style={{ flex: '1 1 0', minHeight: 0, borderRadius: '1.5px', background: r && r.res ? RES6[res6(r.gf, r.ga)][0] : 'rgba(21,24,29,.06)' }} />)}
                       </div>
                     ) : (
                       <div key={c.code} data-ovc={`${lg.id}:${c.code}`} style={{ position: 'relative', zIndex: 1, flex: '1 1 0', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
@@ -1016,6 +1025,13 @@ export class SeasonTower extends React.Component<Props, State> {
           </div>}
 
           {/* help + fullscreen */}
+          {v.overview && v.ovKind !== 'uefa' && v.ovMode === 'barcode' && this.state.cw >= 900 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: '14px', fontSize: '11px', fontWeight: 700, color: '#5c616b', whiteSpace: 'nowrap' }}>
+              {Object.entries(RES6).map(([k, [fill, , label]]) => (
+                <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><i style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '2px', background: fill }} />{label}</span>
+              ))}
+            </div>
+          )}
           <button onClick={() => this.setState({ moreOpen: true })} title="More sports experiences" aria-label="More sports experiences" style={{ ...iconBtn, marginLeft: 'auto', fontSize: '19px', fontWeight: 700 }}>+</button>
           <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, fontSize: '17px', fontWeight: 800 }}>?</button>
           <button onClick={() => this.toggleFullscreen()} title="Fullscreen" aria-label="Fullscreen" style={iconBtn}>⛶</button>
