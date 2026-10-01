@@ -115,7 +115,7 @@ function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; lay
   if (!h) return {}
   const [lg, se, wk, ly] = h.split('/')
   const out: any = {}
-  if (lg === 'ALL') { out.overview = true; out.ovKind = 'domestic'; if (wk === 'barcode') out.ovMode = 'barcode' }
+  if (lg === 'ALL') { out.overview = true; out.ovKind = 'domestic'; const flags = [wk, ly]; if (flags.includes('barcode')) out.ovMode = 'barcode'; if (flags.includes('stats')) out.stats = true }
   if (lg === 'UEFA') { out.overview = true; out.ovKind = 'uefa' }
   if (LEAGUES.some(l => l.id === lg)) out.league = lg
   if (SEASONS.some(s => s.id === se)) out.season = se
@@ -200,7 +200,7 @@ export class SeasonTower extends React.Component<Props, State> {
     pop: null, teamPop: null, throughWeek: null, playing: false, groupBy: 'table', rankBy: 'points',
     layout: this._init!.layout || 'rows',   // open in the vertical (stacked-rows) view
     helpOpen: false,
-    statsOpen: false,
+    statsOpen: !!(this._init as any).stats,
     creditsOpen: false,
     moreOpen: false,
     overview: !!this._init!.overview,
@@ -276,7 +276,7 @@ export class SeasonTower extends React.Component<Props, State> {
       }).catch(onChunkError)
   }
   pickLeague(id: LeagueId) {
-    this.setState({ leagueOpen: false, overview: false })
+    this.setState({ leagueOpen: false, overview: false, statsOpen: false })
     if (id === this.state.league && !this.state.overview) return
     if (this._timer) { clearInterval(this._timer); this._timer = null }
     this._wantWeek = null   // user navigation → drop the initial URL week
@@ -297,6 +297,7 @@ export class SeasonTower extends React.Component<Props, State> {
       const kind = (((p as any).ovKind) || 'domestic') as 'domestic' | 'uefa'
       const mode = (((p as any).ovMode) || 'bars') as 'bars' | 'barcode'
       if (mode !== this.state.ovMode) this.setState({ ovMode: mode })
+      if (!!(p as any).stats !== this.state.statsOpen) this.setState({ statsOpen: !!(p as any).stats })
       if (this.state.overview && this.state.ovKind === kind && !seasonChanged) return
       const enter = () => this.enterOverview(kind)
       if (seasonChanged) this.setState({ season, ovData: null }, enter); else enter()
@@ -401,7 +402,7 @@ export class SeasonTower extends React.Component<Props, State> {
       setM('agwas:mentions', ment)
     } catch { /* meta is cosmetic — never break navigation over it */ }
   }
-  syncUrl() { const s = this.state; try { const hash = s.overview ? `#${s.ovKind === 'uefa' ? 'UEFA' : 'ALL'}/${s.season}${s.ovKind !== 'uefa' && s.ovMode === 'barcode' ? '/barcode' : ''}` : `#${s.league}/${s.season}/${s.throughWeek == null ? 0 : s.throughWeek}/${s.layout}`; history.replaceState(null, '', hash) } catch { /* ignore */ }
+  syncUrl() { const s = this.state; try { const hash = s.overview ? `#${s.ovKind === 'uefa' ? 'UEFA' : 'ALL'}/${s.season}${s.ovKind !== 'uefa' && s.ovMode === 'barcode' ? '/barcode' : ''}${s.ovKind !== 'uefa' && s.statsOpen ? '/stats' : ''}` : `#${s.league}/${s.season}/${s.throughWeek == null ? 0 : s.throughWeek}/${s.layout}`; history.replaceState(null, '', hash) } catch { /* ignore */ }
     this.updateSocialMeta() }
   // begin a scroll-pin window (towers → bottom / rows → labels flush-left); resets any pending release
   startPin() { this._pinBottom = true; if (this._pinTimer != null) { clearTimeout(this._pinTimer); this._pinTimer = null } }
@@ -716,7 +717,7 @@ export class SeasonTower extends React.Component<Props, State> {
   // Every segment keeps its label: inside when it fits, otherwise just above the segment (CSS container query
   // on .st-seg in index.html), so nothing is ever hidden.
   renderStats(v: Dict) {
-    const close = () => this.setState({ statsOpen: false })
+    const close = () => this.setState({ statsOpen: false }, () => this.syncUrl())
     const RKEYS = ['bigW', 'W1', 'D', 'nil']
     const RLABEL: Dict = { bigW: 'Won 2+', W1: 'Won 1', D: 'Draw with goals', nil: '0-0' }
     const TG: [string, string][] = [['#9aa0a8', '#22262d'], ['#c7d7ee', '#1d2b44'], ['#93b3de', '#1d2b44'], ['#5f8ccb', '#fff'], ['#3565a8', '#fff'], ['#1d4178', '#fff']]   // 0 … 5+ goals
@@ -733,6 +734,7 @@ export class SeasonTower extends React.Component<Props, State> {
     })
     const pctTxt = (x: number, of: number) => { const p = of ? 100 * x / of : 0; return p > 0 && p < 1 ? '<1%' : `${Math.round(p)}%` }
     const maxGpm = Math.max(0.01, ...data.map(d => d.played ? (d.hg + d.ag) / d.played : 0))
+    const loading = !v.ovData
 
     type Seg = { k: string; val: number; fill: string; ink: string; text: string; title: string }
     const bar = (d: any, segs: Seg[], scale: number, right: string) => {
@@ -765,10 +767,10 @@ export class SeasonTower extends React.Component<Props, State> {
         <div onClick={e => e.stopPropagation()} style={{ width: 'min(1000px,96vw)', maxHeight: '96vh', overflow: 'auto', background: '#fff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(16,18,22,.32)', padding: '14px 20px 12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px' }}>
             <span style={{ fontSize: '16px', fontWeight: 900, color: '#15181d', whiteSpace: 'nowrap' }}>League comparison · {v.seasonLabel}</span>
-            <span style={{ fontSize: '10.5px', color: '#8b909a', lineHeight: 1.3 }}>Each match counted once · right-hand figures: matches · goals per match · total goals · hover for counts</span>
             <button onClick={close} style={{ marginLeft: 'auto', flex: '0 0 auto', border: 'none', background: '#F1F2F4', borderRadius: '8px', width: '28px', height: '28px', fontSize: '15px', cursor: 'pointer', color: '#5c616b' }} aria-label="Close">✕</button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {loading && <div style={{ padding: '40px 0', textAlign: 'center', color: '#9298a1', fontSize: '13px' }}>Loading all five leagues…</div>}
+          <div style={{ display: loading ? 'none' : 'flex', flexDirection: 'column', gap: '12px' }}>
             {section('Results', RKEYS.map(k => [RES6[k][0], RLABEL[k]] as [string, string]),
               data.map(d => bar(d, RKEYS.map(k => ({ k, val: d.n[k], fill: RES6[k][0], ink: RES6[k][1], text: pctTxt(d.n[k], d.played), title: `${d.name} · ${RLABEL[k]} · ${d.n[k]} of ${d.played} matches` })), 1, String(d.played))))}
             {section('Goals per match', [[GH, 'Home side'], [GA, 'Away side']],
@@ -1118,7 +1120,7 @@ export class SeasonTower extends React.Component<Props, State> {
           <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, fontSize: '17px', fontWeight: 800 }}>?</button>
           <button onClick={() => this.toggleFullscreen()} title="Fullscreen" aria-label="Fullscreen" style={iconBtn}>⛶</button>
 
-          {v.overview && v.ovKind !== 'uefa' && <button onClick={() => this.setState({ statsOpen: true })} title="League comparison" style={{ padding: '6px 11px', border: '1px solid #D7DAE0', borderRadius: '8px', background: '#fff', color: '#15181d', fontSize: '12px', fontWeight: 800, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit' }}>Stats</button>}
+          {v.overview && v.ovKind !== 'uefa' && <button onClick={() => this.setState({ statsOpen: true }, () => this.syncUrl())} title="League comparison" style={{ padding: '6px 11px', border: '1px solid #D7DAE0', borderRadius: '8px', background: '#fff', color: '#15181d', fontSize: '12px', fontWeight: 800, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit' }}>Stats</button>}
           {/* top-5 overview: points bars ↔ results stacked bottom-up */}
           {v.overview && v.ovKind !== 'uefa' && <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
             <button onClick={() => this.setOvMode('bars')} title="Points" aria-label="Points bars" style={{ padding: '6px 10px', border: 'none', background: v.ovMode !== 'barcode' ? '#15181d' : '#fff', color: v.ovMode !== 'barcode' ? '#fff' : '#727781', cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center' }}>
