@@ -1125,16 +1125,16 @@ export class SeasonTower extends React.Component<Props, State> {
             <button onClick={() => this.setOvMode('barcode')} title="Results — every match, W / D / L, from the bottom up" aria-label="Results barcode" style={{ padding: '6px 10px', border: 'none', background: v.ovMode === 'barcode' ? '#15181d' : '#fff', color: v.ovMode === 'barcode' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>▥</button>
           </div>}
 
-          <button onClick={() => this.setState({ moreOpen: true })} title="More sports experiences" aria-label="More sports experiences" style={{ ...iconBtn, marginLeft: v.overview && v.ovKind !== 'uefa' ? undefined : 'auto', fontSize: '19px', fontWeight: 700 }}>+</button>
-          <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, fontSize: '17px', fontWeight: 800 }}>?</button>
-          <button onClick={() => this.toggleFullscreen()} title="Fullscreen" aria-label="Fullscreen" style={iconBtn}>⛶</button>
-
           {/* layout toggle: vertical towers ↔ landscape rows ↔ season barcode (domestic only) */}
-          {!v.overview && <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
+          {!v.overview && <div style={{ marginLeft: 'auto', display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
             <button onClick={() => this.setLayout('towers')} title="Vertical towers" style={{ padding: '6px 10px', border: 'none', background: (v.viewMode || v.layout) === 'towers' ? '#15181d' : '#fff', color: (v.viewMode || v.layout) === 'towers' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊤</button>
             <button onClick={() => this.setLayout('rows')} title="Landscape rows" style={{ padding: '6px 10px', border: 'none', background: (v.viewMode || v.layout) === 'rows' ? '#15181d' : '#fff', color: (v.viewMode || v.layout) === 'rows' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊢</button>
             {!isUefa(this.state.league) && <button onClick={() => this.setLayout('barcode')} title="Season barcode — every game, W / D / L" style={{ padding: '6px 10px', border: 'none', background: v.viewMode === 'barcode' ? '#15181d' : '#fff', color: v.viewMode === 'barcode' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>▥</button>}
           </div>}
+
+          <button onClick={() => this.setState({ moreOpen: true })} title="More sports experiences" aria-label="More sports experiences" style={{ ...iconBtn, marginLeft: v.overview && v.ovKind === 'uefa' ? 'auto' : undefined, fontSize: '19px', fontWeight: 700 }}>+</button>
+          <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, fontSize: '17px', fontWeight: 800 }}>?</button>
+          <button onClick={() => this.toggleFullscreen()} title="Fullscreen" aria-label="Fullscreen" style={iconBtn}>⛶</button>
 
           {/* match count */}
           {!v.overview && <span style={{ fontSize: '13px', fontWeight: 700, color: '#22262d', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>{v.playedStr}</span>}
