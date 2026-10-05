@@ -133,8 +133,10 @@ const ordSuffix = (n: number) => (n % 100 >= 11 && n % 100 <= 13) ? 'th' : n % 1
 // Overview results view: six shades by margin. Each pair brackets the app's single win / loss colour
 // (#1f8a4c / #d0454a) so the headline stays green-amber-red and the margin reads as texture.
 const RES6: Record<string, [string, string, string]> = {   // key → [fill, text ink, legend label]
-  bigW: ['#177a41', '#fff', 'Won 2+'], W1: ['#3a9e62', '#fff', 'Won 1'], D: ['#EAB308', '#3d3000', 'Draw'],
-  nil: ['#9aa0a8', '#22262d', '0-0'], L1: ['#dc5c5e', '#fff', 'Lost 1'], bigL: ['#b3323a', '#fff', 'Lost 2+'],
+  // text ink per shade: white on the dark pair, near-black of the same hue on the light pair — white on the light
+  // green / red was only 3.4 / 3.7:1; these give 4.9 / 5.1:1 (the dark pair is 5.4 / 6.1:1)
+  bigW: ['#177a41', '#fff', 'Won 2+'], W1: ['#3a9e62', '#0b2414', 'Won 1'], D: ['#EAB308', '#3d3000', 'Draw'],
+  nil: ['#9aa0a8', '#22262d', '0-0'], L1: ['#dc5c5e', '#2a0709', 'Lost 1'], bigL: ['#b3323a', '#fff', 'Lost 2+'],
 }
 const res6 = (gf: number, ga: number) => { const d = gf - ga; return d >= 2 ? 'bigW' : d === 1 ? 'W1' : d === 0 ? (gf === 0 ? 'nil' : 'D') : d === -1 ? 'L1' : 'bigL' }
 // Vite statically globs every league/season data file that exists on disk.
@@ -442,14 +444,14 @@ export class SeasonTower extends React.Component<Props, State> {
     tip.style.left = `${Math.max(8, x)}px`; tip.style.top = `${y}px`
   }
   ovHide = () => { const tip = this.ovTipRef.current; if (tip) { tip.style.display = 'none'; tip.dataset.key = '' } }
-  ovChip(res: string, text: string) {
-    const bg = res === 'W' ? '#1f8a4c' : res === 'L' ? '#d0454a' : '#EAB308', ink = res === 'D' ? '#3d3000' : '#fff'
+  ovChip(k6: string, text: string) {
+    const [bg, ink] = RES6[k6]
     return `<span style="background:${bg};color:${ink};border-radius:3px;padding:2px 4px;font-weight:800;font-size:9.5px;white-space:nowrap;font-variant-numeric:tabular-nums">${text}</span>`
   }
   ovClubTip(lg: Dict, c: Dict, rank: number) {
     const played = (c.seq as any[]).filter(r => r && r.res)
     const gd = c.GD > 0 ? `+${c.GD}` : String(c.GD)
-    const chips = played.map(r => this.ovChip(r.res, `${r.ha === 'A' ? '<span style="opacity:.75">→</span>' : ''}${escHtml(r.opp)} ${r.gf}-${r.ga}`)).join('')
+    const chips = played.map(r => this.ovChip(res6(r.gf, r.ga), `${r.ha === 'A' ? '<span style="opacity:.75">→</span>' : ''}${escHtml(r.opp)} ${r.gf}-${r.ga}`)).join('')
     return `<div style="font-size:13px;font-weight:900">${escHtml(c.name)}</div>
       <div style="color:#727781;margin:2px 0 8px;font-variant-numeric:tabular-nums">${rank}${ordSuffix(rank)} · <b style="color:#15181d">${c.Pts} pts</b> · ${c.W}-${c.D}-${c.L} · GD ${gd}</div>
       ${played.length ? `<div style="display:grid;grid-template-columns:repeat(4,auto);justify-content:start;gap:3px">${chips}</div>` : '<div style="color:#8b909a">No games yet</div>'}`
@@ -797,8 +799,9 @@ export class SeasonTower extends React.Component<Props, State> {
   // componentDidUpdate slides them into their new place as the matchday scrubber moves.
   renderBarcode(v: Dict, crestWatermark: React.CSSProperties) {
     const N = v.bcN as number, tw = v.throughWeek as number, boxW = v.rowLabelW as number
-    const RES: Dict = { W: '#1f8a4c', D: '#EAB308', L: '#d0454a', P: '#E7E9ED', none: 'transparent' }
-    const INK: Dict = { W: '#ffffff', D: '#3d3000', L: '#ffffff', P: '#8b909a', none: 'transparent' }
+    // the six result shades (RES6), plus a pale slot for a match still to play
+    const RES: Dict = { P: '#E7E9ED', none: 'transparent' }, INK: Dict = { P: '#8b909a', none: 'transparent' }
+    for (const [k, [fill, ink]] of Object.entries(RES6)) { RES[k] = fill; INK[k] = ink }
     const CELL_MIN = 26   // three letters at 9px/800 need ~21px
     const ticks = Array.from(new Set([1, 5, 10, 15, 20, 25, 30, 35, N].concat(tw > 0 && tw < N ? [tw] : []).filter(n => n <= N))).sort((a, b) => a - b)
     const dim = '#8b909a'
@@ -953,7 +956,7 @@ export class SeasonTower extends React.Component<Props, State> {
         <polyline points={pts} fill="none" stroke={color} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
         {rankPath.map((p: any, i: number) => (
           <g key={'p' + i}>
-            <circle cx={x(p.md)} cy={y(p.rank)} r={dotR} data-mddot={p.md} data-r={dotR} fill={p.res === 'W' ? '#1f8a4c' : p.res === 'L' ? '#d0454a' : '#EAB308'} stroke="#fff" strokeWidth={dotR > 3.4 ? 1.5 : 1.1} style={{ transition: 'r .08s' }} />
+            <circle cx={x(p.md)} cy={y(p.rank)} r={dotR} data-mddot={p.md} data-r={dotR} fill={p.k6 ? RES6[p.k6][0] : '#EAB308'} stroke="#fff" strokeWidth={dotR > 3.4 ? 1.5 : 1.1} style={{ transition: 'r .08s' }} />
             {/* larger invisible hit target so the dot is easy to hover */}
             <circle cx={x(p.md)} cy={y(p.rank)} r={Math.max(dotR + 4, 8)} fill="transparent" style={{ cursor: 'pointer' }} onMouseEnter={() => this.hoverMatch(p.md, true)} onMouseLeave={() => this.hoverMatch(p.md, false)} />
           </g>
@@ -1385,7 +1388,7 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div>A <b>draw is deliberately shown twice</b> — once above the baseline and once below. It's the honest picture of a tie: <b>+1 point earned</b> (better than a loss), but also <b>2 points dropped</b> versus the win it could have been. Showing both sides is the whole idea — the tower isn't just where you stand, it's <b>the points you gathered and the points you let slip</b>. That's why the negatives are drawn at all: a team can sit on the same total from very different seasons, and only the down‑side reveals how many wins turned into draws or losses along the way.</div>
                   <div>Drag the <b>matchday slider</b> (or <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>‹</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>›</kbd>) to move through the season — it stops at the <b>last played matchday</b>.</div>
                   <div>Switch <b>league &amp; season</b> with the dropdowns, flip <b>vertical towers / landscape rows</b> with ⊤ / ⊢, and go <b>fullscreen</b> with ⛶.</div>
-                  <div><b>▥ Season barcode</b> (the five leagues): every club's season as a strip of cells, one per matchday — <b style={{ color: '#1f8a4c' }}>win</b>, <b style={{ color: '#b58a06' }}>draw</b>, <b style={{ color: '#d0454a' }}>loss</b>, grey still to play — rows in standings order. Columns line up, so a postponed game shows as a hole. Click a cell for the match.</div>
+                  <div><b>▥ Season barcode</b> (the five leagues): every club's season as a strip of cells, one per matchday — <b style={{ color: '#177a41' }}>won</b> (darker by 2+ goals), <b style={{ color: '#b58a06' }}>draw</b>, <b style={{ color: '#7d838c' }}>0-0</b>, <b style={{ color: '#b3323a' }}>lost</b> (darker by 2+), pale grey still to play — rows in standings order. Columns line up, so a postponed game shows as a hole. Click a cell for the match.</div>
                   <div><b>Keyboard:</b> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>←</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>→</kbd> change league, <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>↑</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>↓</kbd> step the matchday.</div>
                   <div><b>Click a match</b> for the scoreline &amp; details, or a <b>team's label</b> for its full record.</div>
                   <p className="agwas-rel"><a href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener">Release notes</a> <a className="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>
@@ -1561,7 +1564,7 @@ export class SeasonTower extends React.Component<Props, State> {
         const r = this.getRes(e.code, g.id)
         const opp = g.opp, where = g.ha === 'H' ? 'v' : '@'
         cells.push({
-          key: e.code + '-' + g.id, cls: r ? r.res : 'P', opp, away: g.ha === 'A', score: r ? `${r.gf}-${r.ga}` : '',
+          key: e.code + '-' + g.id, cls: r ? res6(r.gf, r.ga) : 'P', opp, away: g.ha === 'A', score: r ? `${r.gf}-${r.ga}` : '',
           title: r ? `MD${w} · ${e.code} ${where} ${opp} · ${r.gf}-${r.ga}` : `MD${w} · ${e.code} ${where} ${opp} · to play`,
           onClick: () => this.openPop(e.code, g.id),
         })
@@ -1832,7 +1835,7 @@ export class SeasonTower extends React.Component<Props, State> {
           id: g.id, w: g.w, ha: g.ha === 'H' ? 'vs' : '→', opp: g.oppFull, oppCrest: crestOf(g.opp), highlights: this.normHighlights(HL[g.id]), rank: rk,
           rankBg: zc ? this.mix(zc.color, '#ffffff', 0.84) : '#F1F2F4', rankFg: zc ? this.ink(zc.color) : '#5c616b',
           dateShort, timeShort,
-          score: r ? `${r.gf}–${r.ga}` : '—', badge: res || '·',
+          score: r ? `${r.gf}–${r.ga}` : '—', badge: res || '·', k6: r ? res6(r.gf, r.ga) : null,
           badgeStyleObj: { color: c[1], background: c[0] } as React.CSSProperties,
           onClick: () => this.setState({ teamPop: null, pop: { code, id: g.id, w: g.w, opp: g.opp, oppFull: g.oppFull, ha: g.ha, venue: g.venue, city: g.city, net: g.net, et: g.et } }),
         }
@@ -1856,7 +1859,7 @@ export class SeasonTower extends React.Component<Props, State> {
         rows,
         // rank trajectory chart: position after each played matchday
         color: prim, nTeams: Object.keys(T).length, totalMd: mx,
-        rankPath: rows.filter((r: any) => r.rank != null).map((r: any) => ({ md: r.w, rank: r.rank, res: r.badge })),
+        rankPath: rows.filter((r: any) => r.rank != null).map((r: any) => ({ md: r.w, rank: r.rank, res: r.badge, k6: r.k6 })),
         chartBands: zoneBands.map((b: any) => ({ label: b.label, color: b.color, bg: b.bg, from: b.start + 1, to: b.start + b.count })),
       }
     }
