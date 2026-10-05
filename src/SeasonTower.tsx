@@ -1138,6 +1138,10 @@ export class SeasonTower extends React.Component<Props, State> {
 
           {/* match count */}
           {!v.overview && <span style={{ fontSize: '13px', fontWeight: 700, color: '#22262d', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>{v.playedStr}</span>}
+          {/* top-5 overview: matches played across the five leagues / the five seasons' total (a match per pair of clubs per matchday) */}
+          {v.overview && v.ovKind !== 'uefa' && v.ovData && <span style={{ fontSize: '13px', fontWeight: 700, color: '#22262d', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>
+            {(v.ovData as any[]).reduce((a, lg) => a + lg.played, 0)} / {(v.ovData as any[]).reduce((a, lg) => a + lg.totalMd * Math.floor(lg.clubs.length / 2), 0)}
+          </span>}
         </div>
 
         {!v.overview && v.loading && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', justifyContent: 'center', color: '#9298a1', fontSize: '14px' }}>
