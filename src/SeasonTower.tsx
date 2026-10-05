@@ -1116,11 +1116,7 @@ export class SeasonTower extends React.Component<Props, State> {
               ))}
             </div>
           )}
-          <button onClick={() => this.setState({ moreOpen: true })} title="More sports experiences" aria-label="More sports experiences" style={{ ...iconBtn, marginLeft: 'auto', fontSize: '19px', fontWeight: 700 }}>+</button>
-          <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, fontSize: '17px', fontWeight: 800 }}>?</button>
-          <button onClick={() => this.toggleFullscreen()} title="Fullscreen" aria-label="Fullscreen" style={iconBtn}>⛶</button>
-
-          {v.overview && v.ovKind !== 'uefa' && <button onClick={() => this.setState({ statsOpen: true }, () => this.syncUrl())} title="League comparison" style={{ padding: '6px 11px', border: '1px solid #D7DAE0', borderRadius: '8px', background: '#fff', color: '#15181d', fontSize: '12px', fontWeight: 800, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit' }}>Stats</button>}
+          {v.overview && v.ovKind !== 'uefa' && <button onClick={() => this.setState({ statsOpen: true }, () => this.syncUrl())} title="League comparison" style={{ marginLeft: 'auto', padding: '6px 11px', border: '1px solid #D7DAE0', borderRadius: '8px', background: '#fff', color: '#15181d', fontSize: '12px', fontWeight: 800, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit' }}>Stats</button>}
           {/* top-5 overview: points bars ↔ results stacked bottom-up */}
           {v.overview && v.ovKind !== 'uefa' && <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
             <button onClick={() => this.setOvMode('bars')} title="Points" aria-label="Points bars" style={{ padding: '6px 10px', border: 'none', background: v.ovMode !== 'barcode' ? '#15181d' : '#fff', color: v.ovMode !== 'barcode' ? '#fff' : '#727781', cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center' }}>
@@ -1128,6 +1124,10 @@ export class SeasonTower extends React.Component<Props, State> {
             </button>
             <button onClick={() => this.setOvMode('barcode')} title="Results — every match, W / D / L, from the bottom up" aria-label="Results barcode" style={{ padding: '6px 10px', border: 'none', background: v.ovMode === 'barcode' ? '#15181d' : '#fff', color: v.ovMode === 'barcode' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>▥</button>
           </div>}
+
+          <button onClick={() => this.setState({ moreOpen: true })} title="More sports experiences" aria-label="More sports experiences" style={{ ...iconBtn, marginLeft: v.overview && v.ovKind !== 'uefa' ? undefined : 'auto', fontSize: '19px', fontWeight: 700 }}>+</button>
+          <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, fontSize: '17px', fontWeight: 800 }}>?</button>
+          <button onClick={() => this.toggleFullscreen()} title="Fullscreen" aria-label="Fullscreen" style={iconBtn}>⛶</button>
 
           {/* layout toggle: vertical towers ↔ landscape rows ↔ season barcode (domestic only) */}
           {!v.overview && <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
