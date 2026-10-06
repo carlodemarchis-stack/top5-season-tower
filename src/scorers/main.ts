@@ -67,7 +67,6 @@ function card(p: Dict) {
       ${p.photo ? `<img class="ph" src="${p.photo}" alt="${esc(p.name)}">` : `<div class="ini">${esc(ini)}</div>`}
     </div>
     <div class="body">
-      <div class="lg"><i></i>${LEAGUE_NAME[p.lg]}</div>
       <div>
         <h1>${esc(p.name)}</h1>
         <div class="meta" style="margin-top:8px">${[POS[p.pos] || p.posName, age && `<b>${age}</b> yrs`, esc(p.nat), p.jersey && `#${esc(p.jersey)}`, p.heightCm && `${p.heightCm} cm`].filter(Boolean).join(' · ')}</div>
