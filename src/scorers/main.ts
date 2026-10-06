@@ -39,7 +39,7 @@ function card(p: Dict) {
   const ini = p.name.split(/\s+/).map((w: string) => w[0]).slice(0, 2).join('')
 
   const goals = p.matches.flatMap((m: Dict) => m.goals.map((g: Dict) => ({ ...g, m })))
-    .map((g: Dict) => `<span class="g"><b>${esc(g.min)}</b> ${g.m.ha === 'H' ? 'vs' : 'at'} ${esc(g.m.opp)}${g.kind === 'pen' ? '<em>PEN</em>' : g.kind === 'head' ? '<em>HEAD</em>' : g.kind === 'fk' ? '<em>FK</em>' : ''}${g.ast ? ` · ast ${esc(g.ast)}` : ''}</span>`).join('')
+    .map((g: Dict) => `<span class="g" data-mid="${g.m.id}"><b>${esc(g.min)}</b> ${g.m.ha === 'H' ? 'vs' : 'at'} ${esc(g.m.opp)}${g.kind === 'pen' ? '<em>PEN</em>' : g.kind === 'head' ? '<em>HEAD</em>' : g.kind === 'fk' ? '<em>FK</em>' : ''}${g.ast ? ` · ast ${esc(g.ast)}` : ''}</span>`).join('')
 
   const minPerGoal = p.G ? Math.round(p.min / p.G) : null
   const age = p.age != null ? `${p.age}` : ''
@@ -84,21 +84,20 @@ function strip2(p: Dict, club: Dict) {
     const m = byId[g.id]
     const at = g.ha === 'A' ? '@' : ''
     const mdLbl = g.w === 1 || g.w % 5 === 0 || g.w === half || g.w === half + 1 || g.w === all.length ? `<div class="md2">${g.w}</div>` : '<div class="md2"></div>'
-    if (!m) return `<div class="c2 up" data-d="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(TEAMS[p.lg][g.opp]?.name || g.opp)} · to play"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div>${mdLbl}</div>`
+    if (!m) return `<div class="c2 up" title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(TEAMS[p.lg][g.opp]?.name || g.opp)} · to play"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div>${mdLbl}</div>`
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
     const marks = [...m.goals.map((x: Dict) => `<i class="gl${x.kind === 'pen' ? ' pen' : ''}"></i>`), ...Array.from({ length: m.A }, () => '<i class="as"></i>')].reverse().join('')
     const veil = m.role ? Math.round((1 - Math.min(m.min, 90) / 90) * 100) : 100          // unplayed share of the 90', veiled from the top
     const ink = !m.role || m.min < 45 ? '#15181d' : fg
     const det = `MD${m.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(TEAMS[p.lg][g.opp]?.name || g.opp)} · <b>${m.gf}-${m.ga}</b> · ` +
       (m.role ? `${m.role === 'B' ? 'off the bench, ' : ''}${m.min}'` + (m.goals.length ? ` · ${m.goals.map((x: Dict) => `${esc(x.min)} ${kindName(x.kind)}${x.ast ? ` (ast ${esc(x.ast)})` : ''}`).join(', ')}` : '') + (m.A ? ` · ${m.A} assist${m.A > 1 ? 's' : ''}` : '') + ` · ${m.SH} shots, ${m.SOG} on target` : 'did not play')
-    return `<div class="c2${m.role ? '' : ' dnp'}" data-d="${det.replace(/"/g, '&quot;')}">
+    return `<div class="c2${m.role ? '' : ' dnp'}" data-mid="${g.id}" title="${det.replace(/<\/?b>/g, '').replace(/"/g, '&quot;')}">
       <div class="mk">${marks}</div>
       <div class="bx" style="background:${bg};color:${ink}"><span class="vl" style="height:${veil}%"></span><b>${m.gf}-${m.ga}</b></div>
       <div class="op">${at}${esc(g.opp)}</div>${mdLbl}</div>`
   }
   const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:${maxMarks}">${gs.map(cell).join('')}</div></div>`
   return `<div class="s2">
-    <div class="sec">${esc(club.name || p.team)} · match by match<span class="det" data-def="Hover or tap a match">Hover or tap a match</span></div>
     ${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}
   </div>
   <div class="s2">
@@ -116,7 +115,7 @@ function goalLine(p: Dict) {
   const lanes: number[] = []
   for (const q of pts) { let l = 0; while (lanes[l] != null && q.x - lanes[l] < 2.2) l++; lanes[l] = q.x; q.lane = l }
   const h1 = pts.filter(q => q.base <= 45).length
-  const dots = pts.map(q => `<i class="gd${q.g.kind === 'pen' ? ' pen' : q.g.kind === 'head' ? ' head' : q.g.kind === 'fk' ? ' fk' : ''}" style="left:${(q.x / 93) * 100}%;bottom:${4 + q.lane * 11}px" data-d="${esc(q.g.min)} ${kindName(q.g.kind)} · MD${q.m.w} ${q.m.ha === 'H' ? 'vs' : 'at'} ${esc(q.m.opp)}${q.g.ast ? ` · ast ${esc(q.g.ast)}` : ''}"></i>`).join('')
+  const dots = pts.map(q => `<i class="gd${q.g.kind === 'pen' ? ' pen' : q.g.kind === 'head' ? ' head' : q.g.kind === 'fk' ? ' fk' : ''}" style="left:${(q.x / 93) * 100}%;bottom:${4 + q.lane * 11}px" data-mid="${q.m.id}" title="${esc(q.g.min)} ${kindName(q.g.kind)} · MD${q.m.w} ${q.m.ha === 'H' ? 'vs' : 'at'} ${esc(q.m.opp)}${q.g.ast ? ` · ast ${esc(q.g.ast)}` : ''}"></i>`).join('')
   const lanesN = Math.max(1, ...pts.map(q => q.lane + 1))
   const ticks = [0, 15, 30, 45, 60, 75, 90].map(t => `<span style="left:${(t / 93) * 100}%">${t}'</span>`).join('')
   return `<div class="gline" style="--h:${8 + lanesN * 11}px"><div class="ax">${dots}<em class="ht"></em></div><div class="tk">${ticks}</div>
@@ -234,13 +233,16 @@ addEventListener('keydown', e => {
   else if (e.key === 'g' || e.key === '/') { e.preventDefault(); openJump() }
 })
 Object.assign(window, { go, step, togglePlay, fs, openMod, closeMods, openJump })
-// hovering / tapping a match or a goal writes its detail into that card's header line
-const showDet = (e: Event) => {
-  const t = (e.target as HTMLElement).closest<HTMLElement>('[data-d]'); const card = (e.target as HTMLElement).closest('.card')
-  const det = card?.querySelector<HTMLElement>('.det'); if (!det) return
-  det.innerHTML = t ? t.dataset.d! : det.dataset.def!
+// hover / tap a match → its goals light up in the minute line and the goal list (and the other way round); the rest dims
+const highlight = (e: Event) => {
+  const el = e.target as HTMLElement, card = el.closest('.card'); if (!card) return
+  const t = el.closest<HTMLElement>('[data-mid]')
+  card.querySelectorAll('.hl').forEach(x => x.classList.remove('hl'))
+  card.classList.toggle('hlon', !!t)
+  if (t) card.querySelectorAll(`[data-mid="${t.dataset.mid}"]`).forEach(x => x.classList.add('hl'))
 }
-film.addEventListener('mouseover', showDet); film.addEventListener('click', showDet)
+film.addEventListener('mouseover', highlight); film.addEventListener('click', highlight)
+film.addEventListener('mouseleave', () => film.querySelectorAll('.hlon').forEach(c => { c.classList.remove('hlon'); c.querySelectorAll('.hl').forEach(x => x.classList.remove('hl')) }))
 
 // a reload lands where you were, never card 1: #N, else the last card seen
 ;(function start() {

@@ -117,8 +117,6 @@
     /* ---------- the season strip (two rows) + goals by minute + goal list ---------- */
     .n span{white-space:nowrap}
     .s2 .sec{display:flex;align-items:baseline;gap:12px}
-    .det{margin-left:auto;font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:#3a3f47;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%}
-    .det b{color:#15181d}
     .row2{display:grid;grid-template-columns:64px 1fr;align-items:end;gap:8px;margin-top:6px;max-width:1040px}
     .rl{font-size:10px;font-weight:800;letter-spacing:.08em;color:#8a9099;text-transform:uppercase;padding-bottom:22px}
     .cells{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:3px}
@@ -136,7 +134,16 @@
     .c2 .op{font-size:9.5px;font-weight:700;color:#3a3f47;text-align:center;white-space:nowrap;overflow:hidden;margin-top:2px}
     .c2.up .op{color:#b0b5bc}
     .c2 .md2{font-size:9px;color:#9aa0a8;text-align:center;height:11px}
-    .c2:hover .bx{outline:2px solid #15181d;outline-offset:1px}
+    .c2.hl .bx{outline:2px solid #15181d;outline-offset:1px}
+    /* a hovered / tapped match lights up its goals; everything else dims */
+    .goals .g,.gline .gd{transition:opacity .12s,background .12s,transform .12s}
+    .hlon .goals .g:not(.hl){opacity:.3}
+    .hlon .gline .ax .gd:not(.hl){opacity:.25}
+    .goals .g.hl{background:#15181d;border-color:#15181d;color:#fff}
+    .goals .g.hl b{color:#fff}
+    .goals .g.hl em{background:#fff;color:#15181d}
+    .gline .ax .gd.hl{transform:scale(1.6)}
+    .goals .g{cursor:default}
     .gline{max-width:1040px;padding-left:72px}
     .gline .ax{position:relative;height:var(--h);border-bottom:1.5px solid #15181d}
     .gline .ax .ht{position:absolute;left:calc(45 / 93 * 100%);top:0;bottom:0;border-left:1px dashed #b9bec5}
@@ -157,7 +164,6 @@
       .c2 .bx{height:24px}
       .c2 .bx b,.c2 .op{display:none}
       .gline{padding-left:0}
-      .det{max-width:100%;white-space:normal}
       .s2 .sec{flex-wrap:wrap}
       .nums{flex-wrap:wrap}
     }
