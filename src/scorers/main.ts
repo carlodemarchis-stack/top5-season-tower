@@ -90,7 +90,6 @@ function card(p: Dict) {
         <div class="sec">The goals</div>
         <div class="goals">${goals}</div>
       </div>
-      <div class="foot">● goal (P = penalty) · ○ assist · box = ${esc(club.name || p.team)} result · bar = minutes played</div>
     </div>
   </section>`
 }
