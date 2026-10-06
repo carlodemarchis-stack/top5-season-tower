@@ -1119,7 +1119,9 @@ export class SeasonTower extends React.Component<Props, State> {
               ))}
             </div>
           )}
-          {v.overview && v.ovKind !== 'uefa' && <button onClick={() => this.setState({ statsOpen: true }, () => this.syncUrl())} title="League comparison" style={{ marginLeft: 'auto', padding: '6px 11px', border: '1px solid #D7DAE0', borderRadius: '8px', background: '#fff', color: '#15181d', fontSize: '12px', fontWeight: 800, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit' }}>Stats</button>}
+          {/* the top-scorers card film (top-5 domestic leagues only) */}
+          {((v.overview && v.ovKind !== 'uefa') || (!v.overview && !isUefa(this.state.league))) && <a href="scorers.html" title="Top scorers across the five leagues — one card per player" style={{ marginLeft: 'auto', padding: '6px 11px', border: '1px solid #D7DAE0', borderRadius: '8px', background: '#fff', color: '#15181d', fontSize: '12px', fontWeight: 800, cursor: 'pointer', lineHeight: 1, textDecoration: 'none', whiteSpace: 'nowrap' }}>Scorers</a>}
+          {v.overview && v.ovKind !== 'uefa' && <button onClick={() => this.setState({ statsOpen: true }, () => this.syncUrl())} title="League comparison" style={{ padding: '6px 11px', border: '1px solid #D7DAE0', borderRadius: '8px', background: '#fff', color: '#15181d', fontSize: '12px', fontWeight: 800, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit' }}>Stats</button>}
           {/* top-5 overview: points bars ↔ results stacked bottom-up */}
           {v.overview && v.ovKind !== 'uefa' && <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
             <button onClick={() => this.setOvMode('bars')} title="Points" aria-label="Points bars" style={{ padding: '6px 10px', border: 'none', background: v.ovMode !== 'barcode' ? '#15181d' : '#fff', color: v.ovMode !== 'barcode' ? '#fff' : '#727781', cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center' }}>
@@ -1129,7 +1131,7 @@ export class SeasonTower extends React.Component<Props, State> {
           </div>}
 
           {/* layout toggle: vertical towers ↔ landscape rows ↔ season barcode (domestic only) */}
-          {!v.overview && <div style={{ marginLeft: 'auto', display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
+          {!v.overview && <div style={{ marginLeft: isUefa(this.state.league) ? 'auto' : undefined, display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
             <button onClick={() => this.setLayout('towers')} title="Vertical towers" style={{ padding: '6px 10px', border: 'none', background: (v.viewMode || v.layout) === 'towers' ? '#15181d' : '#fff', color: (v.viewMode || v.layout) === 'towers' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊤</button>
             <button onClick={() => this.setLayout('rows')} title="Landscape rows" style={{ padding: '6px 10px', border: 'none', background: (v.viewMode || v.layout) === 'rows' ? '#15181d' : '#fff', color: (v.viewMode || v.layout) === 'rows' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊢</button>
             {!isUefa(this.state.league) && <button onClick={() => this.setLayout('barcode')} title="Season barcode — every game, W / D / L" style={{ padding: '6px 10px', border: 'none', background: v.viewMode === 'barcode' ? '#15181d' : '#fff', color: v.viewMode === 'barcode' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>▥</button>}

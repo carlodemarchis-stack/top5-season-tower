@@ -6,4 +6,6 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './',
+  // two pages: the Season Tower app and the top-scorers card film
+  build: { rollupOptions: { input: { main: 'index.html', scorers: 'scorers.html' } } },
 })

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Top Scorers · top-5 EU leagues</title>
+  <meta name="description" content="The top scorers across Serie A, the Premier League, LaLiga, Ligue 1 and the Bundesliga, one card per player: every goal, match by match. Produced with passion by A Guy With A Scarf (Carlo De Marchis)." />
+  <meta property="og:site_name" content="A Guy With A Scarf" />
+  <meta property="og:title" content="Top Scorers — top-5 EU leagues" />
+  <!-- AGWAS social capture (mentions kept in step with the card on screen by updateSocialMeta()) -->
+  <meta name="agwas:title"    content="Top scorers, top-5 leagues">
+  <meta name="agwas:cta"      content="Every goal, match by match — full film below">
+  <meta name="agwas:mentions" content="laliga">
+  <meta name="agwas:tags"     content="football dataviz">
+  <meta name="agwas:bg"       content="https://top5.aguywithascarf.com/social/football.jpg">
+  <!-- Umami --><script>try{/[?&#]noumami\b/.test(location.href)&&localStorage.setItem('umami.disabled','1')}catch(e){}</script><script defer src="https://m.aguywithascarf.com/k.js" data-website-id="795be6fc-5a41-4d66-85bc-774157d5d2c7"></script>
+    <script defer src="https://dataviz.aguywithascarf.com/ver.js"></script><!-- End Umami -->
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "b7ca744dce3341b2a233a864179a4f42"}'></script><!-- End Cloudflare Web Analytics -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;overflow:hidden;background:#F5F6F4;color:#15181d;font-family:'Archivo',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    :root{--bar:52px;--ctl:54px;--line:#e1e4e8;--dim:#6a717b;--pan:#eef0f2;--acc:#15181d}
+    /* ---------- chrome (the standard card-film bars, in the app's light palette) ---------- */
+    #topbar{position:fixed;top:0;left:0;right:0;height:var(--bar);z-index:40;display:flex;align-items:center;gap:14px;padding:0 16px;
+      background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);font-size:12px}
+    #ctx{color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 0}
+    #ctx b{color:#15181d}
+    .pill{border:1px solid var(--line);background:#fff;color:var(--dim);border-radius:99px;padding:5px 13px;font-size:11.5px;cursor:pointer;letter-spacing:.02em;text-decoration:none;white-space:nowrap;font-family:inherit}
+    .pill:hover{color:#15181d;border-color:#c9ced4}
+    #lgs{display:flex;gap:4px;flex:0 0 auto;align-items:center}
+    .lgb{height:40px;padding:3px 7px;border-radius:10px;border:1px solid transparent;background:none;cursor:pointer;display:flex;align-items:center;gap:6px;opacity:.6;filter:grayscale(.6);transition:opacity .15s,filter .15s}
+    .lgb img{height:30px;width:auto;display:block}
+    .lgb span{font-size:11px;font-weight:800;color:#15181d;font-variant-numeric:tabular-nums}
+    .lgb:hover{opacity:.8;filter:none}
+    .lgb.on{opacity:1;filter:none;border-color:var(--line);background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    #credit{color:var(--dim);flex:1 1 0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+    #credit a{color:var(--dim);text-decoration:none;border-bottom:1px solid var(--line)}
+    #credit a:hover{color:#15181d}
+    #ctlbar{position:fixed;bottom:0;left:0;right:0;height:var(--ctl);z-index:40;display:flex;align-items:center;justify-content:center;gap:8px;
+      background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+    .ic{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--dim);display:grid;place-items:center;cursor:pointer}
+    .ic:hover{color:#15181d;border-color:#c9ced4;background:var(--pan)}
+    .ic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+    #counter{min-width:112px;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--dim);cursor:pointer;font:inherit;font-size:12px;font-variant-numeric:tabular-nums}
+    #counter:hover{color:#15181d}
+    #counter b{color:#15181d}
+    .mod{position:fixed;inset:0;z-index:60;background:rgba(21,24,29,.45);backdrop-filter:blur(6px);display:none;place-items:center;padding:22px}
+    .mod.on{display:grid}
+    .mbox{width:min(720px,94vw);max-height:84vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+    .mbox h3{font-size:17px;font-weight:800;margin-bottom:12px}
+    .mbox p,.mbox li{font-size:12.5px;color:#3a3f47;line-height:1.65}
+    .mbox ul{margin:8px 0 8px 17px}
+    .mbox a{color:#15181d}
+    kbd{font:inherit;font-size:11px;background:var(--pan);border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:#15181d}
+    #jq{width:100%;background:var(--pan);border:1px solid var(--line);border-radius:12px;padding:11px 13px;color:#15181d;font:inherit;font-size:13px;margin-bottom:10px}
+    #jq:focus{outline:none;border-color:#15181d}
+    #jmodal .mbox{width:min(1040px,96vw)}
+    #jlist{max-height:62vh;overflow:auto}
+    .jsec{margin-bottom:14px}
+    .jsechd{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:6px}
+    .jsechd img{height:18px}
+    .jsechd span{color:#15181d;opacity:.5}
+    .jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:2px 10px}
+    .jrow{display:grid;grid-template-columns:30px 1fr;gap:8px;align-items:baseline;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:12.5px;min-width:0}
+    .jrow:hover,.jrow.sel{background:var(--pan)}
+    .jrow .jn{color:var(--dim);font-variant-numeric:tabular-nums;text-align:right;font-size:11px}
+    .jrow .jl{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .jrow .jt{color:var(--dim);font-size:10.5px;margin-left:5px}
+    .applist{display:flex;flex-direction:column;gap:3px}
+    .approw{display:grid;grid-template-columns:12px 1fr auto;gap:11px;align-items:center;padding:9px 10px;border-radius:10px;text-decoration:none;color:#15181d;font-size:12.5px}
+    .approw:hover{background:var(--pan)}
+    .approw i{width:9px;height:9px;border-radius:99px}
+    .approw em{font-style:normal;color:var(--dim);font-size:11px;display:block}
+
+    /* ---------- film ---------- */
+    #film{position:fixed;top:var(--bar);bottom:var(--ctl);left:0;right:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none}
+    #film::-webkit-scrollbar{display:none}
+    .card{flex:0 0 100%;height:100%;scroll-snap-align:center;display:grid;grid-template-columns:minmax(300px,36%) 1fr;content-visibility:auto;contain-intrinsic-size:100vw 100vh}
+
+    /* left: club-colour panel with the photo */
+    .pan{position:relative;overflow:hidden;background:var(--c);color:var(--ink)}
+    .pan::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(0,0,0,.28));pointer-events:none}
+    .pan .wm{position:absolute;right:-12%;top:6%;width:78%;opacity:.16;filter:grayscale(1) brightness(3)}
+    .pan .rk{position:absolute;left:28px;top:20px;z-index:2;font-weight:900;font-size:clamp(64px,10vw,150px);line-height:.9;letter-spacing:-.04em}
+    .pan .rk small{display:block;font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.85;margin:0 0 6px 3px}
+    .pan .ph{position:absolute;left:50%;bottom:0;transform:translateX(-50%);height:var(--ph,86%);max-width:none;z-index:1;filter:drop-shadow(0 10px 24px rgba(0,0,0,.35))}
+    .pan .ini{position:absolute;inset:0;display:grid;place-items:center;font-weight:900;font-size:120px;opacity:.5;z-index:1}
+
+    /* right: everything else */
+    .body{display:flex;flex-direction:column;gap:clamp(14px,2.2vh,26px);padding:clamp(20px,3.4vh,40px) clamp(22px,3vw,48px);min-width:0;overflow:hidden}
+    .lg{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#5b626c}
+    .lg i{width:10px;height:10px;border-radius:2px;background:var(--c);display:inline-block}
+    h1{font-weight:900;font-size:clamp(40px,5.6vw,84px);line-height:.92;letter-spacing:-.03em;text-transform:uppercase}
+    .meta{font-size:15px;color:#3a3f47;font-weight:500}
+    .meta b{font-weight:800;color:#15181d}
+    .club{display:flex;align-items:center;gap:12px;font-size:16px;font-weight:700}
+    .club img{width:34px;height:34px;object-fit:contain}
+    .club .tl{font-weight:500;color:#3a3f47}
+    .club .tl b{color:#15181d;font-weight:800}
+    .club .tl::before{content:'· '}
+
+    .nums{display:flex;align-items:flex-end;gap:clamp(16px,2.4vw,40px);flex-wrap:wrap}
+    .n{display:flex;flex-direction:column}
+    .n b{font-weight:900;font-size:clamp(28px,3.2vw,46px);line-height:1;letter-spacing:-.02em}
+    .n span{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6a717b;margin-top:4px}
+    .n.big b{font-size:clamp(72px,9vw,132px);color:var(--c2)}
+    .n.big span{color:#15181d}
+
+    /* match strip: one column per team game, in matchday order */
+    .sec{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#6a717b;margin-bottom:8px}
+    .strip{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:6px;max-width:980px}
+    .m{display:flex;flex-direction:column;align-items:stretch;gap:4px;min-width:0}
+    .m .pts{height:22px;display:flex;justify-content:center;align-items:flex-end;gap:3px;flex-wrap:wrap}
+    .dot{width:14px;height:14px;border-radius:50%;background:#15181d;color:#fff;font-size:8px;font-weight:900;display:grid;place-items:center;line-height:1}
+    .dot.ast{background:transparent;border:2.5px solid #15181d}
+    .m .box{height:46px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:clamp(13px,1.4vw,18px);letter-spacing:-.01em;position:relative}
+    .m.dnp .box{opacity:.32}
+    .m .opp{display:flex;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:700;color:#3a3f47;white-space:nowrap}
+    .m .opp img{width:16px;height:16px;object-fit:contain}
+    .m .min{height:26px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px}
+    .m .min .bar{width:100%;height:5px;border-radius:3px;background:#dfe2e6;overflow:hidden}
+    .m .min .bar i{display:block;height:100%;background:#15181d}
+    .m .min span{font-size:10px;font-weight:700;color:#5b626c;white-space:nowrap}
+    .md{font-size:10px;font-weight:700;color:#8a9099;text-align:center}
+
+    .goals{display:flex;flex-wrap:wrap;gap:6px 8px;max-width:980px}
+    .g{font-size:12.5px;font-weight:600;color:#3a3f47;background:#fff;border:1px solid #e3e6ea;border-radius:999px;padding:4px 10px;white-space:nowrap}
+    .g b{font-weight:800;color:#15181d}
+    .g em{font-style:normal;font-weight:800;font-size:10.5px;letter-spacing:.06em;color:#fff;background:#15181d;border-radius:4px;padding:1px 5px;margin-left:4px}
+
+    .foot{margin-top:auto;font-size:11px;color:#8a9099}
+
+    @media (max-width: 900px){
+      #topbar{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;gap:8px}
+      #topbar::-webkit-scrollbar{display:none}
+      #ctx,#credit{display:none}
+      .lgb{padding:3px 5px}
+      #topbar .lbl{display:none}
+      #topbar{padding:0 10px}
+      .lgb img{height:26px}
+    }
+    @media (max-width: 760px){
+      .card{grid-template-columns:1fr;grid-template-rows:34vh 1fr}
+      .body{overflow-y:auto}
+      .strip{gap:3px}
+      .m .box{height:38px;font-size:12px}
+      .m .opp img{display:none}
+      .club{flex-wrap:wrap;row-gap:2px}
+      .club .tl{flex-basis:100%;padding-left:46px}
+      .club .tl::before{content:none}
+    }
+  </style>
+</head>
+<body>
+  <div id="topbar">
+    <a class="pill" href="./#ALL/2026-27" title="Back to the Season Tower">←<span class="lbl"> Season Tower</span></a>
+    <div id="lgs"></div>
+    <div id="ctx"></div>
+    <div id="credit">Produced with passion by <b>Carlo De Marchis</b> · <a href="#" onclick="openMod('cmodal');return false">Credits</a><a class="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></div>
+  </div>
+
+  <main id="film" aria-label="Top scorers"></main>
+
+  <div id="ctlbar">
+    <button class="ic" title="Restart (Home)" onclick="go(0)"><svg viewBox="0 0 24 24"><path d="M2 5v6h6"/><path d="M4.6 15.5a8.5 8.5 0 1 0 2-8.8L2 11"/></svg></button>
+    <button class="ic" title="Previous (←)" onclick="step(-1)"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="ic" id="playb" title="Play" onclick="togglePlay()"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></button>
+    <button class="ic" title="Next (→)" onclick="step(1)"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+    <button id="counter" title="Jump to a player (g)" onclick="openJump()"></button>
+    <button class="ic" title="More sports experiences" onclick="openMod('mmodal')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="ic" title="Help (h)" onclick="openMod('hmodal')"><svg viewBox="0 0 24 24"><path d="M12 17h.01M9.1 9a3 3 0 1 1 4.2 2.7c-.8.4-1.3 1.1-1.3 2"/></svg></button>
+    <button class="ic" title="Fullscreen (f)" onclick="fs()"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M15 4h5v5M9 20H4v-5"/></svg></button>
+  </div>
+
+  <div class="mod" id="jmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <input id="jq" placeholder="Player, club, league, nationality — or a card number" autocomplete="off" />
+    <div id="jlist"></div>
+  </div></div>
+
+  <div class="mod" id="hmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>How to read a card</h3>
+    <p>One card per player: the top 25 goalscorers across Serie A, the Premier League, LaLiga, Ligue 1 and the Bundesliga, plus everyone tied with the 25th. Ordered by goals; players level on goals share a rank.</p>
+    <ul>
+      <li><b>Goals</b> in the club colour, with penalties; then assists, games (and starts), minutes, minutes per goal, shots on target / shots.</li>
+      <li><b>Match by match</b>: one box per club league game, in matchday order, coloured by the club's result — dark green won by 2+, green won by 1, yellow draw, grey 0-0, red lost by 1, dark red lost by 2+. Above the box: ● a goal (P = penalty), ○ an assist. Below: the opponent (@ = away), a bar for the minutes he played, “sub” if he came off the bench, “DNP” if he did not play.</li>
+      <li><b>The goals</b>: minute, opponent, PEN / HEAD / FK, and who made the assist.</li>
+      <li>The league logos in the top bar jump to that league's first scorer; the number beside each is how many of its players made the list.</li>
+    </ul>
+    <p><kbd>←</kbd> <kbd>→</kbd> previous / next · <kbd>space</kbd> play / pause · <kbd>Home</kbd> <kbd>End</kbd> first / last · <kbd>g</kbd> or <kbd>/</kbd> find a player · <kbd>f</kbd> fullscreen · <kbd>h</kbd> this help · <kbd>Esc</kbd> close</p>
+    <p class="agwas-rel">Release notes <a class="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>
+  </div></div>
+
+  <div class="mod" id="cmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>Credits</h3>
+    <p id="cnote"></p>
+    <p>Goals, assists, minutes, shots and cards from ESPN match reports, checked every update: each player's match-by-match totals must equal his season totals, and every score must equal the result in the Season Tower (football-data.org). Player photos are the official season portraits published by Lega Serie A, the Premier League, LaLiga, the LFP (Ligue 1) and the DFL (Bundesliga). Club crests via TheSportsDB; league logos from the leagues.</p>
+    <p>Built by Carlo De Marchis — <i>A Guy With A Scarf</i>.</p>
+  </div></div>
+
+  <div class="mod" id="mmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>More sports experiences</h3>
+    <div class="applist" id="applist"></div>
+    <p style="margin-top:12px"><a href="https://dataviz.aguywithascarf.com" target="_blank" rel="noopener">See them all →</a></p>
+  </div></div>
+
+  <script type="module" src="/src/scorers/main.ts"></script>
+</body>
+</html>

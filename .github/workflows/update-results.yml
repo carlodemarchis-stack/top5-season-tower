@@ -68,12 +68,24 @@ jobs:
           node scripts/gen-uefa.mjs --comp EL  --season 2026-27 || true
           node scripts/gen-uefa.mjs --comp ECL --season 2026-27 || true
 
+      # Top-scorers card film (scorers.html): ESPN match reports + official league photos. Runs when this
+      # run brought new league results, on the 08:00 daily sweep, and on a manual run — not on every poll.
+      # The script verifies every player's match-by-match totals against ESPN's season totals and writes
+      # nothing if anything disagrees (e.g. ESPN not caught up yet) — the next trigger retries.
+      - name: Top scorers (ESPN + league photos)
+        run: |
+          if ! git diff --quiet -- 'src/data/results-*-2026-27.js' || [ "${{ github.event.schedule }}" = "0 8 * * *" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            node scripts/update-scorers.mjs --season 2026-27 || echo "::warning::scorers not updated (verification failed) — will retry on the next trigger"
+          else
+            echo "No new league results — scorers unchanged."
+          fi
+
       - name: Commit if changed
         id: commit
         run: |
           git config user.name "results-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/data/results-*-2026-27.js src/data/standings-*-2026-27.js src/data/highlights-*-2026-27.js src/data/schedule-CL-2026-27.js src/data/schedule-EL-2026-27.js src/data/schedule-ECL-2026-27.js
+          git add src/data/results-*-2026-27.js src/data/standings-*-2026-27.js src/data/highlights-*-2026-27.js src/data/schedule-CL-2026-27.js src/data/schedule-EL-2026-27.js src/data/schedule-ECL-2026-27.js src/data/scorers-TOP5-2026-27.js public/players scripts/scorers-photo-cache.json
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No new results — nothing to deploy."
