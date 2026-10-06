@@ -103,25 +103,31 @@ function strip2(p: Dict, club: Dict) {
     ${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}
   </div>
   <div class="s2">
-    <div class="sec">When he scores · ${p.G} goals by minute</div>${goalLine(p)}
+    <div class="sec">When he scores · ${p.G} goals by minute${goalLegend(p)}</div>${goalLine(p)}
   </div>`
+}
+// "45'+2'" → base 45, extra 2
+const parseMin = (min: string) => { const mm = String(min).match(/(\d+)'?(?:\s*\+\s*(\d+))?/) || []; return { base: +(mm[1] || 0), extra: +(mm[2] || 0) } }
+// sits on the "When he scores" title line: the half split, goals off the bench, and the marker key
+function goalLegend(p: Dict) {
+  const all = p.matches.flatMap((m: Dict) => m.goals.map((g: Dict) => ({ g, m })))
+  const h1 = all.filter((x: Dict) => parseMin(x.g.min).base <= 45).length
+  const bench = all.filter((x: Dict) => x.m.role === 'B').length
+  return `<span class="gsum">1st half <b>${h1}</b> · 2nd half <b>${all.length - h1}</b> · off the bench <b>${bench}</b><span class="key"><i class="gd"></i>goal<i class="gd pen"></i>penalty<i class="gd head"></i>header<i class="gd fk"></i>free kick</span></span>`
 }
 function goalLine(p: Dict) {
   const pts: Dict[] = p.matches.flatMap((m: Dict) => m.goals.map((g: Dict) => {
-    const mm = String(g.min).match(/(\d+)'?(?:\s*\+\s*(\d+))?/) || []
-    const base = +(mm[1] || 0), extra = +(mm[2] || 0)
+    const { base, extra } = parseMin(g.min)
     return { x: Math.min(base, 90) + Math.min(extra, 6) * 0.45, base, g, m }
   }))
   // stack goals that would overlap (within ~2.2 minutes) upwards
   pts.sort((a, b) => a.x - b.x)
   const lanes: number[] = []
   for (const q of pts) { let l = 0; while (lanes[l] != null && q.x - lanes[l] < 2.2) l++; lanes[l] = q.x; q.lane = l }
-  const h1 = pts.filter(q => q.base <= 45).length
   const dots = pts.map(q => `<i class="gd${q.g.kind === 'pen' ? ' pen' : q.g.kind === 'head' ? ' head' : q.g.kind === 'fk' ? ' fk' : ''}" style="left:${(q.x / 93) * 100}%;bottom:${4 + q.lane * 11}px" data-mid="${q.m.id}" title="${esc(q.g.min)} ${kindName(q.g.kind)} · MD${q.m.w} ${q.m.ha === 'H' ? 'vs' : 'at'} ${esc(q.m.opp)}${q.g.ast ? ` · ast ${esc(q.g.ast)}` : ''}"></i>`).join('')
   const lanesN = Math.max(1, ...pts.map(q => q.lane + 1))
   const ticks = [0, 15, 30, 45, 60, 75, 90].map(t => `<span style="left:${(t / 93) * 100}%">${t}'</span>`).join('')
-  return `<div class="gline" style="--h:${8 + lanesN * 11}px"><div class="ax">${dots}<em class="ht"></em></div><div class="tk">${ticks}</div>
-    <div class="gsum">1st half <b>${h1}</b> · 2nd half <b>${pts.length - h1}</b> · <i class="gd"></i> goal <i class="gd pen"></i> penalty <i class="gd head"></i> header <i class="gd fk"></i> free kick</div></div>`
+  return `<div class="gline" style="--h:${8 + lanesN * 11}px"><div class="ax">${dots}<em class="ht"></em></div><div class="tk">${ticks}</div></div>`
 }
 
 // ---------- the standard card-film chrome: top bar (league logos), control bar, search, modals, keys, restore ----------
