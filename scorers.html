@@ -129,6 +129,7 @@
     .c2 .mk i.as{background:transparent;border:1.5px solid #15181d;box-sizing:border-box}
     .c2 .bx{position:relative;height:30px;border-radius:4px;display:grid;place-items:center;overflow:hidden;font-size:clamp(9px,.9vw,12.5px);font-weight:800;letter-spacing:-.02em}
     .c2 .bx .vl{position:absolute;left:0;right:0;top:0;background:rgba(255,255,255,.62)}
+    .c2.sub .bx .vl{top:auto;bottom:0}   /* off the bench: his minutes are the end of the match → darker part on top */
     .c2 .bx b{position:relative;font-weight:800}
     .c2.dnp .bx{background:#fff!important;box-shadow:inset 0 0 0 1.5px #c9ced4;color:#8a9099!important}
     .c2.dnp .bx .vl{display:none}
@@ -222,7 +223,9 @@
     <p>One card per player: the top 50 goalscorers across Serie A, the Premier League, LaLiga, Ligue 1 and the Bundesliga, plus everyone tied with the 50th. Ordered by goals; players level on goals share a rank.</p>
     <ul>
       <li><b>Goals</b> in the club colour, with penalties; then assists, games (and starts), minutes, minutes per goal, shots on target / shots.</li>
-      <li><b>Match by match</b>: one box per club league game, in matchday order, coloured by the club's result — dark green won by 2+, green won by 1, yellow draw, grey 0-0, red lost by 1, dark red lost by 2+. Above the box: ● a goal (P = penalty), ○ an assist. Below: the opponent (@ = away), a bar for the minutes he played, “sub” if he came off the bench, “DNP” if he did not play.</li>
+      <li><b>The season</b>: one box per club league game — matchdays 1–19 on the top row, 20–38 below (1–17 / 18–34 in Ligue 1 and the Bundesliga) — coloured by the club's result: dark green won by 2+, green won by 1, yellow draw, grey 0-0, red lost by 1, dark red lost by 2+. Under each box, the opponent (@ = away). Empty outlines are games still to play; a white box with a grey outline is a game he missed.</li>
+      <li><b>Minutes</b> fill the box from the bottom up, as the 90 minutes run: a starter's darker part sits at the bottom, a substitute's at the top (he came on for the end); a solid box is a full game. Above the box: ● a goal (ringed = penalty), ○ an assist.</li>
+      <li><b>When he scores</b>: every goal on a 0–90' line — ● goal, ringed = penalty, ■ header, dashed = free kick. Hover or tap a match and its goals light up in the club colour here and in the goal list.</li>
       <li><b>The goals</b>: minute, opponent, PEN / HEAD / FK, and who made the assist.</li>
       <li>The league logos in the top bar jump to that league's first scorer; the number beside each is how many of its players made the list.</li>
     </ul>

@@ -87,11 +87,13 @@ function strip2(p: Dict, club: Dict) {
     if (!m) return `<div class="c2 up" title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(TEAMS[p.lg][g.opp]?.name || g.opp)} · to play"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
     const marks = [...m.goals.map((x: Dict) => `<i class="gl${x.kind === 'pen' ? ' pen' : ''}"></i>`), ...Array.from({ length: m.A }, () => '<i class="as"></i>')].reverse().join('')
-    const veil = m.role ? Math.round((1 - Math.min(m.min, 90) / 90) * 100) : 100          // unplayed share of the 90', veiled from the top
+    // the box reads bottom-up as the 90': the unplayed share is veiled — at the top for a starter (he played the start),
+    // at the bottom for a sub (he played the end), so the darker part sits where his minutes were
+    const veil = m.role ? Math.round((1 - Math.min(m.min, 90) / 90) * 100) : 100
     const ink = !m.role || m.min < 45 ? '#15181d' : fg
     const det = `MD${m.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(TEAMS[p.lg][g.opp]?.name || g.opp)} · <b>${m.gf}-${m.ga}</b> · ` +
       (m.role ? `${m.role === 'B' ? 'off the bench, ' : ''}${m.min}'` + (m.goals.length ? ` · ${m.goals.map((x: Dict) => `${esc(x.min)} ${kindName(x.kind)}${x.ast ? ` (ast ${esc(x.ast)})` : ''}`).join(', ')}` : '') + (m.A ? ` · ${m.A} assist${m.A > 1 ? 's' : ''}` : '') + ` · ${m.SH} shots, ${m.SOG} on target` : 'did not play')
-    return `<div class="c2${m.role ? '' : ' dnp'}" data-mid="${g.id}" title="${det.replace(/<\/?b>/g, '').replace(/"/g, '&quot;')}">
+    return `<div class="c2${m.role ? (m.role === 'B' ? ' sub' : '') : ' dnp'}" data-mid="${g.id}" title="${det.replace(/<\/?b>/g, '').replace(/"/g, '&quot;')}">
       <div class="mk">${marks}</div>
       <div class="bx" style="background:${bg};color:${ink}"><span class="vl" style="height:${veil}%"></span><b>${m.gf}-${m.ga}</b></div>
       <div class="op">${at}${esc(g.opp)}</div></div>`
