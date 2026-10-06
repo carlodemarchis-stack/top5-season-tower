@@ -1120,7 +1120,10 @@ export class SeasonTower extends React.Component<Props, State> {
             </div>
           )}
           {/* the top-scorers card film (top-5 domestic leagues only) */}
-          {((v.overview && v.ovKind !== 'uefa') || (!v.overview && !isUefa(this.state.league))) && <a href="scorers.html" title="Top scorers across the five leagues — one card per player" style={{ marginLeft: 'auto', padding: '6px 11px', border: '1px solid #D7DAE0', borderRadius: '8px', background: '#fff', color: '#15181d', fontSize: '12px', fontWeight: 800, cursor: 'pointer', lineHeight: 1, textDecoration: 'none', whiteSpace: 'nowrap' }}>Scorers</a>}
+          {((v.overview && v.ovKind !== 'uefa') || (!v.overview && !isUefa(this.state.league))) && <a href="scorers.html" title="Top scorers across the five leagues — one card per player" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 11px 5px 8px', border: '1px solid #D9A900', borderRadius: '8px', background: 'linear-gradient(180deg,#FFD84D,#F4C400)', color: '#2b2200', fontSize: '12px', fontWeight: 800, cursor: 'pointer', lineHeight: 1, textDecoration: 'none', whiteSpace: 'nowrap', boxShadow: '0 1px 3px rgba(180,130,0,.35)' }}>
+            {/* a football: the gold Scorers button (Golden Boot colour) leads into the card film */}
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="10" fill="#fff" stroke="currentColor" strokeWidth="2" /><path d="M12 7.5l4.3 3.1-1.6 5h-5.4l-1.6-5z" fill="currentColor" /><path d="M12 7.5V2.5M16.3 10.6l4.6-1.6M14.7 15.6l2.9 4M9.3 15.6l-2.9 4M7.7 10.6L3.1 9" stroke="currentColor" strokeWidth="1.6" /></svg>
+            Scorers</a>}
           {v.overview && v.ovKind !== 'uefa' && <button onClick={() => this.setState({ statsOpen: true }, () => this.syncUrl())} title="League comparison" style={{ padding: '6px 11px', border: '1px solid #D7DAE0', borderRadius: '8px', background: '#fff', color: '#15181d', fontSize: '12px', fontWeight: 800, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit' }}>Stats</button>}
           {/* top-5 overview: points bars ↔ results stacked bottom-up */}
           {v.overview && v.ovKind !== 'uefa' && <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
