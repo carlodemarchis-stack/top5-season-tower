@@ -63,7 +63,7 @@ function card(p: Dict) {
   return `<section class="card" id="p-${p.espnId}" style="--c:${c};--c2:${c2};--ink:${ink};--ph:${PHOTO_H[p.lg]}">
     <div class="pan">
       <img class="wm" src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">
-      <div class="rk"><small>Top-5 scorers</small>#${p.rank}</div>
+      <div class="rk">#${p.rank}</div>
       ${p.photo ? `<img class="ph" src="${p.photo}" alt="${esc(p.name)}">` : `<div class="ini">${esc(ini)}</div>`}
     </div>
     <div class="body">
