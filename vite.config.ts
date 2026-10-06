@@ -7,5 +7,5 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   // two pages: the Season Tower app and the top-scorers card film
-  build: { rollupOptions: { input: { main: 'index.html', scorers: 'scorers.html' } } },
+  build: { target: 'es2022', rollupOptions: { input: { main: 'index.html', scorers: 'scorers.html' } } },
 })

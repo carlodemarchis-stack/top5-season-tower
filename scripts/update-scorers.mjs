@@ -31,6 +31,9 @@ const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] 
 const SEASON = opt('--season', '2026-27')
 const YEAR = parseInt(SEASON.slice(0, 4), 10)
 const DRY = has('--dry-run'), NO_PHOTOS = has('--no-photos')
+const LENIENT = has('--lenient')      // mock/back-season runs only: report verification errors but still write
+// official photos always come from the CURRENT squads (league sites only publish this season's shoot)
+const CUR = '2026-27', CUR_YEAR = 2026
 const TOP_N = 25
 
 const LEAGUES = { ITA: 'ita.1', ENG: 'eng.1', ESP: 'esp.1', FRA: 'fra.1', GER: 'ger.1' }
@@ -78,12 +81,12 @@ async function loadLeague(lg) {
 
 // ---------- 1. leaders ----------
 async function leaders(lg) {
-  const d = await get(espn(lg, '/statistics'))
+  const d = await get(espn(lg, `/statistics?season=${YEAR}`))
   const g = d.stats.find(s => s.name === 'goalsLeaders').leaders
   return g.map(l => {
     const st = Object.fromEntries((l.athlete.statistics || []).map(s => [s.abbreviation, s.value]))
     return { espnId: l.athlete.id, name: l.athlete.displayName, jersey: l.athlete.jersey || null, lg, espnTeam: l.athlete.team?.id,
-      espnAbbr: l.athlete.team?.abbreviation, G: st.G ?? l.value, A: st.A ?? 0, APP: st.APP ?? null }
+      espnTeamObj: l.athlete.team, espnAbbr: l.athlete.team?.abbreviation, G: st.G ?? l.value, A: st.A ?? 0, APP: st.APP ?? null }
   })
 }
 
@@ -146,7 +149,7 @@ async function squad(lg, code) {
 let legaTeams = null, plTeams = null, l1Clubs = null
 const SQUAD = {
   async ITA(code) {
-    const B = 'https://api-sdp.legaseriea.it/v1/serie-a/football', S = encodeURIComponent(LEGA_SEASON[SEASON])
+    const B = 'https://api-sdp.legaseriea.it/v1/serie-a/football', S = encodeURIComponent(LEGA_SEASON[CUR])
     legaTeams ??= (async () => {
       const st = await get(`${B}/seasons/${S}/standings/overall?locale=it-IT`); const acc = {}
       const walk = (o) => { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === 'object') { if (o.teamId && o.acronymName) acc[o.acronymName] = o.teamId; Object.values(o).forEach(walk) } }
@@ -159,15 +162,15 @@ const SQUAD = {
   },
   async ENG(code) {
     const A = 'https://sdp-prem-prod.premier-league-prod.pulselive.com/api'
-    plTeams ??= get(`${A}/v1/competitions/8/seasons/${YEAR}/teams?_limit=20`).then(d => Object.fromEntries(d.data.map(t => [t.abbr, t.id])))
+    plTeams ??= get(`${A}/v1/competitions/8/seasons/${CUR_YEAR}/teams?_limit=20`).then(d => Object.fromEntries(d.data.map(t => [t.abbr, t.id])))
     const tid = (await plTeams)[code]; if (!tid) return []
-    const sq = await get(`${A}/v1/competitions/8/seasons/${YEAR}/teams/${tid}/squad`) || []
+    const sq = await get(`${A}/v1/competitions/8/seasons/${CUR_YEAR}/teams/${tid}/squad`) || []
     return sq.filter(p => !p.currentTeam?.loan).map(p => ({ num: String(p.shirtNum ?? ''), names: [p.name?.display, `${p.name?.first} ${p.name?.last}`],
       src: `https://resources.premierleague.com/premierleague25/photos/players/500x500/${p.id.playerId}.png` }))
   },
   async ESP(code) {
     const slug = LALIGA_SLUG[code]; if (!slug) return []
-    const d = await get(`https://apim.laliga.com/public-service/api/v1/teams/${slug}/squad-manager?limit=80&offset=0&orderField=id&orderType=DESC&seasonYear=${YEAR}&contentLanguage=en&subscription-key=${LALIGA_KEY}`)
+    const d = await get(`https://apim.laliga.com/public-service/api/v1/teams/${slug}/squad-manager?limit=80&offset=0&orderField=id&orderType=DESC&seasonYear=${CUR_YEAR}&contentLanguage=en&subscription-key=${LALIGA_KEY}`)
     return (d?.squads || []).filter(p => p.role?.slug === 'jugador' && p.current && !p.loan_to).map(p => {
       const v = p.photos?.['001'] || {}; const key = Object.keys(v).find(s => s.startsWith('1024x'))
       return { num: String(p.shirt_number ?? ''), names: [p.person?.name, p.person?.nickname, `${p.person?.firstname} ${p.person?.lastname}`], src: key ? v[key] : null }
@@ -175,7 +178,7 @@ const SQUAD = {
   },
   async FRA(code) {
     const M = 'https://ma-api.ligue1.fr'
-    l1Clubs ??= get(`${M}/championship-standings/1/general?season=${YEAR}`).then(d => Object.fromEntries(Object.values(d.standings)
+    l1Clubs ??= get(`${M}/championship-standings/1/general?season=${CUR_YEAR}`).then(d => Object.fromEntries(Object.values(d.standings)
       .map(v => [L1_TRIGRAM[v.clubIdentity.trigram] || v.clubIdentity.trigram, v.clubId])))
     const cid = (await l1Clubs)[code]; if (!cid) return []
     const c = await get(`${M}/championship-club/${cid}`)
@@ -219,15 +222,21 @@ const errors = [], warns = []
 const league = {}
 for (const lg of Object.keys(LEAGUES)) league[lg] = await loadLeague(lg)
 
-// ESPN team id → our code, per league (fail on anything unmapped)
+// ESPN team → our code, per league. ESPN's /teams list is always the CURRENT season, so for the current season
+// every club must map (hard failure otherwise); for a past season clubs are resolved from the match data itself.
+const nameKey = (s) => toks(s).filter(w => !['fc', 'cf', 'ac', 'as', 'ssc', 'us', 'afc', 'sc', 'calcio', 'club', 'de', 'rc', 'cd', 'ud', 'sv', 'vfb', 'vfl', 'tsg'].includes(w)).join(' ')
 const teamCode = {}
-for (const lg of Object.keys(LEAGUES)) {
+function codeFor(lg, team) {
+  const k = lg + team.id; if (teamCode[k]) return teamCode[k]
+  const T = league[lg].TEAMS, abbr = ESPN_ABBR[lg][team.abbreviation] || team.abbreviation
+  let code = T[abbr] ? abbr : null
+  if (!code) { const n = nameKey(team.displayName || team.name); code = Object.keys(T).find(c => { const m = nameKey(T[c].name); return m && n && (m.includes(n) || n.includes(m)) }) || null }
+  if (!code) errors.push(`${lg}: ESPN team ${team.displayName} (${team.abbreviation}) has no code in schedule-${lg}-${SEASON}`)
+  return (teamCode[k] = code)
+}
+if (SEASON === CUR) for (const lg of Object.keys(LEAGUES)) {
   const r = await get(espn(lg, '/teams'))
-  for (const { team } of r.sports[0].leagues[0].teams) {
-    const code = ESPN_ABBR[lg][team.abbreviation] || team.abbreviation
-    if (!league[lg].TEAMS[code]) errors.push(`${lg}: ESPN team ${team.displayName} (${team.abbreviation}) has no code in schedule-${lg}`)
-    teamCode[lg + team.id] = code
-  }
+  for (const { team } of r.sports[0].leagues[0].teams) codeFor(lg, team)
 }
 
 const all = (await Promise.all(Object.keys(LEAGUES).map(leaders))).flat()
@@ -236,16 +245,17 @@ const cut = all[Math.min(TOP_N, all.length) - 1].G
 const picked = all.filter(p => p.G >= cut)
 console.log(`leaders: ${all.length} across 5 leagues · #${TOP_N} has ${cut} goals → ${picked.length} players (ties included)`)
 
-const players = await pool(picked, 4, async (pl) => {
+const players = (await pool(picked, 4, async (pl) => {
   const { lg } = pl, L = league[lg]
-  const code = teamCode[lg + pl.espnTeam]
+  const code = codeFor(lg, pl.espnTeamObj)
+  if (!code) return null
   const sched = await teamSchedule(lg, pl.espnTeam)
   const evs = (sched?.events || []).filter(e => e.competitions?.[0]?.status?.type?.completed).sort((a, b) => a.date.localeCompare(b.date))
   const matches = []
   for (const e of evs) {
     const comp = e.competitions[0]
     const me = comp.competitors.find(c => c.team.id === pl.espnTeam), op = comp.competitors.find(c => c.team.id !== pl.espnTeam)
-    const opp = teamCode[lg + op.team.id], ha = me.homeAway === 'home' ? 'H' : 'A'
+    const opp = codeFor(lg, op.team), ha = me.homeAway === 'home' ? 'H' : 'A'
     const g = L.TEAMS[code]?.games.find(x => x.opp === opp && x.ha === ha)
     if (!g) { errors.push(`${pl.name}: no fixture ${code} ${ha} vs ${opp} (ESPN ${e.id})`); continue }
     const sc = (c) => Number(typeof c.score === 'object' ? c.score.value ?? c.score.displayValue : c.score)
@@ -278,7 +288,12 @@ const players = await pool(picked, 4, async (pl) => {
     f > a ? W++ : f === a ? D++ : Lo++
   }
   const mds = Object.keys(L.STANDINGS).map(Number).sort((a, b) => b - a)
-  const pos = mds.length ? L.STANDINGS[mds[0]].indexOf(code) + 1 || null : null
+  let pos = mds.length ? L.STANDINGS[mds[0]].indexOf(code) + 1 || null : null
+  if (!mds.length) {   // no official standings file (past seasons): order by points, goal difference, goals for
+    const line = (c) => { let p = 0, gd = 0, gf = 0; for (const x of L.TEAMS[c].games) { const r = L.RESULTS[x.id]; if (!r) continue; const [f, a] = x.ha === 'H' ? [r.hg, r.ag] : [r.ag, r.hg]; p += f > a ? 3 : f === a ? 1 : 0; gd += f - a; gf += f } return [p, gd, gf] }
+    const order = Object.keys(L.TEAMS).map(c => [c, ...line(c)]).sort((a, b) => b[1] - a[1] || b[2] - a[2] || b[3] - a[3])
+    pos = order.findIndex(r => r[0] === code) + 1 || null
+  }
   return {
     espnId: pl.espnId, name: pl.name, full: bio.fullName || pl.name, lg, team: code, jersey: bio.jersey || pl.jersey,
     pos: bio.position?.abbreviation || null, posName: bio.position?.displayName || null,
@@ -290,7 +305,7 @@ const players = await pool(picked, 4, async (pl) => {
     teamLine: { pos, pts: W * 3 + D, W, D, L: Lo, GF, GA, played: W + D + Lo },
     matches: matches.map(({ id, w, opp, ha, gf, ga, role, min, G, A, SH, SOG, YC, RC, goals }) => ({ id, w, opp, ha, gf, ga, role, min, G, A, SH, SOG, YC, RC, goals })),
   }
-})
+})).filter(Boolean)
 
 // competition ranking: equal goals share a rank (1, 2, 2, 2, 5 …)
 players.sort((a, b) => b.G - a.G || b.A - a.A || a.min - b.min)
@@ -318,8 +333,9 @@ if (!NO_PHOTOS) {
 // ---------- report + write ----------
 for (const p of players) console.log(`${String(p.rank).padStart(2)}. ${p.name.padEnd(26)} ${p.lg} ${p.team.padEnd(4)} ${String(p.G).padStart(2)}g ${p.A}a ${p.apps}app ${String(p.min).padStart(4)}' pens ${p.pens}  ${p.photo ? 'photo ← ' + p._match : 'INITIALS'}`)
 if (warns.length) console.log(`\n${warns.length} note(s):\n  ` + [...new Set(warns)].join('\n  '))
-if (errors.length) { console.error(`\n✗ ${errors.length} verification error(s) — nothing written:\n  ` + errors.join('\n  ')); process.exit(1) }
-console.log(`\n✓ verified: per-match goals/assists/apps match ESPN season totals for all ${players.length}; every ESPN score matches ours`)
+if (errors.length && !LENIENT) { console.error(`\n✗ ${errors.length} verification error(s) — nothing written:\n  ` + errors.join('\n  ')); process.exit(1) }
+if (errors.length) console.error(`\n⚠ --lenient: writing despite ${errors.length} verification error(s):\n  ` + errors.join('\n  '))
+if (!errors.length) console.log(`\n✓ verified: per-match goals/assists/apps match ESPN season totals for all ${players.length}; every ESPN score matches ours`)
 if (DRY) process.exit(0)
 players.forEach(p => delete p._match)
 const OUT = path.join(DATA, `scorers-TOP5-${SEASON}.js`)

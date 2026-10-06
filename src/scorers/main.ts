@@ -1,14 +1,14 @@
 // Top-scorers card film: one full-screen card per player (top 25 by goals across the top 5 leagues, ties included).
 // Data: src/data/scorers-TOP5-<season>.js (built + verified by scripts/update-scorers.mjs); club colours/names from the schedules.
-import { SCORERS } from '../data/scorers-TOP5-2026-27.js'
-import { TEAMS as ITA } from '../data/schedule-ITA-2026-27.js'
-import { TEAMS as ENG } from '../data/schedule-ENG-2026-27.js'
-import { TEAMS as ESP } from '../data/schedule-ESP-2026-27.js'
-import { TEAMS as FRA } from '../data/schedule-FRA-2026-27.js'
-import { TEAMS as GER } from '../data/schedule-GER-2026-27.js'
-
 type Dict = Record<string, any>
-const TEAMS: Record<string, Dict> = { ITA, ENG, ESP, FRA, GER }
+// ?season=2025-26 loads a past season (data from `update-scorers.mjs --season`)
+const QS = new URLSearchParams(location.search)
+const SEASON = QS.get('season') || '2026-27'
+const [{ SCORERS }, ...TL] = await Promise.all([
+  import(`../data/scorers-TOP5-${SEASON}.js`),
+  ...['ITA', 'ENG', 'ESP', 'FRA', 'GER'].map(lg => import(`../data/schedule-${lg}-${SEASON}.js`)),
+]) as Dict[]
+const TEAMS: Record<string, Dict> = { ITA: TL[0].TEAMS, ENG: TL[1].TEAMS, ESP: TL[2].TEAMS, FRA: TL[3].TEAMS, GER: TL[4].TEAMS }
 const LEAGUE_NAME: Record<string, string> = { ITA: 'Serie A', ENG: 'Premier League', ESP: 'LaLiga', FRA: 'Ligue 1', GER: 'Bundesliga' }
 // the league photo shoots frame differently (LaLiga / Ligue 1 waist-up, the rest chest-up): scale so heads read the same size
 const PHOTO_H: Record<string, string> = { ESP: '90%', FRA: '88%', ITA: '82%', ENG: '80%', GER: '80%' }
@@ -38,23 +38,6 @@ function card(p: Dict) {
   const t = p.teamLine
   const ini = p.name.split(/\s+/).map((w: string) => w[0]).slice(0, 2).join('')
 
-  const strip = p.matches.map((m: Dict) => {
-    const [bg, fg] = RES6[res6(m.gf, m.ga)]
-    const opp = TEAMS[p.lg][m.opp] || {}
-    const dots = [
-      ...m.goals.map((g: Dict) => `<span class="dot" title="${esc(g.min)} ${g.kind === 'pen' ? 'penalty' : g.kind === 'head' ? 'header' : g.kind === 'fk' ? 'free kick' : 'goal'}">${g.kind === 'pen' ? 'P' : ''}</span>`),
-      ...Array.from({ length: m.A }, () => `<span class="dot ast" title="assist"></span>`),
-    ].join('')
-    const minTxt = !m.role ? 'DNP' : m.role === 'B' ? `sub ${m.min}'` : `${m.min}'`
-    return `<div class="m${m.role ? '' : ' dnp'}" title="MD${m.w} · ${m.ha === 'H' ? 'vs' : 'at'} ${esc(opp.name || m.opp)} · ${m.gf}-${m.ga}${m.role ? ` · ${m.min}' · ${m.SH} shots (${m.SOG} on target)` : ' · did not play'}">
-      <div class="pts">${dots}</div>
-      <div class="box" style="background:${bg};color:${fg}">${m.gf}-${m.ga}</div>
-      <div class="opp">${m.ha === 'A' ? '@' : ''}<img src="${logo(p.lg, m.opp)}" alt="" onerror="this.remove()">${esc(m.opp)}</div>
-      <div class="min"><div class="bar"><i style="width:${Math.round((m.min / 90) * 100)}%"></i></div><span>${minTxt}</span></div>
-      <div class="md">MD${m.w}</div>
-    </div>`
-  }).join('')
-
   const goals = p.matches.flatMap((m: Dict) => m.goals.map((g: Dict) => ({ ...g, m })))
     .map((g: Dict) => `<span class="g"><b>${esc(g.min)}</b> ${g.m.ha === 'H' ? 'vs' : 'at'} ${esc(g.m.opp)}${g.kind === 'pen' ? '<em>PEN</em>' : g.kind === 'head' ? '<em>HEAD</em>' : g.kind === 'fk' ? '<em>FK</em>' : ''}${g.ast ? ` · ast ${esc(g.ast)}` : ''}</span>`).join('')
 
@@ -81,16 +64,63 @@ function card(p: Dict) {
         <div class="n"><b>${minPerGoal ?? '–'}'</b><span>Per goal</span></div>
         <div class="n"><b>${p.sog}/${p.shots}</b><span>On target / shots</span></div>
       </div>
-      <div>
-        <div class="sec">${esc(club.name || p.team)} · match by match</div>
-        <div class="strip" style="--cols:${p.matches.length}">${strip}</div>
-      </div>
-      <div>
+      ${strip2(p, club)}
+      <div class="glist">
         <div class="sec">The goals</div>
         <div class="goals">${goals}</div>
       </div>
     </div>
   </section>`
+}
+
+// ---------- the season in two rows — matchdays 1–19 over 20–38, unplayed fixtures included — plus the goals on a 0–90' line ----------
+const kindName = (k: string) => k === 'pen' ? 'penalty' : k === 'head' ? 'header' : k === 'fk' ? 'free kick' : 'goal'
+function strip2(p: Dict, club: Dict) {
+  const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w)
+  const byId: Record<string, Dict> = Object.fromEntries(p.matches.map((m: Dict) => [m.id, m]))
+  const half = Math.ceil(all.length / 2)
+  const maxMarks = Math.max(1, ...p.matches.map((m: Dict) => m.goals.length + m.A))
+  const cell = (g: Dict) => {
+    const m = byId[g.id]
+    const at = g.ha === 'A' ? '@' : ''
+    const mdLbl = g.w === 1 || g.w % 5 === 0 || g.w === half || g.w === half + 1 || g.w === all.length ? `<div class="md2">${g.w}</div>` : '<div class="md2"></div>'
+    if (!m) return `<div class="c2 up" data-d="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(TEAMS[p.lg][g.opp]?.name || g.opp)} · to play"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div>${mdLbl}</div>`
+    const [bg, fg] = RES6[res6(m.gf, m.ga)]
+    const marks = [...m.goals.map((x: Dict) => `<i class="gl${x.kind === 'pen' ? ' pen' : ''}"></i>`), ...Array.from({ length: m.A }, () => '<i class="as"></i>')].reverse().join('')
+    const veil = m.role ? Math.round((1 - Math.min(m.min, 90) / 90) * 100) : 100          // unplayed share of the 90', veiled from the top
+    const ink = !m.role || m.min < 45 ? '#15181d' : fg
+    const det = `MD${m.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(TEAMS[p.lg][g.opp]?.name || g.opp)} · <b>${m.gf}-${m.ga}</b> · ` +
+      (m.role ? `${m.role === 'B' ? 'off the bench, ' : ''}${m.min}'` + (m.goals.length ? ` · ${m.goals.map((x: Dict) => `${esc(x.min)} ${kindName(x.kind)}${x.ast ? ` (ast ${esc(x.ast)})` : ''}`).join(', ')}` : '') + (m.A ? ` · ${m.A} assist${m.A > 1 ? 's' : ''}` : '') + ` · ${m.SH} shots, ${m.SOG} on target` : 'did not play')
+    return `<div class="c2${m.role ? '' : ' dnp'}" data-d="${det.replace(/"/g, '&quot;')}">
+      <div class="mk">${marks}</div>
+      <div class="bx" style="background:${bg};color:${ink}"><span class="vl" style="height:${veil}%"></span><b>${m.gf}-${m.ga}</b></div>
+      <div class="op">${at}${esc(g.opp)}</div>${mdLbl}</div>`
+  }
+  const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:${maxMarks}">${gs.map(cell).join('')}</div></div>`
+  return `<div class="s2">
+    <div class="sec">${esc(club.name || p.team)} · match by match<span class="det" data-def="Hover or tap a match">Hover or tap a match</span></div>
+    ${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}
+  </div>
+  <div class="s2">
+    <div class="sec">When he scores · ${p.G} goals by minute</div>${goalLine(p)}
+  </div>`
+}
+function goalLine(p: Dict) {
+  const pts: Dict[] = p.matches.flatMap((m: Dict) => m.goals.map((g: Dict) => {
+    const mm = String(g.min).match(/(\d+)'?(?:\s*\+\s*(\d+))?/) || []
+    const base = +(mm[1] || 0), extra = +(mm[2] || 0)
+    return { x: Math.min(base, 90) + Math.min(extra, 6) * 0.45, base, g, m }
+  }))
+  // stack goals that would overlap (within ~2.2 minutes) upwards
+  pts.sort((a, b) => a.x - b.x)
+  const lanes: number[] = []
+  for (const q of pts) { let l = 0; while (lanes[l] != null && q.x - lanes[l] < 2.2) l++; lanes[l] = q.x; q.lane = l }
+  const h1 = pts.filter(q => q.base <= 45).length
+  const dots = pts.map(q => `<i class="gd${q.g.kind === 'pen' ? ' pen' : q.g.kind === 'head' ? ' head' : q.g.kind === 'fk' ? ' fk' : ''}" style="left:${(q.x / 93) * 100}%;bottom:${4 + q.lane * 11}px" data-d="${esc(q.g.min)} ${kindName(q.g.kind)} · MD${q.m.w} ${q.m.ha === 'H' ? 'vs' : 'at'} ${esc(q.m.opp)}${q.g.ast ? ` · ast ${esc(q.g.ast)}` : ''}"></i>`).join('')
+  const lanesN = Math.max(1, ...pts.map(q => q.lane + 1))
+  const ticks = [0, 15, 30, 45, 60, 75, 90].map(t => `<span style="left:${(t / 93) * 100}%">${t}'</span>`).join('')
+  return `<div class="gline" style="--h:${8 + lanesN * 11}px"><div class="ax">${dots}<em class="ht"></em></div><div class="tk">${ticks}</div>
+    <div class="gsum">1st half <b>${h1}</b> · 2nd half <b>${pts.length - h1}</b> · <i class="gd"></i> goal <i class="gd pen"></i> penalty <i class="gd head"></i> header <i class="gd fk"></i> free kick</div></div>`
 }
 
 // ---------- the standard card-film chrome: top bar (league logos), control bar, search, modals, keys, restore ----------
@@ -130,7 +160,7 @@ function paint() {
   $('counter').innerHTML = `<b>${cur + 1}</b> / ${P.length}`
   $('lgs').querySelectorAll<HTMLElement>('.lgb').forEach(b => b.classList.toggle('on', b.dataset.lg === p.lg))
   history.replaceState(null, '', '#' + (cur + 1))
-  try { localStorage.setItem('top5.scorers.card', String(cur)) } catch { }
+  try { localStorage.setItem('top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON), String(cur)) } catch { }
   const meta = (n: string, v: string) => document.querySelector(`meta[name="agwas:${n}"]`)?.setAttribute('content', v)
   meta('mentions', LG_IG[p.lg]); meta('title', `${p.name} · ${p.G} goals · top-5 scorers`)
 }
@@ -204,13 +234,20 @@ addEventListener('keydown', e => {
   else if (e.key === 'g' || e.key === '/') { e.preventDefault(); openJump() }
 })
 Object.assign(window, { go, step, togglePlay, fs, openMod, closeMods, openJump })
+// hovering / tapping a match or a goal writes its detail into that card's header line
+const showDet = (e: Event) => {
+  const t = (e.target as HTMLElement).closest<HTMLElement>('[data-d]'); const card = (e.target as HTMLElement).closest('.card')
+  const det = card?.querySelector<HTMLElement>('.det'); if (!det) return
+  det.innerHTML = t ? t.dataset.d! : det.dataset.def!
+}
+film.addEventListener('mouseover', showDet); film.addEventListener('click', showDet)
 
 // a reload lands where you were, never card 1: #N, else the last card seen
 ;(function start() {
   let i = 0
   const h = location.hash.replace('#', '')
   if (/^\d+$/.test(h)) i = +h - 1
-  else { try { const s = localStorage.getItem('top5.scorers.card'); if (s != null) i = +s } catch { } }
+  else { try { const s = localStorage.getItem('top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON)); if (s != null) i = +s } catch { } }
   requestAnimationFrame(() => go(i, false))
   addEventListener('resize', () => go(cur, false))
 })()
