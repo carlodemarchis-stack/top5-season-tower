@@ -48,6 +48,7 @@ function card(p: Dict) {
     <div class="pan">
       <img class="wm" src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">
       <div class="rk">#${p.rank}</div>
+      <div class="gbig"><b>${p.G}</b><span>goal${p.G === 1 ? '' : 's'}</span></div>
       ${p.photo ? `<img class="ph" src="${p.photo}" alt="${esc(p.name)}">` : `<div class="ini">${esc(ini)}</div>`}
     </div>
     <div class="body">
