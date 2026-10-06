@@ -84,8 +84,10 @@
     .pan{position:relative;overflow:hidden;background:var(--c);color:var(--ink)}
     .pan::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(0,0,0,.28));pointer-events:none}
     .pan .wm{position:absolute;right:-12%;top:6%;width:78%;opacity:.16;filter:grayscale(1) brightness(3)}
-    .pan .rk{position:absolute;left:28px;top:20px;z-index:2;font-weight:900;font-size:clamp(64px,10vw,150px);line-height:.9;letter-spacing:-.04em}
-    .pan .ph{position:absolute;left:50%;bottom:0;transform:translateX(-50%);height:var(--ph,86%);max-width:none;z-index:1;filter:drop-shadow(0 10px 24px rgba(0,0,0,.35))}
+    .pan{--rk:clamp(64px,10vw,150px)}
+    .pan .rk{position:absolute;left:28px;top:20px;z-index:2;font-weight:900;font-size:var(--rk);line-height:.9;letter-spacing:-.04em}
+    /* photos are trimmed to the top of the hair, so capping the height at "panel minus the rank block" keeps every head below the rank */
+    .pan .ph{position:absolute;left:50%;bottom:0;transform:translateX(-50%);height:min(var(--ph,86%),calc(100% - 20px - var(--rk) * .9 - 14px));max-width:none;z-index:1;filter:drop-shadow(0 10px 24px rgba(0,0,0,.35))}
     .pan .ini{position:absolute;inset:0;display:grid;place-items:center;font-weight:900;font-size:120px;opacity:.5;z-index:1}
 
     /* right: everything else */
@@ -118,7 +120,7 @@
 
     /* ---------- the season strip (two rows) + goals by minute + goal list ---------- */
     .n span{white-space:nowrap}
-    .s2 .sec{display:flex;align-items:baseline;gap:12px}
+    .s2 .sec{display:flex;align-items:baseline;gap:12px;white-space:nowrap}
     .row2{display:grid;grid-template-columns:64px 1fr;align-items:end;gap:8px;margin-top:6px;max-width:1040px}
     .rl{font-size:10px;font-weight:800;letter-spacing:.08em;color:#8a9099;text-transform:uppercase;padding-bottom:44px}
     .cells{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:3px}
@@ -164,6 +166,7 @@
     .gsum .key{display:inline-flex;align-items:center;gap:5px;margin-left:10px}
     .gsum .gd{position:relative;display:inline-block;margin:0 0 0 8px;width:9px;height:9px}
     .gsum .gd.head{width:8px;height:8px}
+    @container (max-width: 720px){ .gsum .key{display:none} }   /* narrow cards: keep the counts, drop the marker key (it's in the help) */
     @media (max-width: 760px){
       .row2{grid-template-columns:1fr}
       .rl{padding-bottom:0}
@@ -188,6 +191,8 @@
     }
     @media (max-width: 760px){
       .card{grid-template-columns:1fr;grid-template-rows:34vh 1fr}
+      /* phones: the panel is short and wide — the photo sits to the right of the rank at full size instead of shrinking */
+      .pan .ph{left:auto;right:6%;transform:none;height:92%}
       .body{overflow-y:auto}
       .club{flex-wrap:wrap;row-gap:2px}
       .club .tl{flex-basis:100%;padding-left:46px}

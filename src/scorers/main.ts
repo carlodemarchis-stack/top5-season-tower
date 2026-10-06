@@ -103,7 +103,7 @@ function strip2(p: Dict, club: Dict) {
     ${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}
   </div>
   <div class="s2">
-    <div class="sec">When he scores · ${p.G} goals by minute${goalLegend(p)}</div>${goalLine(p)}
+    <div class="sec">When he scores${goalLegend(p)}</div>${goalLine(p)}
   </div>`
 }
 // "45'+2'" → base 45, extra 2
