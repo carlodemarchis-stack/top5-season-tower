@@ -1,4 +1,4 @@
-// Top-scorers card film: one full-screen card per player (top 25 by goals across the top 5 leagues, ties included).
+// Top-scorers card film: one full-screen card per player (top 50 by goals across the top 5 leagues, ties included).
 // Data: src/data/scorers-TOP5-<season>.js (built + verified by scripts/update-scorers.mjs); club colours/names from the schedules.
 type Dict = Record<string, any>
 // ?season=2025-26 loads a past season (data from `update-scorers.mjs --season`)
@@ -52,7 +52,7 @@ function card(p: Dict) {
     </div>
     <div class="body">
       <div>
-        <h1>${esc(p.name)}</h1>
+        <h1 style="--len:${[...p.name].length};--word:${Math.max(...p.name.split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(p.name)}</h1>
         <div class="meta" style="margin-top:8px">${[POS[p.pos] || p.posName, age && `<b>${age}</b> yrs`, esc(p.nat), p.jersey && `#${esc(p.jersey)}`, p.heightCm && `${p.heightCm} cm`].filter(Boolean).join(' · ')}</div>
       </div>
       <div class="club"><img src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">${esc(club.name || p.team)}
@@ -150,18 +150,18 @@ $('lgs').innerHTML = LG_ORDER.map(lg => {
 $('lgs').querySelectorAll<HTMLButtonElement>('.lgb').forEach(b => b.onclick = () => { const i = firstOf(b.dataset.lg!); if (i >= 0) go(i) })
 $('applist').innerHTML = APPS.map(([n, k, c, u]) => `<a class="approw" href="${u}"${u.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}><i style="background:${c}"></i><span>${n}<em>${k}</em></span><span>→</span></a>`).join('')
 const upd = new Date(SCORERS.updated)
-$('cnote').innerHTML = `${P.length} players: the top 25 by goals across the five leagues, plus everyone tied on ${SCORERS.cut} goals. Season ${SCORERS.season.replace('-', '/')}, updated ${upd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
+$('cnote').innerHTML = `${P.length} players: the top 50 by goals across the five leagues, plus everyone tied on ${SCORERS.cut} goals. Season ${SCORERS.season.replace('-', '/')}, updated ${upd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
 
 let cur = 0, playing: number | null = null, target = -1
 function paint() {
   const p = P[cur]
-  $('ctx').innerHTML = `Top-5 scorers ${SCORERS.season.replace('-', '/')} · <b>${esc(p.name)}</b> · ${p.G} goals`
+  $('ctx').innerHTML = `Top 50 scorers ${SCORERS.season.replace('-', '/')} · <b>${esc(p.name)}</b> · ${p.G} goals`
   $('counter').innerHTML = `<b>${cur + 1}</b> / ${P.length}`
   $('lgs').querySelectorAll<HTMLElement>('.lgb').forEach(b => b.classList.toggle('on', b.dataset.lg === p.lg))
   history.replaceState(null, '', '#' + (cur + 1))
   try { localStorage.setItem('top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON), String(cur)) } catch { }
   const meta = (n: string, v: string) => document.querySelector(`meta[name="agwas:${n}"]`)?.setAttribute('content', v)
-  meta('mentions', LG_IG[p.lg]); meta('title', `${p.name} · ${p.G} goals · top-5 scorers`)
+  meta('mentions', LG_IG[p.lg]); meta('title', `${p.name} · ${p.G} goals · top 50 scorers, top-5 leagues`)
 }
 function go(i: number, smooth = true) {
   cur = Math.max(0, Math.min(P.length - 1, i)); target = cur

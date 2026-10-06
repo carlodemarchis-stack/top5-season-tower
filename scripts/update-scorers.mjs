@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Top-5-league top scorers (top 25 by goals, ties at the cut included) → src/data/scorers-TOP5-<season>.js
+ * Top-5-league top scorers (top 50 by goals, ties at the cut included) → src/data/scorers-TOP5-<season>.js
  * + one official cutout photo per player → public/players/<espnId>.webp
  *
  *   node scripts/update-scorers.mjs                 # fetch, verify, write data + photos
@@ -34,7 +34,7 @@ const DRY = has('--dry-run'), NO_PHOTOS = has('--no-photos')
 const LENIENT = has('--lenient')      // mock/back-season runs only: report verification errors but still write
 // official photos always come from the CURRENT squads (league sites only publish this season's shoot)
 const CUR = '2026-27', CUR_YEAR = 2026
-const TOP_N = 25
+const TOP_N = 50
 
 const LEAGUES = { ITA: 'ita.1', ENG: 'eng.1', ESP: 'esp.1', FRA: 'fra.1', GER: 'ger.1' }
 
@@ -186,7 +186,7 @@ const SQUAD = {
     return (await pool(ids, 8, async (pid) => {
       const p = await get(`${M}/championship-player/${pid}`); if (!p) return null
       const ch = p.championships?.['1'] || {}; const bust = ch.assets?.bustPictures
-      return { num: String(ch.jerseyNumber ?? ''), names: [`${p.firstName} ${p.lastName}`, p.lastName], src: bust?.large || bust?.medium || null }
+      return { num: String(ch.jerseyNumber ?? ''), names: [`${p.firstName} ${p.lastName}`, p.lastName, p.knownName], src: bust?.large || bust?.medium || null }
     })).filter(Boolean)
   },
   async GER(code) {
@@ -243,6 +243,9 @@ const all = (await Promise.all(Object.keys(LEAGUES).map(leaders))).flat()
 all.sort((a, b) => b.G - a.G || b.A - a.A || (a.APP ?? 99) - (b.APP ?? 99))
 const cut = all[Math.min(TOP_N, all.length) - 1].G
 const picked = all.filter(p => p.G >= cut)
+// ESPN lists 50 leaders per league: if a league's last listed player is still at or above the cut, players tied with
+// him may be missing from the list — refuse rather than publish a table with holes in it.
+for (const lg of Object.keys(LEAGUES)) { const l = all.filter(p => p.lg === lg); if (l.length >= 50 && l.at(-1).G >= cut) errors.push(`${lg}: ESPN's 50 listed leaders all have ≥ ${cut} goals — the list may be cut short`) }
 console.log(`leaders: ${all.length} across 5 leagues · #${TOP_N} has ${cut} goals → ${picked.length} players (ties included)`)
 
 const players = (await pool(picked, 4, async (pl) => {
