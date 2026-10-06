@@ -134,22 +134,24 @@
     .c2 .op{font-size:9.5px;font-weight:700;color:#3a3f47;text-align:center;white-space:nowrap;overflow:hidden;margin-top:2px}
     .c2.up .op{color:#b0b5bc}
     .c2 .md2{font-size:9px;color:#9aa0a8;text-align:center;height:11px}
-    .c2.hl .bx{outline:2px solid #15181d;outline-offset:1px}
+    .c2.hl .bx{outline:2.5px solid var(--c);outline-offset:1px}
     /* a hovered / tapped match lights up its goals; everything else dims */
     .goals .g,.gline .gd{transition:opacity .12s,background .12s,transform .12s}
     .hlon .goals .g:not(.hl){opacity:.3}
     .hlon .gline .ax .gd:not(.hl){opacity:.25}
-    .goals .g.hl{background:#15181d;border-color:#15181d;color:#fff}
-    .goals .g.hl b{color:#fff}
-    .goals .g.hl em{background:#fff;color:#15181d}
-    .gline .ax .gd.hl{transform:scale(1.6)}
+    /* the highlight takes the club colour (--hlink = the readable text colour on it) */
+    .goals .g.hl{background:var(--c);border-color:var(--c);color:var(--hlink)}
+    .goals .g.hl b{color:var(--hlink)}
+    .goals .g.hl em{background:var(--hlink);color:var(--c)}
+    .gline .ax .gd.hl{transform:scale(1.6);background:var(--c)}
+    .gline .ax .gd.hl.pen,.gline .ax .gd.hl.fk{background:#fff;border-color:var(--c)}
     .goals .g{cursor:default}
     .gline{max-width:1040px;padding-left:72px}
     .gline .ax{position:relative;height:var(--h);border-bottom:1.5px solid #15181d}
     .gline .ax .ht{position:absolute;left:calc(45 / 93 * 100%);top:0;bottom:0;border-left:1px dashed #b9bec5}
     .gd{position:absolute;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#15181d;cursor:default}
     .gd.pen{background:#fff;border:3px solid #15181d;box-sizing:border-box}
-    .gd.head{background:var(--c2)}
+    .gd.head{border-radius:2px;width:9px;height:9px;margin-left:-4.5px}   /* header: a square, not a colour */
     .gd.fk{background:#fff;border:2px dashed #15181d;box-sizing:border-box}
     .gd:hover{transform:scale(1.5)}
     .gline .tk{position:relative;height:14px}

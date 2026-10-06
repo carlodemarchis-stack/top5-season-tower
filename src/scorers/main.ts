@@ -35,6 +35,7 @@ function card(p: Dict) {
   const light = lum(c) > 0.55
   const ink = light ? '#15181d' : '#fff'
   const c2 = light ? '#15181d' : c                     // the big goals number takes the club colour unless it is too pale to read
+  const hlInk = lum(c) > 0.183 ? '#15181d' : '#fff'     // text on the club-colour highlight: white only where it reaches 4.5:1
   const t = p.teamLine
   const ini = p.name.split(/\s+/).map((w: string) => w[0]).slice(0, 2).join('')
 
@@ -43,7 +44,7 @@ function card(p: Dict) {
 
   const minPerGoal = p.G ? Math.round(p.min / p.G) : null
   const age = p.age != null ? `${p.age}` : ''
-  return `<section class="card" id="p-${p.espnId}" style="--c:${c};--c2:${c2};--ink:${ink};--ph:${PHOTO_H[p.lg]}">
+  return `<section class="card" id="p-${p.espnId}" style="--c:${c};--c2:${c2};--ink:${ink};--hlink:${hlInk};--ph:${PHOTO_H[p.lg]}">
     <div class="pan">
       <img class="wm" src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">
       <div class="rk">#${p.rank}</div>
