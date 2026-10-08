@@ -52,6 +52,9 @@
     .lgb span{font-size:11px;font-weight:800;color:#15181d;font-variant-numeric:tabular-nums}
     .lgb:hover{opacity:.8;filter:none}
     .lgb.on{opacity:1;filter:none;border-color:var(--line);background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    a.lgb{text-decoration:none}
+    .lgb.all b{font-size:12px;font-weight:900;color:#15181d;letter-spacing:-.01em;white-space:nowrap}
+    .lgb.cur{opacity:.95;filter:none}   /* five-league film: the league of the card on screen */
     #credit{color:var(--dim);flex:1 1 0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
     #credit a{color:var(--dim);text-decoration:none;border-bottom:1px solid var(--line)}
     #credit a:hover{color:#15181d}
@@ -203,10 +206,13 @@
       #topbar{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;gap:8px}
       #topbar::-webkit-scrollbar{display:none}
       #ctx,#credit{display:none}
-      .lgb{padding:3px 5px}
+      .lgb{padding:3px 3px;gap:3px}
+      #lgs{gap:1px}
+      .lgb.all b{font-size:11px}
+      .lgb span{font-size:10px}
       #topbar .lbl{display:none}
       #topbar{padding:0 10px}
-      .lgb img{height:26px}
+      .lgb img{height:21px}
     }
     @media (max-width: 760px){
       .card{grid-template-columns:1fr;grid-template-rows:34vh 1fr}
@@ -247,14 +253,14 @@
 
   <div class="mod" id="hmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
     <h3>How to read a card</h3>
-    <p>One card per player: the top 50 goalscorers across Serie A, the Premier League, LaLiga, Ligue 1 and the Bundesliga, plus everyone tied with the 50th. Ordered by goals; players level on goals share a rank.</p>
+    <p>One card per player. <b>Top 5</b> is the top 50 goalscorers across Serie A, the Premier League, LaLiga, Ligue 1 and the Bundesliga; each league logo opens that league's own top 25. Everyone tied at the cut is included (a league's list never goes below 2 goals). Ordered by goals; players level on goals share a rank.</p>
     <ul>
       <li><b>Goals</b> in the club colour, with penalties; then assists, games (and starts), minutes, minutes per goal, shots on target / shots.</li>
       <li><b>The season</b>: one box per club league game — matchdays 1–19 on the top row, 20–38 below (1–17 / 18–34 in Ligue 1 and the Bundesliga) — coloured by the club's result: dark green won by 2+, green won by 1, yellow draw, grey 0-0, red lost by 1, dark red lost by 2+. Under each box, the opponent (@ = away). Empty outlines are games still to play; a white box with a grey outline is a game he missed.</li>
       <li><b>Minutes</b> fill the box from the bottom up, as the 90 minutes run: a starter's darker part sits at the bottom, a substitute's at the top (he came on for the end); a solid box is a full game. Above the box: ● a goal (ringed = penalty), ○ an assist.</li>
       <li><b>When he scores</b>: every goal on a 0–90' line — ● goal, ringed = penalty, ■ header, dashed = free kick — with how many came in each half and how many after coming off the bench. Hover or tap a match and its goals light up in the club colour here and in the goal list.</li>
       <li><b>The goals</b>: minute, opponent, PEN / HEAD / FK, and who made the assist.</li>
-      <li>The league logos in the top bar jump to that league's first scorer; the number beside each is how many of its players made the list.</li>
+      <li>The top bar switches film: <b>Top 5</b> or one league. The number beside each is how many players that film has.</li>
     </ul>
     <p><kbd>←</kbd> <kbd>→</kbd> previous / next · <kbd>space</kbd> play / pause · <kbd>Home</kbd> <kbd>End</kbd> first / last · <kbd>g</kbd> or <kbd>/</kbd> find a player · <kbd>f</kbd> fullscreen · <kbd>h</kbd> this help · <kbd>Esc</kbd> close</p>
     <p class="agwas-rel">Release notes <a class="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>

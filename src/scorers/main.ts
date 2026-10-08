@@ -132,8 +132,14 @@ function goalLine(p: Dict) {
 }
 
 // ---------- the standard card-film chrome: top bar (league logos), control bar, search, modals, keys, restore ----------
-const P: Dict[] = SCORERS.players
 const LG_ORDER = ['ITA', 'ENG', 'ESP', 'FRA', 'GER']
+// which film: ?lg=ITA = that league's own top 25 (ties), none = the five-league top 50; each list carries its own ranks
+const LIST = LG_ORDER.includes(QS.get('lg') || '') ? QS.get('lg')! : 'ALL'
+const BYID: Record<string, Dict> = Object.fromEntries(SCORERS.players.map((p: Dict) => [p.espnId, p]))
+const listOf = (k: string): Dict[] => SCORERS.lists ? SCORERS.lists[k].map(([id, rank]: [string, number]) => ({ ...BYID[id], rank })) : SCORERS.players
+const P: Dict[] = listOf(LIST)
+const listName = (k: string) => k === 'ALL' ? 'Top 50 scorers' : `${LEAGUE_NAME[k]} top scorers`
+const listUrl = (k: string) => { const q = new URLSearchParams(location.search); k === 'ALL' ? q.delete('lg') : q.set('lg', k); const qs = q.toString(); return location.pathname + (qs ? '?' + qs : '') }
 const LG_IG: Record<string, string> = { ITA: 'seriea', ENG: 'premierleague', ESP: 'laliga', FRA: 'ligue1', GER: 'bundesliga' }
 const APPS: [string, string, string, string][] = [
   ['Season Tower', 'This app · the top-5 leagues, a whole season on one screen', '#0B8A3D', './#ALL/2026-27'],
@@ -151,26 +157,24 @@ const film = $('film')
 film.innerHTML = P.map(card).join('')
 const cards = [...film.children] as HTMLElement[]
 
-const firstOf = (lg: string) => P.findIndex(p => p.lg === lg)
-$('lgs').innerHTML = LG_ORDER.map(lg => {
-  const n = P.filter(p => p.lg === lg).length
-  return `<button class="lgb" data-lg="${lg}" title="${LEAGUE_NAME[lg]} · ${n} scorer${n === 1 ? '' : 's'}${n ? ' — jump to the first' : ''}"${n ? '' : ' disabled'}><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"><span>${n}</span></button>`
-}).join('')
-$('lgs').querySelectorAll<HTMLButtonElement>('.lgb').forEach(b => b.onclick = () => { const i = firstOf(b.dataset.lg!); if (i >= 0) go(i) })
+// top bar: "Top 5" + the five leagues switch between the six lists; the number is each list's size
+const lsize = (k: string) => listOf(k).length
+$('lgs').innerHTML = `<a class="lgb all${LIST === 'ALL' ? ' on' : ''}" href="${listUrl('ALL')}" title="Top 50 across the five leagues · ${lsize('ALL')} players"><b>Top 5</b><span>${lsize('ALL')}</span></a>` +
+  LG_ORDER.map(lg => `<a class="lgb${LIST === lg ? ' on' : ''}" data-lg="${lg}" href="${listUrl(lg)}" title="${LEAGUE_NAME[lg]} top scorers · ${lsize(lg)} players"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"><span>${lsize(lg)}</span></a>`).join('')
 $('applist').innerHTML = APPS.map(([n, k, c, u]) => `<a class="approw" href="${u}"${u.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}><i style="background:${c}"></i><span>${n}<em>${k}</em></span><span>→</span></a>`).join('')
 const upd = new Date(SCORERS.updated)
-$('cnote').innerHTML = `${P.length} players: the top 50 by goals across the five leagues, plus everyone tied on ${SCORERS.cut} goals. Season ${SCORERS.season.replace('-', '/')}, updated ${upd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
+$('cnote').innerHTML = `${P.length} players: ${LIST === 'ALL' ? 'the top 50 by goals across the five leagues' : `${LEAGUE_NAME[LIST]}'s top 25 by goals`}, plus everyone tied on ${SCORERS.cuts?.[LIST] ?? SCORERS.cut} goals. Season ${SCORERS.season.replace('-', '/')}, updated ${upd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
 
 let cur = 0, playing: number | null = null, target = -1
 function paint() {
   const p = P[cur]
-  $('ctx').innerHTML = `Top 50 scorers ${SCORERS.season.replace('-', '/')} · <b>${esc(p.name)}</b> · ${p.G} goals`
+  $('ctx').innerHTML = `${listName(LIST)} ${SCORERS.season.replace('-', '/')} · <b>${esc(p.name)}</b> · ${p.G} goals`
   $('counter').innerHTML = `<b>${cur + 1}</b> / ${P.length}`
-  $('lgs').querySelectorAll<HTMLElement>('.lgb').forEach(b => b.classList.toggle('on', b.dataset.lg === p.lg))
+  if (LIST === 'ALL') $('lgs').querySelectorAll<HTMLElement>('.lgb[data-lg]').forEach(b => b.classList.toggle('cur', b.dataset.lg === p.lg))   // five-league film: mark this card's league
   history.replaceState(null, '', '#' + (cur + 1))
-  try { localStorage.setItem('top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON), String(cur)) } catch { }
+  try { localStorage.setItem('top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON) + (LIST === 'ALL' ? '' : '.' + LIST), String(cur)) } catch { }
   const meta = (n: string, v: string) => document.querySelector(`meta[name="agwas:${n}"]`)?.setAttribute('content', v)
-  meta('mentions', LG_IG[p.lg]); meta('title', `${p.name} · ${p.G} goals · top 50 scorers, top-5 leagues`)
+  meta('mentions', LG_IG[p.lg]); meta('title', `${p.name} · ${p.G} goals · ${LIST === 'ALL' ? 'top 50 scorers, top-5 leagues' : `${LEAGUE_NAME[LIST]} top scorers`}`)
 }
 function go(i: number, smooth = true) {
   cur = Math.max(0, Math.min(P.length - 1, i)); target = cur
@@ -258,7 +262,7 @@ film.addEventListener('mouseleave', () => film.querySelectorAll('.hlon').forEach
   let i = 0
   const h = location.hash.replace('#', '')
   if (/^\d+$/.test(h)) i = +h - 1
-  else { try { const s = localStorage.getItem('top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON)); if (s != null) i = +s } catch { } }
-  requestAnimationFrame(() => go(i, false))
+  else { try { const s = localStorage.getItem('top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON) + (LIST === 'ALL' ? '' : '.' + LIST)); if (s != null) i = +s } catch { } }
+  go(i, false)   // not in a requestAnimationFrame: a tab opened in the background must still show its card + counter
   addEventListener('resize', () => go(cur, false))
 })()

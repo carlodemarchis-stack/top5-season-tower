@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * Top-5-league top scorers (top 50 by goals, ties at the cut included) → src/data/scorers-TOP5-<season>.js
+ * Top-5-league top scorers → src/data/scorers-TOP5-<season>.js: the top 50 across the five leagues and each league's
+ * own top 25 (ties at the cut included; a league's cut never drops below 2 goals). One player record per person,
+ * plus one ranked list per view (ALL + the five leagues).
  * + one official cutout photo per player → public/players/<espnId>.webp
  *
  *   node scripts/update-scorers.mjs                 # fetch, verify, write data + photos
@@ -34,7 +36,9 @@ const DRY = has('--dry-run'), NO_PHOTOS = has('--no-photos')
 const LENIENT = has('--lenient')      // mock/back-season runs only: report verification errors but still write
 // official photos always come from the CURRENT squads (league sites only publish this season's shoot)
 const CUR = '2026-27', CUR_YEAR = 2026
-const TOP_N = 50
+const TOP_N = 50            // the five-league film
+const LEAGUE_N = 25         // each league's own film
+const LEAGUE_MIN_GOALS = 2  // early season: never let a league's list collapse into every one-goal scorer
 
 const LEAGUES = { ITA: 'ita.1', ENG: 'eng.1', ESP: 'esp.1', FRA: 'fra.1', GER: 'ger.1' }
 
@@ -245,10 +249,19 @@ const cut = all[Math.min(TOP_N, all.length) - 1].G
 const picked = all.filter(p => p.G >= cut)
 // ESPN lists 50 leaders per league: if a league's last listed player is still at or above the cut, players tied with
 // him may be missing from the list — refuse rather than publish a table with holes in it.
-for (const lg of Object.keys(LEAGUES)) { const l = all.filter(p => p.lg === lg); if (l.length >= 50 && l.at(-1).G >= cut) errors.push(`${lg}: ESPN's 50 listed leaders all have ≥ ${cut} goals — the list may be cut short`) }
-console.log(`leaders: ${all.length} across 5 leagues · #${TOP_N} has ${cut} goals → ${picked.length} players (ties included)`)
+const cuts = { ALL: cut }, pickedBy = { ALL: picked }
+for (const lg of Object.keys(LEAGUES)) {
+  const l = all.filter(p => p.lg === lg)
+  cuts[lg] = Math.max(l[Math.min(LEAGUE_N, l.length) - 1]?.G ?? LEAGUE_MIN_GOALS, LEAGUE_MIN_GOALS)
+  pickedBy[lg] = l.filter(p => p.G >= cuts[lg])
+  const low = Math.min(cut, cuts[lg])
+  if (l.length >= 50 && l.at(-1).G >= low) errors.push(`${lg}: ESPN's 50 listed leaders all have ≥ ${low} goals — the list may be cut short`)
+}
+console.log(`leaders: ${all.length} across 5 leagues · top ${TOP_N}: cut ${cut} → ${picked.length} · ` + Object.keys(LEAGUES).map(lg => `${lg} top ${LEAGUE_N}: cut ${cuts[lg]} → ${pickedBy[lg].length}`).join(' · '))
+// every player in any list, once
+const union = [...new Map(Object.values(pickedBy).flat().map(p => [p.espnId, p])).values()]
 
-const players = (await pool(picked, 4, async (pl) => {
+const players = (await pool(union, 4, async (pl) => {
   const { lg } = pl, L = league[lg]
   const code = codeFor(lg, pl.espnTeamObj)
   if (!code) return null
@@ -279,7 +292,9 @@ const players = (await pool(picked, 4, async (pl) => {
   if (G !== pl.G) errors.push(`${pl.name} (${lg}): match reports give ${G} goals, ESPN season total ${pl.G}`)
   if (goalsListed !== G) errors.push(`${pl.name}: ${goalsListed} goal events vs ${G} goals in box scores`)
   if (A !== pl.A) errors.push(`${pl.name} (${lg}): match reports give ${A} assists, ESPN season total ${pl.A}`)
-  if (pl.APP != null && apps !== pl.APP) errors.push(`${pl.name} (${lg}): ${apps} appearances in reports, ESPN says ${pl.APP}`)
+  // appearances only warn: ESPN's season APP can credit a postponed fixture (2026-10: Levante–Athletic MD6) — the
+  // cards count appearances from the match reports, which is what the strip shows; goals/assists stay hard checks
+  if (pl.APP != null && apps !== pl.APP) warns.push(`${pl.name} (${lg}): ${apps} appearances in the match reports, ESPN's season stat says ${pl.APP}`)
 
   // bio (ESPN core athlete)
   const bio = await get(`https://sports.core.api.espn.com/v2/sports/soccer/leagues/${LEAGUES[lg]}/athletes/${pl.espnId}`) || {}
@@ -310,9 +325,16 @@ const players = (await pool(picked, 4, async (pl) => {
   }
 })).filter(Boolean)
 
-// competition ranking: equal goals share a rank (1, 2, 2, 2, 5 …)
-players.sort((a, b) => b.G - a.G || b.A - a.A || a.min - b.min)
-players.forEach(p => { p.rank = 1 + players.filter(q => q.G > p.G).length })
+// one ranked list per view; competition ranking: equal goals share a rank (1, 2, 2, 2, 5 …)
+const order = (a, b) => b.G - a.G || b.A - a.A || a.min - b.min
+players.sort(order)
+const byId = new Map(players.map(p => [p.espnId, p]))
+const lists = {}
+for (const [k, ps] of Object.entries(pickedBy)) {
+  const L = ps.map(p => byId.get(p.espnId)).filter(Boolean).sort(order)
+  lists[k] = L.map(p => [p.espnId, 1 + L.filter(q => q.G > p.G).length])
+}
+players.forEach(p => { p.rank = lists.ALL.find(x => x[0] === p.espnId)?.[1] ?? null })   // five-league rank (null = league list only)
 
 // ---------- photos ----------
 const photoCache = fs.existsSync(PHOTO_CACHE) ? JSON.parse(fs.readFileSync(PHOTO_CACHE, 'utf8')) : {}
@@ -334,20 +356,20 @@ if (!NO_PHOTOS) {
 }
 
 // ---------- report + write ----------
-for (const p of players) console.log(`${String(p.rank).padStart(2)}. ${p.name.padEnd(26)} ${p.lg} ${p.team.padEnd(4)} ${String(p.G).padStart(2)}g ${p.A}a ${p.apps}app ${String(p.min).padStart(4)}' pens ${p.pens}  ${p.photo ? 'photo ← ' + p._match : 'INITIALS'}`)
+for (const p of players) console.log(`${String(p.rank ?? '–').padStart(2)}. ${p.name.padEnd(26)} ${p.lg} ${p.team.padEnd(4)} ${String(p.G).padStart(2)}g ${p.A}a ${p.apps}app ${String(p.min).padStart(4)}' pens ${p.pens}  ${p.photo ? 'photo ← ' + p._match : 'INITIALS'}`)
 if (warns.length) console.log(`\n${warns.length} note(s):\n  ` + [...new Set(warns)].join('\n  '))
 if (errors.length && !LENIENT) { console.error(`\n✗ ${errors.length} verification error(s) — nothing written:\n  ` + errors.join('\n  ')); process.exit(1) }
 if (errors.length) console.error(`\n⚠ --lenient: writing despite ${errors.length} verification error(s):\n  ` + errors.join('\n  '))
-if (!errors.length) console.log(`\n✓ verified: per-match goals/assists/apps match ESPN season totals for all ${players.length}; every ESPN score matches ours`)
+if (!errors.length) console.log(`\n✓ verified: per-match goals + assists match ESPN season totals for all ${players.length}; every ESPN score matches ours`)
 if (DRY) process.exit(0)
 players.forEach(p => delete p._match)
 const OUT = path.join(DATA, `scorers-TOP5-${SEASON}.js`)
 // unchanged numbers → leave the file (and its `updated` stamp) alone, so the nightly run doesn't redeploy for nothing
 try {
   const prev = JSON.parse(fs.readFileSync(OUT, 'utf8').match(/export const SCORERS = (\{[\s\S]*\})\s*$/)[1])
-  if (JSON.stringify(prev.players) === JSON.stringify(players) && prev.cut === cut) { console.log('scorers unchanged — nothing written'); process.exit(0) }
+  if (JSON.stringify(prev.players) === JSON.stringify(players) && JSON.stringify(prev.lists) === JSON.stringify(lists)) { console.log('scorers unchanged — nothing written'); process.exit(0) }
 } catch { }
-const out = { season: SEASON, updated: new Date().toISOString(), cut, players }
+const out = { season: SEASON, updated: new Date().toISOString(), cut, cuts, lists, players }
 fs.writeFileSync(OUT,
   `// Top-5-league top scorers (top ${TOP_N} by goals, ties at the cut included). Auto-updated by scripts/update-scorers.mjs.\nexport const SCORERS = ${JSON.stringify(out)}\n`)
 if (!NO_PHOTOS) fs.writeFileSync(PHOTO_CACHE, JSON.stringify(photoCache, null, 1) + '\n')
