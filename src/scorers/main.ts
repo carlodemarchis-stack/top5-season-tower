@@ -1,5 +1,7 @@
 // Top-scorers card film: one full-screen card per player (top 50 by goals across the top 5 leagues, ties included).
 // Data: src/data/scorers-TOP5-<season>.js (built + verified by scripts/update-scorers.mjs); club colours/names from the schedules.
+import '../film/film.css'
+import { initFilm, initHighlight } from '../film/chrome'
 type Dict = Record<string, any>
 // ?season=2025-26 loads a past season (data from `update-scorers.mjs --season`)
 const QS = new URLSearchParams(location.search)
@@ -141,128 +143,41 @@ const P: Dict[] = listOf(LIST)
 const listName = (k: string) => k === 'ALL' ? 'Top 50 scorers' : `${LEAGUE_NAME[k]} top scorers`
 const listUrl = (k: string) => { const q = new URLSearchParams(location.search); k === 'ALL' ? q.delete('lg') : q.set('lg', k); const qs = q.toString(); return location.pathname + (qs ? '?' + qs : '') }
 const LG_IG: Record<string, string> = { ITA: 'seriea', ENG: 'premierleague', ESP: 'laliga', FRA: 'ligue1', GER: 'bundesliga' }
-const APPS: [string, string, string, string][] = [
-  ['Season Tower', 'This app · the top-5 leagues, a whole season on one screen', '#0B8A3D', './#ALL/2026-27'],
-  ['Formula 1', 'A season read lap by lap', '#00d7b6', 'https://f1.aguywithascarf.com/'],
-  ['Tennis', 'The season, one player at a time', '#f2c14e', 'https://tennis.aguywithascarf.com/'],
-  ['NFL', 'Wins up, losses down', '#4d94e0', 'https://nfl.aguywithascarf.com/'],
-  ['NBA', 'Season film and towers', '#e0453f', 'https://nba.aguywithascarf.com/'],
-  ['NHL', 'Season film and towers', '#2a9fd8', 'https://nhl.aguywithascarf.com/'],
-  ['World Cup', 'Road to the Final', '#3fbe72', 'https://worldcupbracket.aguywithascarf.com/'],
-  ['PGA TOUR', 'Season Film', '#57a34a', 'https://golf.aguywithascarf.com/'],
-  ['Athletics', 'World Record Film', '#d98a3d', 'https://athletics.aguywithascarf.com/'],
-]
 const $ = (id: string) => document.getElementById(id)!
 const film = $('film')
 film.innerHTML = P.map(card).join('')
-const cards = [...film.children] as HTMLElement[]
 
 // top bar: "All Leagues" + the five leagues switch between the six lists; the number is each list's size
 const lsize = (k: string) => listOf(k).length
 $('lgs').innerHTML = `<a class="lgb all${LIST === 'ALL' ? ' on' : ''}" href="${listUrl('ALL')}" title="Top 50 across the five leagues · ${lsize('ALL')} players"><b>All Leagues</b><span>${lsize('ALL')}</span></a>` +
   LG_ORDER.map(lg => `<a class="lgb${LIST === lg ? ' on' : ''}" data-lg="${lg}" href="${listUrl(lg)}" title="${LEAGUE_NAME[lg]} top scorers · ${lsize(lg)} players"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"><span>${lsize(lg)}</span></a>`).join('')
-$('applist').innerHTML = APPS.map(([n, k, c, u]) => `<a class="approw" href="${u}"${u.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}><i style="background:${c}"></i><span>${n}<em>${k}</em></span><span>→</span></a>`).join('')
 const upd = new Date(SCORERS.updated)
 $('cnote').innerHTML = `${P.length} players: ${LIST === 'ALL' ? 'the top 50 by goals across the five leagues' : `${LEAGUE_NAME[LIST]}'s top 25 by goals`}, plus everyone tied on ${SCORERS.cuts?.[LIST] ?? SCORERS.cut} goals. Season ${SCORERS.season.replace('-', '/')}, updated ${upd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
 
-let cur = 0, playing: number | null = null, target = -1
-function paint() {
-  const p = P[cur]
+// page-specific part of every card change: the context line, the five-league mark, the social-capture meta
+function onPaint(i: number) {
+  const p = P[i]
   $('ctx').innerHTML = `${listName(LIST)} ${SCORERS.season.replace('-', '/')} · <b>${esc(p.name)}</b> · ${p.G} goals`
-  $('counter').innerHTML = `<b>${cur + 1}</b> / ${P.length}`
   if (LIST === 'ALL') $('lgs').querySelectorAll<HTMLElement>('.lgb[data-lg]').forEach(b => b.classList.toggle('cur', b.dataset.lg === p.lg))   // five-league film: mark this card's league
-  history.replaceState(null, '', '#' + (cur + 1))
-  try { localStorage.setItem('top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON) + (LIST === 'ALL' ? '' : '.' + LIST), String(cur)) } catch { }
   const meta = (n: string, v: string) => document.querySelector(`meta[name="agwas:${n}"]`)?.setAttribute('content', v)
   meta('mentions', LG_IG[p.lg]); meta('title', `${p.name} · ${p.G} goals · ${LIST === 'ALL' ? 'top 50 scorers, top-5 leagues' : `${LEAGUE_NAME[LIST]} top scorers`}`)
 }
-function go(i: number, smooth = true) {
-  cur = Math.max(0, Math.min(P.length - 1, i)); target = cur
-  film.scrollTo({ left: cards[cur].offsetLeft, behavior: smooth ? 'smooth' : 'instant' as ScrollBehavior })
-  paint()
-}
-const step = (d: number) => go(cur + d)
-let st: number | undefined
-film.addEventListener('scroll', () => {          // keep the counter in step with native swipe / scroll-snap
-  clearTimeout(st); st = window.setTimeout(() => {
-    const i = Math.round(film.scrollLeft / film.clientWidth)
-    if (target >= 0) { if (i === target) target = -1; return }   // a go() still travelling: don't record the cards it passes
-    if (i !== cur) { cur = i; paint() }
-  }, 90)
-})
-const userScroll = () => { target = -1 }                          // a swipe / wheel takes over from any go() in flight
-film.addEventListener('touchstart', userScroll, { passive: true }); film.addEventListener('wheel', userScroll, { passive: true })
-function togglePlay() {
-  const b = $('playb')
-  if (playing) { clearInterval(playing); playing = null; b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg>'; b.title = 'Play'; return }
-  playing = window.setInterval(() => { if (cur >= P.length - 1) return togglePlay(); step(1) }, 3200)
-  b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M7 5h3v14H7zM14 5h3v14h-3z"/></svg>'; b.title = 'Pause'
-}
-const fs = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => { })
-const closeMods = () => document.querySelectorAll('.mod.on').forEach(m => m.classList.remove('on'))
-const openMod = (id: string) => { closeMods(); $(id).classList.add('on') }
 
 // search: grouped by league, every word must match; a number jumps to that card
 const INDEX = P.map((p, i) => {
   const club = TEAMS[p.lg][p.team] || {}
   return { i, lg: p.lg, label: p.name, sub: `${club.name || p.team} · ${p.G} goals`, key: [p.name, p.full, club.name, p.team, LEAGUE_NAME[p.lg], p.nat, p.natCode].join(' ').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() }
 })
-function drawJump(q: string) {
-  const qq = q.trim().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+function jumpHTML(q: string) {
+  const qq = q.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
   const hits = /^\d+$/.test(qq) ? INDEX.filter(x => x.i === +qq - 1) : INDEX.filter(x => qq.split(/\s+/).every(w => x.key.includes(w)))
-  $('jlist').innerHTML = LG_ORDER.map(lg => {
+  return LG_ORDER.map(lg => {
     const rows = hits.filter(x => x.lg === lg); if (!rows.length) return ''
     return `<div class="jsec"><div class="jsechd"><img src="leagues/${lg}.png" alt="">${LEAGUE_NAME[lg]}<span>${rows.length}</span></div><div class="jgrid">${rows.map(x =>
       `<div class="jrow" data-i="${x.i}"><span class="jn">${x.i + 1}</span><span class="jl">${esc(x.label)}<span class="jt">${esc(x.sub)}</span></span></div>`).join('')}</div></div>`
   }).join('') || '<p>No player matches.</p>'
-  const rows = $('jlist').querySelectorAll<HTMLElement>('.jrow')
-  rows.forEach(r => r.onclick = () => { closeMods(); go(+r.dataset.i!) })
-  rows[0]?.classList.add('sel')
 }
-function openJump() { const q = $('jq') as HTMLInputElement; q.value = ''; drawJump(''); openMod('jmodal'); setTimeout(() => q.focus(), 30) }
-$('jq').addEventListener('input', e => drawJump((e.target as HTMLInputElement).value))
-$('jq').addEventListener('keydown', e => {
-  const rows = [...$('jlist').querySelectorAll<HTMLElement>('.jrow')]; if (!rows.length) return
-  const k = rows.findIndex(r => r.classList.contains('sel'))
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-    e.preventDefault(); rows[k]?.classList.remove('sel')
-    const n = (k + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length
-    rows[n].classList.add('sel'); rows[n].scrollIntoView({ block: 'nearest' })
-  }
-  if (e.key === 'Enter') (rows[k] || rows[0]).click()
-})
 
-addEventListener('keydown', e => {
-  if (e.key === 'Escape') return closeMods()
-  if (document.querySelector('.mod.on')) return
-  if (e.metaKey || e.ctrlKey || e.altKey) return
-  if (e.key === 'ArrowRight') step(1)
-  else if (e.key === 'ArrowLeft') step(-1)
-  else if (e.key === ' ') { e.preventDefault(); togglePlay() }
-  else if (e.key === 'Home') go(0)
-  else if (e.key === 'End') go(P.length - 1)
-  else if (e.key === 'f') fs()
-  else if (e.key === 'h' || e.key === '?') openMod('hmodal')
-  else if (e.key === 'g' || e.key === '/') { e.preventDefault(); openJump() }
-})
-Object.assign(window, { go, step, togglePlay, fs, openMod, closeMods, openJump })
 // hover / tap a match → its goals light up in the minute line and the goal list (and the other way round); the rest dims
-const highlight = (e: Event) => {
-  const el = e.target as HTMLElement, card = el.closest('.card'); if (!card) return
-  const t = el.closest<HTMLElement>('[data-mid]')
-  card.querySelectorAll('.hl').forEach(x => x.classList.remove('hl'))
-  card.classList.toggle('hlon', !!t)
-  if (t) card.querySelectorAll(`[data-mid="${t.dataset.mid}"]`).forEach(x => x.classList.add('hl'))
-}
-film.addEventListener('mouseover', highlight); film.addEventListener('click', highlight)
-film.addEventListener('mouseleave', () => film.querySelectorAll('.hlon').forEach(c => { c.classList.remove('hlon'); c.querySelectorAll('.hl').forEach(x => x.classList.remove('hl')) }))
-
-// a reload lands where you were, never card 1: #N, else the last card seen
-;(function start() {
-  let i = 0
-  const h = location.hash.replace('#', '')
-  if (/^\d+$/.test(h)) i = +h - 1
-  else { try { const s = localStorage.getItem('top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON) + (LIST === 'ALL' ? '' : '.' + LIST)); if (s != null) i = +s } catch { } }
-  go(i, false)   // not in a requestAnimationFrame: a tab opened in the background must still show its card + counter
-  addEventListener('resize', () => go(cur, false))
-})()
+initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
+initFilm({ count: P.length, key: 'top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON) + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'scorers.html' })

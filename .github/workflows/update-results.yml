@@ -80,12 +80,24 @@ jobs:
             echo "No new league results — scorers unchanged."
           fi
 
+      # Team cards (teams.html), one data file per league: ESPN match reports + rosters, official squad photos.
+      # Same trigger as the scorers; each league is verified (every match's goals = its score) and skipped on failure.
+      - name: Team cards (ESPN + league photos)
+        run: |
+          if ! git diff --quiet -- 'src/data/results-*-2026-27.js' || [ "${{ github.event.schedule }}" = "0 8 * * *" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            for lg in ITA ENG ESP FRA GER; do
+              node scripts/update-teams.mjs --league $lg --season 2026-27 || echo "::warning::team cards $lg not updated (verification failed) — will retry on the next trigger"
+            done
+          else
+            echo "No new league results — team cards unchanged."
+          fi
+
       - name: Commit if changed
         id: commit
         run: |
           git config user.name "results-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/data/results-*-2026-27.js src/data/standings-*-2026-27.js src/data/highlights-*-2026-27.js src/data/schedule-CL-2026-27.js src/data/schedule-EL-2026-27.js src/data/schedule-ECL-2026-27.js src/data/scorers-TOP5-2026-27.js public/players scripts/scorers-photo-cache.json
+          git add src/data/results-*-2026-27.js src/data/standings-*-2026-27.js src/data/highlights-*-2026-27.js src/data/schedule-CL-2026-27.js src/data/schedule-EL-2026-27.js src/data/schedule-ECL-2026-27.js src/data/scorers-TOP5-2026-27.js public/players scripts/scorers-photo-cache.json src/data/teams-*-2026-27.js public/squad scripts/squad-photo-cache.json
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No new results — nothing to deploy."
