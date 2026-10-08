@@ -139,12 +139,17 @@ function posLine(t: Dict, club: Dict) {
   const y = (p: number) => ((p - 1) / Math.max(1, N_CLUBS - 1)) * 100
   const pts = t.posPath as number[][]
   const poly = pts.map(([md, p]) => `${x(md)},${y(p)}`).join(' ')
-  const midOf: Record<number, string> = Object.fromEntries(t.matches.map((m: Dict) => [m.w, m.id]))
-  const dots = pts.map(([md, p], i) => `<i class="pd"${midOf[md] ? ` data-h="m${midOf[md]}" data-k="m${midOf[md]}"` : ''} style="position:absolute;left:${x(md)}%;top:${y(p)}%;width:${i === pts.length - 1 ? 9 : 6}px;height:${i === pts.length - 1 ? 9 : 6}px;margin:-${i === pts.length - 1 ? 4.5 : 3}px 0 0 -${i === pts.length - 1 ? 4.5 : 3}px;border-radius:50%;background:${i === pts.length - 1 ? 'var(--c)' : '#15181d'};${i === pts.length - 1 ? 'box-shadow:0 0 0 2px #fff,0 0 0 3.5px var(--c)' : ''}" title="after MD${md}: ${ord(p)}"></i>`).join('')
-  return `<div class="pline"><div style="position:relative;height:42px">
+  // each matchday's dot takes that game's result shade (same six as the strip); the current one gets the club ring
+  const mOf: Record<number, Dict> = Object.fromEntries(t.matches.map((m: Dict) => [m.w, m]))
+  const dots = pts.map(([md, p], i) => {
+    const m = mOf[md], last = i === pts.length - 1, d = last ? 12 : 9
+    const fill = m ? RES6[res6(m.gf, m.ga)][0] : '#fff'   // no game that matchday (postponed / bye): an empty ring
+    return `<i class="pd"${m ? ` data-h="m${m.id}" data-k="m${m.id}"` : ''} style="position:absolute;left:${x(md)}%;top:${y(p)}%;width:${d}px;height:${d}px;margin:-${d / 2}px 0 0 -${d / 2}px;border-radius:50%;background:${fill};box-shadow:${m ? '0 0 0 1.5px #fff' : 'inset 0 0 0 2px #9aa0a8'}${last ? ',0 0 0 3.5px var(--c)' : ''}" title="after MD${md}: ${ord(p)}${m ? ` · ${m.ha === 'H' ? 'vs' : 'at'} ${m.opp} ${m.gf}-${m.ga}` : ' · no game that matchday'}"></i>`
+  }).join('')
+  return `<div class="pline"><div class="plot">
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
       <rect class="zone" x="0" y="0" width="100" height="${y(4.5)}" fill="#177a41"/><rect class="zone" x="0" y="${y(N_CLUBS - 2.5)}" width="100" height="${100 - y(N_CLUBS - 2.5)}" fill="#b3323a"/>
-      ${pts.length > 1 ? `<polyline points="${poly}" fill="none" stroke="#15181d" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>` : ''}
+      ${pts.length > 1 ? `<polyline points="${poly}" fill="none" stroke="#8a9099" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>` : ''}
     </svg>${dots}</div>
     <div class="ax2"><span>MD 1</span><span>1st top · ${N_CLUBS}th bottom</span><span>MD ${N}</span></div></div>`
 }

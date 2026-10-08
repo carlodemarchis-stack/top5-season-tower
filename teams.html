@@ -48,16 +48,18 @@
     .pan .wm.team{right:auto;left:50%;top:auto;bottom:14%;transform:translateX(-50%);width:92%;opacity:.13}
     .c2.tm .mk{display:none}
     .c2.tm .bx .vl{background:rgba(255,255,255,.55)}
-    .pline{max-width:1040px;position:relative}
+    /* the position chart takes all the height its row has (min 42px) */
+    .pline{max-width:1040px;position:relative;flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+    .pline .plot{position:relative;flex:1 1 auto;min-height:42px;margin:6px 0}
+    .duo>.s2:first-child{display:flex;flex-direction:column;min-height:0}
     /* position chart + scorers side by side (stacked on narrow cards) */
-    .duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;max-width:1040px;align-items:start}
+    .duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;max-width:1040px;align-items:stretch}
     @container (max-width: 560px){ .duo{grid-template-columns:1fr;gap:10px} }
     /* .card-prefixed: these must beat the shared film.css rules, which load after this block */
 @container (max-width: 760px){ .card .nums{gap:12px} .card .n b{font-size:clamp(18px,2.4vw,30px)} .card .n.big b{font-size:clamp(48px,6vw,80px)} .card .n span{letter-spacing:.06em;font-size:10px} }
-    .pline svg{display:block;width:100%;height:var(--ph2,74px);overflow:visible}
     .pline .zone{opacity:.09}
     .pline .pd{transition:transform .12s,opacity .12s}
-    .pline .pd.hl{transform:scale(1.9);background:var(--c)!important;box-shadow:0 0 0 2px #fff,0 0 0 3.5px var(--c)!important;z-index:2}
+    .pline .pd.hl{transform:scale(1.7);box-shadow:0 0 0 2px #fff,0 0 0 4px var(--c)!important;z-index:2}
     .hlon .pline .pd:not(.hl){opacity:.35}
     .pline .ax2{display:flex;justify-content:space-between;font-size:9.5px;color:#8a9099;margin-top:2px}
     .gline .ax.two{border-bottom:none}
