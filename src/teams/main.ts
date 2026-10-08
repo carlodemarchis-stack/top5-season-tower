@@ -150,11 +150,11 @@ function posLine(t: Dict, club: Dict) {
 
 // ---------- the squad as a deck of player tiles (like the NBA team cards): portrait on a wash of the club colour,
 // shirt number as a watermark, three stats across the foot; grouped by position, most minutes first ----------
-const POSN: [string, string][] = [['G', 'Goalkeepers'], ['D', 'Defenders'], ['M', 'Midfielders'], ['F', 'Forwards']]
+const POSN: [string, string, string][] = [['G', 'Goalkeepers', 'GK'], ['D', 'Defenders', 'DEF'], ['M', 'Midfielders', 'MID'], ['F', 'Forwards', 'FWD']]
 function squadGrid(t: Dict) {
   const sq: Dict[] = t.squad || []
   const ini = (n: string) => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('')
-  const tile = (p: Dict) => {
+  const tile = (p: Dict, tag = '') => {
     const pills = p.pos === 'G'
       ? [[`${p.min}'`, 'min'], [p.SV ?? 0, 'saves'], [p.GA ?? 0, 'conc.']]
       : [[`${p.min}'`, 'min'], [p.G, 'goals'], [p.A, 'assists']]
@@ -162,13 +162,14 @@ function squadGrid(t: Dict) {
     const sc = SCORER_CARD[p.espnId]
     const open = sc ? `<a class="pm${p.apps ? '' : ' unused'} has-card" href="scorers.html?lg=${LG}#${sc}" title="${esc(tip)} — open his scorer card">` : `<div class="pm${p.apps ? '' : ' unused'}" title="${esc(tip)}">`
     return `${open}
-      <span class="pmshot"><i class="pmfb">${esc(ini(p.name))}</i>${p.thumb ? `<img src="${p.thumb}" alt="" loading="lazy">` : ''}${p.jersey ? `<b class="pmwm">${esc(p.jersey)}</b>` : ''}${p.inj ? '<i class="inj" title="injured">+</i>' : ''}
+      <span class="pmshot">${tag}<i class="pmfb">${esc(ini(p.name))}</i>${p.thumb ? `<img src="${p.thumb}" alt="" loading="lazy">` : ''}${p.jersey ? `<b class="pmwm">${esc(p.jersey)}</b>` : ''}${p.inj ? '<i class="inj" title="injured">+</i>' : ''}
         <span class="pmpills">${pills.map(([v, k]) => `<b>${v}<i>${k}</i></b>`).join('')}</span></span>
       <span class="pmname"><span>${esc(p.name)}</span>${p.RC ? '<i class="rc"></i>' : p.YC ? '<i class="yc"></i>' : ''}${sc ? '<i class="sclink" title="has a scorer card"></i>' : ''}</span>${sc ? '</a>' : '</div>'}`
   }
-  return `<div class="sq"><div class="deck">${POSN.map(([k, label]) => {
+  // one continuous run of tiles (no gaps between positions); each position is tagged on its first tile
+  return `<div class="sq"><div class="deck">${POSN.map(([k, label, short]) => {
     const ps = sq.filter(p => p.pos === k).sort((a, b) => b.min - a.min || b.apps - a.apps || (+a.jersey || 99) - (+b.jersey || 99))
-    return ps.length ? `<div class="sqh">${label} <span>${ps.length}</span></div>${ps.map(tile).join('')}` : ''
+    return ps.map((p, i) => tile(p, i ? '' : `<b class="grptag" title="${label}: ${ps.length}">${short} · ${ps.length}</b>`)).join('')
   }).join('')}</div></div>`
 }
 

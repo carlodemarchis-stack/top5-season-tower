@@ -91,8 +91,8 @@
     /* squad deck: player tiles like the NBA team cards; the deck scrolls inside the card if a big squad doesn't fit */
     .sq{flex:1 1 auto;min-height:0;overflow:auto;max-width:1040px;padding:2px 2px 4px}
     .deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:7px}
-    .sqh{grid-column:1/-1;font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#6a717b;padding:6px 2px 0}
-    .sqh span{color:#b0b5bc;margin-left:2px}
+    /* a position's first tile carries its label */
+    .grptag{position:absolute;left:0;top:0;z-index:4;max-width:100%;padding:3px 7px 3px 6px;border-radius:10px 0 8px 0;background:#15181d;color:#fff;font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .pm{position:relative;display:flex;flex-direction:column;height:132px;overflow:hidden;border:1px solid var(--line);border-radius:11px;background:#fff;transition:border-color .14s,transform .14s}
     .pm:hover{border-color:var(--c);transform:translateY(-2px)}
     .pmshot{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
@@ -108,7 +108,7 @@
     .pm.unused{opacity:.45}
     a.pm{text-decoration:none;color:inherit}
     .pmname .sclink{flex:0 0 auto;width:9px;height:9px;border-radius:50%;background:#F4C400;box-shadow:0 0 0 1.5px #2b2200 inset}   /* gold dot = has a scorer card */
-    .pm .inj{position:absolute;left:5px;top:5px;z-index:3;display:grid;place-items:center;width:14px;height:14px;border-radius:3px;background:#b3323a;color:#fff;font-size:12px;font-weight:900;font-style:normal;line-height:1}
+    .pm .inj{position:absolute;left:5px;bottom:44px;z-index:3;display:grid;place-items:center;width:14px;height:14px;border-radius:3px;background:#b3323a;color:#fff;font-size:12px;font-weight:900;font-style:normal;line-height:1}
     .pmname .yc,.pmname .rc{flex:0 0 auto;width:6px;height:9px;border-radius:1px;background:#EAB308}
     .pmname .rc{background:#d92d20}
   </style>
