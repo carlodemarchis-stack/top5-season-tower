@@ -157,9 +157,9 @@ const film = $('film')
 film.innerHTML = P.map(card).join('')
 const cards = [...film.children] as HTMLElement[]
 
-// top bar: "Top 5" + the five leagues switch between the six lists; the number is each list's size
+// top bar: "All Leagues" + the five leagues switch between the six lists; the number is each list's size
 const lsize = (k: string) => listOf(k).length
-$('lgs').innerHTML = `<a class="lgb all${LIST === 'ALL' ? ' on' : ''}" href="${listUrl('ALL')}" title="Top 50 across the five leagues · ${lsize('ALL')} players"><b>Top 5</b><span>${lsize('ALL')}</span></a>` +
+$('lgs').innerHTML = `<a class="lgb all${LIST === 'ALL' ? ' on' : ''}" href="${listUrl('ALL')}" title="Top 50 across the five leagues · ${lsize('ALL')} players"><b>All Leagues</b><span>${lsize('ALL')}</span></a>` +
   LG_ORDER.map(lg => `<a class="lgb${LIST === lg ? ' on' : ''}" data-lg="${lg}" href="${listUrl(lg)}" title="${LEAGUE_NAME[lg]} top scorers · ${lsize(lg)} players"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"><span>${lsize(lg)}</span></a>`).join('')
 $('applist').innerHTML = APPS.map(([n, k, c, u]) => `<a class="approw" href="${u}"${u.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}><i style="background:${c}"></i><span>${n}<em>${k}</em></span><span>→</span></a>`).join('')
 const upd = new Date(SCORERS.updated)
