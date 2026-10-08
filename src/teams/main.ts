@@ -50,7 +50,7 @@ function card(t: Dict) {
   const c2 = light ? '#15181d' : c
   const hlInk = lum(c) > 0.183 ? '#15181d' : '#fff'
   const gd = t.GF - t.GA
-  const photos = t.scorers.filter((s: Dict) => s.photo).slice(0, 3)
+  const photos = (t.panel || []).slice(0, 3)   // three players with a real photo: goals, then assists, then minutes
   const group = photos.length
     ? `<div class="grp">${photos.map((s: Dict, i: number) => `<img class="p${photos.length === 2 && i === 1 ? 2 : i}" src="${s.photo}" alt="${esc(s.name)}">`).join('')}</div>`
     : `<img class="bigcrest" src="${logo(t.code)}" alt="">`
@@ -65,7 +65,7 @@ function card(t: Dict) {
     <div class="body">
       <div>
         <h1 style="--len:${[...club.name || t.code].length};--word:${Math.max(...(club.name || t.code).split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(club.name || t.code)}</h1>
-        <div class="meta" style="margin-top:8px">${LEAGUE_NAME[LG]} · <b>${t.pos ? ord(t.pos) : '–'}</b> · ${t.W}-${t.D}-${t.L} · GD ${gd >= 0 ? '+' : ''}${gd}${photos[0] ? ` · top scorer <b>${esc(photos[0].name)}</b>` : ''}</div>
+        <div class="meta" style="margin-top:8px">${LEAGUE_NAME[LG]} · <b>${t.pos ? ord(t.pos) : '–'}</b> · ${t.W}-${t.D}-${t.L} · GD ${gd >= 0 ? '+' : ''}${gd}${t.scorers[0]?.G ? ` · top scorer <b>${esc(t.scorers[0].name)}</b>` : ''}</div>
       </div>
       <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button></div>
       <div class="pane pane-season">
@@ -179,7 +179,8 @@ function scorerChips(t: Dict) {
   const all = t.scorers.filter((s: Dict) => s.G)
   if (!all.length) return '<span class="sc">No goals yet</span>'
   const k = (s: Dict) => `data-h="p${slug(s.name)}" data-k="p${slug(s.name)}"`
-  const top = all.slice(0, 3).map((s: Dict) => `<span class="sc" ${k(s)}>${s.photo ? `<img src="${s.photo}" alt="">` : '<i class="nophoto"></i>'}${esc(s.name)} <b>${s.G}</b>${s.A ? ` · ${s.A} ast` : ''}</span>`).join('')
+  const thumbOf: Record<string, string> = Object.fromEntries((t.squad || []).filter((p: Dict) => p.thumb).map((p: Dict) => [p.espnId, p.thumb]))
+  const top = all.slice(0, 3).map((s: Dict) => `<span class="sc" ${k(s)}>${thumbOf[s.espnId] ? `<img src="${thumbOf[s.espnId]}" alt="">` : '<i class="nophoto"></i>'}${esc(s.name)} <b>${s.G}</b>${s.A ? ` · ${s.A} ast` : ''}</span>`).join('')
   const rest = all.slice(3).map((s: Dict) => `<span class="sc2" ${k(s)}>${esc(s.name)} <b>${s.G}</b></span>`).join('')
   return top + (rest ? `<div class="rest">${rest}</div>` : '')
 }

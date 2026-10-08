@@ -109,21 +109,9 @@ const clubs = await pool(espnTeams, 4, async (team) => {
 const teams = clubs.filter(Boolean).sort((a, b) => (a.pos ?? 99) - (b.pos ?? 99))
 function GFsum(ms) { return ms.reduce((s, m) => s + m.gf, 0) }
 
-// photos: the club's top three scorers (shared photo folder + cache with the scorers film)
+// large photos (shared folder + cache with the scorers film) — used for the panel's three players, chosen below
 const photoCache = fs.existsSync(PHOTO_CACHE) ? JSON.parse(fs.readFileSync(PHOTO_CACHE, 'utf8')) : {}
 if (!DRY) fs.mkdirSync(PHOTOS, { recursive: true })
-await pool(teams, 3, async (t) => {
-  for (const s of t.scorers.filter(s => s.espnId && s.G).slice(0, 3)) {
-    const file = path.join(PHOTOS, `${s.espnId}.webp`)
-    const hit = matchPlayer(await squad(LG, t.code), { name: s.name, jersey: s.jersey })
-    if (!hit?.src) { warns.push(`photo: none for ${s.name} (${t.code})`); continue }
-    s.photo = `players/${s.espnId}.webp`
-    if (DRY || (photoCache[s.espnId] === hit.src && fs.existsSync(file))) continue
-    const buf = await get(hit.src, { json: false })
-    if (!buf) { warns.push(`photo: ${hit.src} unreachable for ${s.name}`); delete s.photo; continue }
-    await savePhoto(buf, file); photoCache[s.espnId] = hit.src
-  }
-})
 
 // squad thumbnails (every rostered player, 240px, own folder + cache)
 const squadCache = fs.existsSync(SQUAD_CACHE) ? JSON.parse(fs.readFileSync(SQUAD_CACHE, 'utf8')) : {}
@@ -135,23 +123,38 @@ await pool(teams, 3, async (t) => {
     const hit = matchPlayer(official, { name: p.name, jersey: p.jersey })
     if (!hit?.src) { noThumb++; return }
     const file = path.join(SQUAD_DIR, `${p.espnId}.webp`)
-    p.thumb = `squad/${p.espnId}.webp`; thumbs++
+    p.thumb = `squad/${p.espnId}.webp`; p._src = hit.src; thumbs++
     if (DRY || (squadCache[p.espnId] === hit.src && fs.existsSync(file))) return
     const buf = await get(hit.src, { json: false })
-    if (!buf) { delete p.thumb; thumbs--; noThumb++; return }
+    if (!buf) { delete p.thumb; delete p._src; thumbs--; noThumb++; return }
     await savePhoto(buf, file, 200, 72); squadCache[p.espnId] = hit.src
   })
 })
 // drop the league's stand-in silhouettes (one picture shared by several players) — squad thumbs and scorer photos
 if (!DRY) {
   const sq = standIns(SQUAD_DIR, teams.flatMap(t => t.squad.filter(p => p.thumb).map(p => p.espnId)))
-  for (const t of teams) for (const p of t.squad) if (sq.has(p.espnId)) { fs.rmSync(path.join(SQUAD_DIR, `${p.espnId}.webp`), { force: true }); delete squadCache[p.espnId]; delete p.thumb; thumbs--; noThumb++ }
-  const pl = standIns(PHOTOS, teams.flatMap(t => t.scorers.filter(s => s.photo).map(s => s.espnId)))
-  for (const t of teams) for (const s of t.scorers) if (pl.has(s.espnId)) { fs.rmSync(path.join(PHOTOS, `${s.espnId}.webp`), { force: true }); delete photoCache[s.espnId]; delete s.photo }
-  if (sq.size || pl.size) console.log(`stand-in silhouettes dropped: ${sq.size} squad thumbnails, ${pl.size} scorer photos`)
+  for (const t of teams) for (const p of t.squad) if (sq.has(p.espnId)) { fs.rmSync(path.join(SQUAD_DIR, `${p.espnId}.webp`), { force: true }); delete squadCache[p.espnId]; delete p.thumb; delete p._src; thumbs--; noThumb++ }
+  if (sq.size) console.log(`stand-in silhouettes dropped: ${sq.size} squad thumbnails`)
 }
 console.log(`squads: ${teams.reduce((s, t) => s + t.squad.length, 0)} players · ${thumbs} thumbnails · ${noThumb} without (initials)`)
-for (const t of teams) console.log(`${String(t.pos).padStart(2)}. ${t.code.padEnd(4)} ${String(t.pts).padStart(2)} pts ${t.W}-${t.D}-${t.L} ${t.GF}:${t.GA} · poss ${t.avg.poss}% · ${t.matches.length} reports · top: ${t.scorers.slice(0, 3).map(s => `${s.name} ${s.G}${s.photo ? '' : ' (no photo)'}`).join(', ')}`)
+
+// the panel always shows three players with a real photo: goals first, then assists, then minutes
+await pool(teams, 3, async (t) => {
+  const pick = t.squad.filter(p => p.thumb && p._src).sort((a, b) => b.G - a.G || b.A - a.A || b.min - a.min).slice(0, 3)
+  t.panel = []
+  for (const p of pick) {
+    const file = path.join(PHOTOS, `${p.espnId}.webp`)
+    if (!DRY && !(photoCache[p.espnId] === p._src && fs.existsSync(file))) {
+      const buf = await get(p._src, { json: false })
+      if (!buf) { warns.push(`photo: ${p._src} unreachable for ${p.name}`); continue }
+      await savePhoto(buf, file); photoCache[p.espnId] = p._src
+    }
+    t.panel.push({ espnId: p.espnId, name: p.name, G: p.G, A: p.A, photo: `players/${p.espnId}.webp` })
+  }
+  if (t.panel.length < 3) warns.push(`${t.code}: only ${t.panel.length} panel player(s) with a real photo`)
+})
+for (const t of teams) for (const p of t.squad) delete p._src
+for (const t of teams) console.log(`${String(t.pos).padStart(2)}. ${t.code.padEnd(4)} ${String(t.pts).padStart(2)} pts ${t.W}-${t.D}-${t.L} ${t.GF}:${t.GA} · poss ${t.avg.poss}% · ${t.matches.length} reports · panel: ${t.panel.map(p => `${p.name} ${p.G}g ${p.A}a`).join(', ')}`)
 if (warns.length) console.log(`\n${warns.length} note(s):\n  ` + warns.join('\n  '))
 if (errors.length) { console.error(`\n✗ ${errors.length} verification error(s) — nothing written:\n  ` + errors.join('\n  ')); process.exit(1) }
 console.log(`\n✓ verified: every match's key-event goals equal its score, every ESPN score equals ours (${teams.length} clubs)`)
