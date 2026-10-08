@@ -67,6 +67,8 @@ function card(t: Dict) {
         <h1 style="--len:${[...club.name || t.code].length};--word:${Math.max(...(club.name || t.code).split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(club.name || t.code)}</h1>
         <div class="meta" style="margin-top:8px">${LEAGUE_NAME[LG]} · <b>${t.pos ? ord(t.pos) : '–'}</b> · ${t.W}-${t.D}-${t.L} · GD ${gd >= 0 ? '+' : ''}${gd}${photos[0] ? ` · top scorer <b>${esc(photos[0].name)}</b>` : ''}</div>
       </div>
+      <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button></div>
+      <div class="pane pane-season">
       <div class="nums">
         <div class="n big"><b>${t.pts}</b><span>Points · ${ppg}/game</span></div>
         <div class="n"><b>${t.GF}–${t.GA}</b><span>For–against</span></div>
@@ -75,8 +77,6 @@ function card(t: Dict) {
         <div class="n"><b>${t.avg.sot != null ? Math.round(t.avg.sot) : '–'}/${t.avg.sh != null ? Math.round(t.avg.sh) : '–'}</b><span>On target / shots</span></div>
         <div class="n"><b>${t.avg.pass != null ? Math.round(t.avg.pass) : '–'}%</b><span>Passing</span></div>
       </div>
-      <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button></div>
-      <div class="pane pane-season">
       ${strip(t, club)}
       <div class="s2"><div class="sec">When they score${goalLegend(t)}</div>${goalLine(t)}</div>
       <div class="duo"><div class="s2"><div class="sec">Position<span class="gsum">now <b>${t.pos ? ord(t.pos) : '–'}</b> · best <b>${t.posPath.length ? ord(Math.min(...t.posPath.map((x: number[]) => x[1]))) : '–'}</b></span></div>${posLine(t, club)}</div>
@@ -139,8 +139,9 @@ function posLine(t: Dict, club: Dict) {
   const y = (p: number) => ((p - 1) / Math.max(1, N_CLUBS - 1)) * 100
   const pts = t.posPath as number[][]
   const poly = pts.map(([md, p]) => `${x(md)},${y(p)}`).join(' ')
-  const dots = pts.map(([md, p], i) => `<i style="position:absolute;left:${x(md)}%;top:${y(p)}%;width:${i === pts.length - 1 ? 9 : 6}px;height:${i === pts.length - 1 ? 9 : 6}px;margin:-${i === pts.length - 1 ? 4.5 : 3}px 0 0 -${i === pts.length - 1 ? 4.5 : 3}px;border-radius:50%;background:${i === pts.length - 1 ? 'var(--c)' : '#15181d'};${i === pts.length - 1 ? 'box-shadow:0 0 0 2px #fff,0 0 0 3.5px var(--c)' : ''}" title="after MD${md}: ${ord(p)}"></i>`).join('')
-  return `<div class="pline"><div style="position:relative;height:52px">
+  const midOf: Record<number, string> = Object.fromEntries(t.matches.map((m: Dict) => [m.w, m.id]))
+  const dots = pts.map(([md, p], i) => `<i class="pd"${midOf[md] ? ` data-h="m${midOf[md]}" data-k="m${midOf[md]}"` : ''} style="position:absolute;left:${x(md)}%;top:${y(p)}%;width:${i === pts.length - 1 ? 9 : 6}px;height:${i === pts.length - 1 ? 9 : 6}px;margin:-${i === pts.length - 1 ? 4.5 : 3}px 0 0 -${i === pts.length - 1 ? 4.5 : 3}px;border-radius:50%;background:${i === pts.length - 1 ? 'var(--c)' : '#15181d'};${i === pts.length - 1 ? 'box-shadow:0 0 0 2px #fff,0 0 0 3.5px var(--c)' : ''}" title="after MD${md}: ${ord(p)}"></i>`).join('')
+  return `<div class="pline"><div style="position:relative;height:42px">
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
       <rect class="zone" x="0" y="0" width="100" height="${y(4.5)}" fill="#177a41"/><rect class="zone" x="0" y="${y(N_CLUBS - 2.5)}" width="100" height="${100 - y(N_CLUBS - 2.5)}" fill="#b3323a"/>
       ${pts.length > 1 ? `<polyline points="${poly}" fill="none" stroke="#15181d" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>` : ''}

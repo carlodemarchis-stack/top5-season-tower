@@ -56,6 +56,9 @@
 @container (max-width: 760px){ .card .nums{gap:12px} .card .n b{font-size:clamp(18px,2.4vw,30px)} .card .n.big b{font-size:clamp(48px,6vw,80px)} .card .n span{letter-spacing:.06em;font-size:10px} }
     .pline svg{display:block;width:100%;height:var(--ph2,74px);overflow:visible}
     .pline .zone{opacity:.09}
+    .pline .pd{transition:transform .12s,opacity .12s}
+    .pline .pd.hl{transform:scale(1.9);background:var(--c)!important;box-shadow:0 0 0 2px #fff,0 0 0 3.5px var(--c)!important;z-index:2}
+    .hlon .pline .pd:not(.hl){opacity:.35}
     .pline .ax2{display:flex;justify-content:space-between;font-size:9.5px;color:#8a9099;margin-top:2px}
     .gline .ax.two{border-bottom:none}
     .gline .ax.two .mid{position:absolute;left:0;right:0;top:50%;border-top:1.5px solid #15181d}
@@ -82,11 +85,11 @@
     .lgb.soon{opacity:.25;pointer-events:none}
     /* Season | Squad */
     .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:-4px}
-    .tab{font:inherit;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8a9099;background:none;border:none;border-bottom:2.5px solid transparent;padding:4px 10px 6px;cursor:pointer;margin-bottom:-1px}
+    .tab{font:inherit;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8a9099;background:none;border:none;border-bottom:2.5px solid transparent;padding:2px 10px 4px;cursor:pointer;margin-bottom:-1px}
     .tab span{font-weight:700;color:#b0b5bc;margin-left:3px}
     .tab:hover{color:#3a3f47}
     .tab.on{color:#15181d;border-bottom-color:var(--c)}
-    .pane{display:flex;flex-direction:column;gap:clamp(8px,1.5vh,18px);flex:1 1 auto;min-height:0}
+    .pane{display:flex;flex-direction:column;gap:clamp(6px,1.3vh,18px);flex:1 1 auto;min-height:0}
     body.tab-squad .pane-season,body:not(.tab-squad) .pane-squad{display:none}
     /* squad deck: player tiles like the NBA team cards; the deck scrolls inside the card if a big squad doesn't fit */
     .sq{flex:1 1 auto;min-height:0;overflow:auto;max-width:1040px;padding:2px 2px 4px}

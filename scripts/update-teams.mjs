@@ -13,7 +13,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { LEAGUES, CUR, get, pool, espn, loadLeague, squad, matchPlayer, makeCodeFor, savePhoto, minutesOf, PHOTOS, DATA, ROOT } from './lib/football.mjs'
+import { LEAGUES, CUR, get, pool, espn, loadLeague, squad, matchPlayer, makeCodeFor, savePhoto, minutesOf, standIns, PHOTOS, DATA, ROOT } from './lib/football.mjs'
 
 const args = process.argv.slice(2)
 const has = (f) => args.includes(f)
@@ -142,6 +142,14 @@ await pool(teams, 3, async (t) => {
     await savePhoto(buf, file, 200, 72); squadCache[p.espnId] = hit.src
   })
 })
+// drop the league's stand-in silhouettes (one picture shared by several players) — squad thumbs and scorer photos
+if (!DRY) {
+  const sq = standIns(SQUAD_DIR, teams.flatMap(t => t.squad.filter(p => p.thumb).map(p => p.espnId)))
+  for (const t of teams) for (const p of t.squad) if (sq.has(p.espnId)) { fs.rmSync(path.join(SQUAD_DIR, `${p.espnId}.webp`), { force: true }); delete squadCache[p.espnId]; delete p.thumb; thumbs--; noThumb++ }
+  const pl = standIns(PHOTOS, teams.flatMap(t => t.scorers.filter(s => s.photo).map(s => s.espnId)))
+  for (const t of teams) for (const s of t.scorers) if (pl.has(s.espnId)) { fs.rmSync(path.join(PHOTOS, `${s.espnId}.webp`), { force: true }); delete photoCache[s.espnId]; delete s.photo }
+  if (sq.size || pl.size) console.log(`stand-in silhouettes dropped: ${sq.size} squad thumbnails, ${pl.size} scorer photos`)
+}
 console.log(`squads: ${teams.reduce((s, t) => s + t.squad.length, 0)} players · ${thumbs} thumbnails · ${noThumb} without (initials)`)
 for (const t of teams) console.log(`${String(t.pos).padStart(2)}. ${t.code.padEnd(4)} ${String(t.pts).padStart(2)} pts ${t.W}-${t.D}-${t.L} ${t.GF}:${t.GA} · poss ${t.avg.poss}% · ${t.matches.length} reports · top: ${t.scorers.slice(0, 3).map(s => `${s.name} ${s.G}${s.photo ? '' : ' (no photo)'}`).join(', ')}`)
 if (warns.length) console.log(`\n${warns.length} note(s):\n  ` + warns.join('\n  '))

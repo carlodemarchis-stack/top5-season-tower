@@ -147,7 +147,9 @@ export function matchPlayer(list, pl) {
   let best = null, bestS = 0
   for (const c of list) {
     const t = new Set(c.names.flatMap(toks))
-    const overlap = [...want].filter(w => t.has(w)).length
+    // a word counts when it is the same, or one is the start of the other with ≥ 4 letters in common (Rodri / Rodrigo)
+    const near = (w) => t.has(w) || [...t].some(x => Math.min(x.length, w.length) >= 4 && (x.startsWith(w) || w.startsWith(x)))
+    const overlap = [...want].filter(near).length
     let s = overlap * 2 + (last && t.has(last) ? 2 : 0)
     if (pl.jersey && c.num && c.num === String(pl.jersey)) s += 3
     if (overlap === 0 && !(pl.jersey && c.num === String(pl.jersey))) continue
@@ -193,3 +195,19 @@ export async function savePhoto(buf, file, height = 720, quality = 82) {
   const sharp = (await import('sharp')).default
   await sharp(buf).trim().resize({ height, withoutEnlargement: true }).webp({ quality, alphaQuality: quality === 82 ? 90 : 80 }).toFile(file)
 }
+
+// League sites serve a stand-in (a club-kit silhouette) for players they haven't photographed — LaLiga and Ligue 1
+// do it per club. Two players never share a real photo, so any file shared by 2+ players is a stand-in: return
+// those ids so the caller can drop them (no file, no cache entry → re-checked next run, picked up once real).
+export function standIns(dir, ids) {
+  const crypto = require_crypto()
+  const byHash = new Map()
+  for (const id of ids) {
+    const f = path.join(dir, `${id}.webp`); if (!fs.existsSync(f)) continue
+    const h = crypto.createHash('md5').update(fs.readFileSync(f)).digest('hex')
+    byHash.set(h, [...(byHash.get(h) || []), id])
+  }
+  return new Set([...byHash.values()].filter(a => a.length > 1).flat())
+}
+import * as nodeCrypto from 'node:crypto'
+function require_crypto() { return nodeCrypto }

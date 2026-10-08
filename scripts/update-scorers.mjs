@@ -21,7 +21,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { LEAGUES, CUR, get, pool, minutesOf, espn, loadLeague, squad, matchPlayer, makeCodeFor, savePhoto, PHOTOS, DATA } from './lib/football.mjs'
+import { LEAGUES, CUR, get, pool, minutesOf, standIns, espn, loadLeague, squad, matchPlayer, makeCodeFor, savePhoto, PHOTOS, DATA } from './lib/football.mjs'
 
 const __dir = path.dirname(fileURLToPath(import.meta.url))
 const PHOTO_CACHE = path.join(__dir, 'scorers-photo-cache.json')
@@ -196,6 +196,12 @@ if (!NO_PHOTOS) {
     await savePhoto(buf, file)
     photoCache[p.espnId] = hit.src
   })
+}
+
+// drop stand-in silhouettes (one picture shared by several players): initials instead, re-checked next run
+if (!NO_PHOTOS && !DRY) {
+  const si = standIns(PHOTOS, players.filter(p => p.photo).map(p => p.espnId))
+  for (const p of players) if (si.has(p.espnId)) { fs.rmSync(path.join(PHOTOS, `${p.espnId}.webp`), { force: true }); delete photoCache[p.espnId]; p.photo = null; warns.push(`photo: ${p.name} only had the league's stand-in silhouette → initials`) }
 }
 
 // ---------- report + write ----------
