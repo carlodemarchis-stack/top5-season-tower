@@ -81,7 +81,7 @@ function card(t: Dict) {
         <div class="n"><b>${t.GF}–${t.GA}</b><span>For–against</span></div>
         <div class="n"><b>${t.cs}</b><span>Clean sheets</span></div>
         <div class="n"><b>${t.avg.poss != null ? Math.round(t.avg.poss) : '–'}%</b><span>Possession</span></div>
-        <div class="n"><b>${t.avg.sot != null ? Math.round(t.avg.sot) : '–'}/${t.avg.sh != null ? Math.round(t.avg.sh) : '–'}</b><span>On target / shots</span></div>
+        <div class="n" title="season: ${t.matches.reduce((a: number, m: Dict) => a + (m.sot || 0), 0)} on target from ${t.matches.reduce((a: number, m: Dict) => a + (m.sh || 0), 0)} shots in ${t.matches.length} games"><b>${t.avg.sot != null ? Math.round(t.avg.sot) : '–'}/${t.avg.sh != null ? Math.round(t.avg.sh) : '–'}</b><span>On target / shots a game</span></div>
         <div class="n"><b>${t.avg.pass != null ? Math.round(t.avg.pass) : '–'}%</b><span>Passing</span></div>
       </div>
       ${strip(t, club)}
