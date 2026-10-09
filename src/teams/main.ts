@@ -74,7 +74,7 @@ function card(t: Dict) {
         <h1 style="--len:${[...club.name || t.code].length};--word:${Math.max(...(club.name || t.code).split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(club.name || t.code)}</h1>
         <div class="meta" style="margin-top:8px">${LEAGUE_NAME[t.lg]} · <b>${t.pos ? ord(t.pos) : '–'}</b> · ${t.W}-${t.D}-${t.L} · GD ${gd >= 0 ? '+' : ''}${gd}${t.scorers[0]?.G ? ` · top scorer <b>${esc(t.scorers[0].name)}</b>` : ''}</div>
       </div>
-      <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button></div>
+      <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button>${SORTBAR}</div>
       <div class="pane pane-season">
       <div class="nums">
         <div class="n big"><b>${t.pts}</b><span>Points · ${ppg}/game</span></div>
@@ -168,6 +168,11 @@ function posLine(t: Dict, club: Dict) {
 
 // ---------- the squad as a deck of player tiles (like the NBA team cards): portrait on a wash of the club colour,
 // shirt number as a watermark, three stats across the foot; grouped by position, most minutes first ----------
+// Squad order, one choice for every card, remembered: role (default) / minutes (most first) / age (youngest first);
+// clicking the chosen one again reverses it
+const SORT = { k: 'role', rev: false }
+try { const v = localStorage.getItem('top5.teams.sort') || ''; if (/^(role|min|age)(-r)?$/.test(v)) { SORT.k = v.replace('-r', ''); SORT.rev = v.endsWith('-r') } } catch { }
+const SORTBAR = `<span class="sortby">Order by${[['role', 'Role'], ['min', 'Minutes'], ['age', 'Age']].map(([k, l]) => `<button data-sort="${k}">${l}<i></i></button>`).join('')}</span>`
 const POSN: [string, string, string][] = [['G', 'Goalkeepers', 'GK'], ['D', 'Defenders', 'DEF'], ['M', 'Midfielders', 'MID'], ['F', 'Forwards', 'FWD']]
 function squadGrid(t: Dict) {
   const sq: Dict[] = t.squad || []
@@ -184,7 +189,15 @@ function squadGrid(t: Dict) {
         <span class="pmpills">${pills.map(([v, k]) => `<b>${v}<i>${k}</i></b>`).join('')}</span></span>
       <span class="pmname"><span>${esc(p.name)}</span>${p.RC ? '<i class="rc"></i>' : p.YC ? '<i class="yc"></i>' : ''}${sc ? '<i class="sclink" title="has a scorer card"></i>' : ''}</span>${sc ? '</a>' : '</div>'}`
   }
-  // one continuous run of tiles (no gaps between positions); each position is tagged on its first tile
+  // Minutes / Age: one run in that order, every tile tagged with its role (and age)
+  if (SORT.k !== 'role') {
+    const v = (p: Dict) => SORT.k === 'min' ? p.min : p.age ?? null
+    const dir = (SORT.k === 'min' ? -1 : 1) * (SORT.rev ? -1 : 1)
+    const ps = [...sq].sort((a, b) => (v(a) == null ? 1 : v(b) == null ? -1 : (v(a) - v(b)) * dir) || b.min - a.min)
+    const short = (p: Dict) => POSN.find(x => x[0] === p.pos)?.[2] || ''
+    return `<div class="sq"><div class="deck">${ps.map(p => tile(p, `<b class="grptag">${SORT.k === 'age' && p.age ? `${p.age} · ` : ''}${short(p)}</b>`)).join('')}</div></div>`
+  }
+  // Role: one continuous run of tiles (no gaps between positions); each position is tagged on its first tile
   return `<div class="sq"><div class="deck">${POSN.map(([k, label, short]) => {
     const ps = sq.filter(p => p.pos === k).sort((a, b) => b.min - a.min || b.apps - a.apps || (+a.jersey || 99) - (+b.jersey || 99))
     return ps.map((p, i) => tile(p, i ? '' : `<b class="grptag" title="${label}: ${ps.length}">${short} · ${ps.length}</b>`)).join('')
@@ -278,6 +291,18 @@ function sizeDeck() {
 }
 let rz: number | undefined
 addEventListener('resize', () => { clearTimeout(rz); rz = window.setTimeout(sizeDeck, 120) })
+const markSort = () => film.querySelectorAll<HTMLElement>('.sortby button').forEach(b => {
+  b.classList.toggle('on', b.dataset.sort === SORT.k)
+  b.querySelector('i')!.textContent = b.dataset.sort === SORT.k && SORT.k !== 'role' ? ((SORT.k === 'min') !== SORT.rev ? ' ↓' : ' ↑') : ''
+})
+function setSort(k: string) {
+  SORT.rev = k === SORT.k && k !== 'role' ? !SORT.rev : false; SORT.k = k
+  try { localStorage.setItem('top5.teams.sort', k + (SORT.rev ? '-r' : '')) } catch { }
+  film.querySelectorAll<HTMLElement>('.pane-squad').forEach((el, i) => el.innerHTML = squadGrid(P[i]))
+  markSort()
+}
+markSort()
+film.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.sortby button'); if (b) setSort(b.dataset.sort!) })
 setTab(TAB)
 film.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.tab'); if (b) setTab(b.dataset.tab!) })
 addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector('.mod.on') && !e.metaKey && !e.ctrlKey) setTab(TAB === 'squad' ? 'season' : 'squad') })
