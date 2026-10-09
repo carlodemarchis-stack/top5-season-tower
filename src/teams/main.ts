@@ -260,17 +260,13 @@ function sizeDeck() {
   if (!on) return
   const boxes = [...film.querySelectorAll<HTMLElement>('.sq')].map(e => [e.clientWidth - 4, e.clientHeight - 6])
   const W = Math.min(...boxes.map(b => b[0])), H = Math.min(...boxes.map(b => b[1]))
-  // the column count whose tiles fill both the width and the height: the biggest tiles whose shape stays
-  // between 1 : 1.2 and 1 : 1.7
-  let pick: number[] | null = null
+  // for each column count, the biggest tile that fits, its shape kept between 1 : 1.1 and 1 : 1.9 (so it can stretch
+  // to fill the height or the width); the column count with the biggest tiles wins
+  let pick = [1, 0, 0, 0]
   for (let c = 1; c <= NMAX; c++) {
-    const rows = Math.ceil(NMAX / c), w = (W - (c - 1) * GAP) / c, h = (H - (rows - 1) * GAP) / rows
-    if (h / w >= 1.2 && h / w <= 1.7 && (!pick || w * h > pick[3])) pick = [c, w, h, w * h]
-  }
-  if (!pick) {   // no column count fits both ways: the largest tile of the usual shape that fits
-    let w = 0, c0 = 1
-    for (let c = 1; c <= NMAX; c++) { const rows = Math.ceil(NMAX / c), v = Math.min((W - (c - 1) * GAP) / c, (H - (rows - 1) * GAP) / rows / RATIO); if (v > w) { w = v; c0 = c } }
-    pick = [c0, w, w * RATIO, 0]
+    const rows = Math.ceil(NMAX / c), wMax = (W - (c - 1) * GAP) / c, hMax = (H - (rows - 1) * GAP) / rows
+    const w = Math.min(wMax, hMax / 1.1), h = Math.min(hMax, w * 1.9)
+    if (w >= MIN_W && w * h > pick[3]) pick = [c, w, h, w * h]   // never below a readable width
   }
   if (pick[1] < MIN_W) {   // too small to read: tiles of at least MIN_W across the width, and the biggest squads scroll
     const c = Math.max(1, Math.floor((W + GAP) / (MIN_W + GAP))), w = (W - (c - 1) * GAP) / c
