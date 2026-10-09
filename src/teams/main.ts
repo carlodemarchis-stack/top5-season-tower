@@ -172,7 +172,7 @@ function posLine(t: Dict, club: Dict) {
 // clicking the chosen one again reverses it
 const SORT = { k: 'role', rev: false }
 try { const v = localStorage.getItem('top5.teams.sort') || ''; if (/^(role|min|age)(-r)?$/.test(v)) { SORT.k = v.replace('-r', ''); SORT.rev = v.endsWith('-r') } } catch { }
-const SORTBAR = `<span class="sortby"><span class="pmkey" title="goalkeepers: age · minutes · saves · goals conceded">age · min′ · goals · assists</span>Order by${[['role', 'Role'], ['min', 'Minutes'], ['age', 'Age']].map(([k, l]) => `<button data-sort="${k}">${l}<i></i></button>`).join('')}</span>`
+const SORTBAR = `<span class="sortby">Order by${[['role', 'Role'], ['min', 'Minutes'], ['age', 'Age']].map(([k, l]) => `<button data-sort="${k}">${l}<i></i></button>`).join('')}</span>`
 // "Christian Pulisic" → "C. Pulisic" (a one-word name stays as it is)
 const initialName = (n: string) => { const w = n.trim().split(/\s+/); return w.length > 1 ? `${w[0][0]}. ${w.slice(1).join(' ')}` : n }
 // a tile shows the full name when it fits, else "C. Pulisic", else "Pulisic" (still too long: the ellipsis)
@@ -185,6 +185,8 @@ function fitNames() {
   long.forEach(el => { el.textContent = el.dataset.s! })
   long.filter(el => el.scrollWidth > el.clientWidth).forEach(el => { el.textContent = el.dataset.s!.replace(/^\S\. /, '') })
 }
+// what the four numbers on a tile are, once, under the deck
+const SQKEY = `<div class="sqkey"><span><b>age</b> · minutes · goals · assists</span><span>goalkeepers: <b>age</b> · minutes · saves · goals conceded</span></div>`
 const POSN: [string, string, string][] = [['G', 'Goalkeepers', 'GK'], ['D', 'Defenders', 'DEF'], ['M', 'Midfielders', 'MID'], ['F', 'Forwards', 'FWD']]
 function squadGrid(t: Dict) {
   const sq: Dict[] = t.squad || []
@@ -209,11 +211,11 @@ function squadGrid(t: Dict) {
     const v = (p: Dict) => SORT.k === 'min' ? p.min : p.age ?? null
     const dir = (SORT.k === 'min' ? -1 : 1) * (SORT.rev ? -1 : 1)
     const ps = [...sq].sort((a, b) => (v(a) == null ? 1 : v(b) == null ? -1 : (v(a) - v(b)) * dir) || b.min - a.min)
-    return `<div class="sq"><div class="deck">${ps.map(tile).join('')}</div></div>`
+    return `<div class="sq"><div class="deck">${ps.map(tile).join('')}</div></div>${SQKEY}`
   }
   // Role: one continuous run, goalkeepers to forwards, most minutes first within each
   return `<div class="sq"><div class="deck">${POSN.map(([k]) => sq.filter(p => p.pos === k)
-    .sort((a, b) => b.min - a.min || b.apps - a.apps || (+a.jersey || 99) - (+b.jersey || 99)).map(tile).join('')).join('')}</div></div>`
+    .sort((a, b) => b.min - a.min || b.apps - a.apps || (+a.jersey || 99) - (+b.jersey || 99)).map(tile).join('')).join('')}</div></div>${SQKEY}`
 }
 
 // the top three as photo pills, everyone else as one compact line
