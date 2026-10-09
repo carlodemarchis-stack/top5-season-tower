@@ -1,4 +1,5 @@
-// Team-card film: one full-screen card per club, in table order, one league at a time (?lg=ITA …).
+// Team-card film: one full-screen card per club, in table order, one league at a time (?lg=ITA …),
+// or all five leagues in one film ranked by points per game (?lg=ALL), so leagues of 18 and 20 clubs compare fairly.
 // Data: src/data/teams-<LG>-<season>.js (built + verified by scripts/update-teams.mjs); club colours/names from the schedule.
 import '../film/film.css'
 import { initFilm, initHighlight } from '../film/chrome'
@@ -12,15 +13,21 @@ const LG_IG: Record<string, string> = { ITA: 'seriea', ENG: 'premierleague', ESP
 const FILES = import.meta.glob('../data/teams-*-*.js')
 const has = (lg: string) => !!FILES[`../data/teams-${lg}-${SEASON}.js`]
 let LAST = ''; try { LAST = localStorage.getItem('top5.teams.lg') || '' } catch { }
-const LG = [QS.get('lg') || '', LAST].find(l => LG_ORDER.includes(l) && has(l)) || LG_ORDER.find(has) || 'ITA'
+const LG = [QS.get('lg') || '', LAST].find(l => l === 'ALL' || (LG_ORDER.includes(l) && has(l))) || LG_ORDER.find(has) || 'ITA'
 try { localStorage.setItem('top5.teams.lg', LG) } catch { }
-const [{ TEAMCARDS }, { TEAMS }] = await Promise.all([
-  FILES[`../data/teams-${LG}-${SEASON}.js`](),
-  import(`../data/schedule-${LG}-${SEASON}.js`),
-]) as Dict[]
-// players with a card in this league's scorers film: espnId → its card number there (squad tiles link to it)
-const SCORER_CARD: Record<string, number> = await import(`../data/scorers-TOP5-${SEASON}.js`)
-  .then((m: Dict) => Object.fromEntries((m.SCORERS.lists?.[LG] || []).map(([id]: [string], i: number) => [id, i + 1]))).catch(() => ({}))
+const ALL = LG === 'ALL'
+const LOAD = ALL ? LG_ORDER.filter(has) : [LG]
+// per league: its clubs (names, colours, fixtures), its table size, its team cards; every card carries its league as t.lg
+const TEAMS_OF: Record<string, Dict> = {}, N_OF: Record<string, number> = {}, CARDS_OF: Record<string, Dict> = {}
+await Promise.all(LOAD.map(async lg => {
+  const [{ TEAMCARDS }, { TEAMS }] = await Promise.all([FILES[`../data/teams-${lg}-${SEASON}.js`](), import(`../data/schedule-${lg}-${SEASON}.js`)]) as Dict[]
+  TEAMCARDS.teams.forEach((t: Dict) => t.lg = lg)
+  TEAMS_OF[lg] = TEAMS; N_OF[lg] = TEAMCARDS.teams.length; CARDS_OF[lg] = TEAMCARDS
+}))
+// players with a card in their league's scorers film: league → espnId → its card number there (squad tiles link to it)
+const SCORER_CARD: Record<string, Record<string, number>> = await import(`../data/scorers-TOP5-${SEASON}.js`)
+  .then((m: Dict) => Object.fromEntries(LOAD.map(lg => [lg, Object.fromEntries((m.SCORERS.lists?.[lg] || []).map(([id]: [string], i: number) => [id, i + 1]))]))).catch(() => ({}))
+const ppgOf = (t: Dict) => t.played ? t.pts / t.played : -1
 // the league photo shoots frame differently (LaLiga / Ligue 1 waist-up, the rest chest-up)
 const PHOTO_H: Record<string, string> = { ESP: '82%', FRA: '80%', ITA: '76%', ENG: '74%', GER: '74%' }
 
@@ -32,7 +39,7 @@ const RES6: Record<string, [string, string]> = {
 const res6 = (gf: number, ga: number) => { const d = gf - ga; return d >= 2 ? 'bigW' : d === 1 ? 'W1' : d === 0 ? (gf === 0 ? 'nil' : 'D') : d === -1 ? 'L1' : 'bigL' }
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
 const ord = (n: number) => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th')
-const logo = (code: string) => `logos/${LG === 'FRA' && code === 'BRE' ? 'FRA_BRE' : code}.png`
+const logo = (code: string, lg: string) => `logos/${lg === 'FRA' && code === 'BRE' ? 'FRA_BRE' : code}.png`
 function lum(hex: string) {
   const n = parseInt(hex.replace('#', ''), 16), c = [n >> 16, (n >> 8) & 255, n & 255].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 })
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
@@ -40,10 +47,9 @@ function lum(hex: string) {
 const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '')
 const kindName = (k: string) => k === 'pen' ? 'penalty' : k === 'head' ? 'header' : k === 'fk' ? 'free kick' : k === 'og' ? 'own goal' : 'goal'
 const parseMin = (min: string) => { const mm = String(min).match(/(\d+)'?(?:\s*\+\s*(\d+))?/) || []; return { base: +(mm[1] || 0), extra: +(mm[2] || 0) } }
-const N_CLUBS = TEAMCARDS.teams.length
 
 function card(t: Dict) {
-  const club = TEAMS[t.code] || {}
+  const club = TEAMS_OF[t.lg][t.code] || {}
   const c = club.primary || '#555'
   const light = lum(c) > 0.55
   const ink = light ? '#15181d' : '#fff'
@@ -53,19 +59,20 @@ function card(t: Dict) {
   const photos = (t.panel || []).slice(0, 3)   // three players with a real photo: goals, then assists, then minutes
   const group = photos.length
     ? `<div class="grp">${photos.map((s: Dict, i: number) => `<img class="p${photos.length === 2 && i === 1 ? 2 : i}" src="${s.photo}" alt="${esc(s.name)}">`).join('')}</div>`
-    : `<img class="bigcrest" src="${logo(t.code)}" alt="">`
-  const ppg = t.played ? (t.pts / t.played).toFixed(1) : '–'
-  return `<section class="card" id="t-${t.code}" style="--c:${c};--c2:${c2};--ink:${ink};--hlink:${hlInk};--ph:${PHOTO_H[LG]}">
+    : `<img class="bigcrest" src="${logo(t.code, t.lg)}" alt="">`
+  const ppg = t.played ? (t.pts / t.played).toFixed(ALL ? 2 : 1) : '–'
+  // all leagues: the rank is across the five and the big number is points per game (the sort key)
+  return `<section class="card" id="t-${t.lg}-${t.code}" style="--c:${c};--c2:${c2};--ink:${ink};--hlink:${hlInk};--ph:${PHOTO_H[t.lg]}">
     <div class="pan">
-      <img class="wm team" src="${logo(t.code)}" alt="" onerror="this.remove()">
-      <div class="rk">#${t.pos ?? '–'}</div>
-      <div class="gbig"><b>${t.pts}</b><span>point${t.pts === 1 ? '' : 's'}</span></div>
+      <img class="wm team" src="${logo(t.code, t.lg)}" alt="" onerror="this.remove()">
+      <div class="rk">#${ALL ? t.rank : t.pos ?? '–'}</div>
+      <div class="gbig${ALL ? ' ppg' : ''}">${ALL ? `<b>${ppg}</b><span>points per game</span>` : `<b>${t.pts}</b><span>point${t.pts === 1 ? '' : 's'}</span>`}</div>
       ${group}
     </div>
     <div class="body">
       <div>
         <h1 style="--len:${[...club.name || t.code].length};--word:${Math.max(...(club.name || t.code).split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(club.name || t.code)}</h1>
-        <div class="meta" style="margin-top:8px">${LEAGUE_NAME[LG]} · <b>${t.pos ? ord(t.pos) : '–'}</b> · ${t.W}-${t.D}-${t.L} · GD ${gd >= 0 ? '+' : ''}${gd}${t.scorers[0]?.G ? ` · top scorer <b>${esc(t.scorers[0].name)}</b>` : ''}</div>
+        <div class="meta" style="margin-top:8px">${LEAGUE_NAME[t.lg]} · <b>${t.pos ? ord(t.pos) : '–'}</b> · ${t.W}-${t.D}-${t.L} · GD ${gd >= 0 ? '+' : ''}${gd}${t.scorers[0]?.G ? ` · top scorer <b>${esc(t.scorers[0].name)}</b>` : ''}</div>
       </div>
       <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button></div>
       <div class="pane pane-season">
@@ -94,11 +101,11 @@ function strip(t: Dict, club: Dict) {
   const half = Math.ceil(all.length / 2)
   const cell = (g: Dict) => {
     const m = byId[g.id], at = g.ha === 'A' ? '@' : ''
-    if (!m) return `<div class="c2 tm up" title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(TEAMS[g.opp]?.name || g.opp)} · to play"><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
+    if (!m) return `<div class="c2 tm up" title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(TEAMS_OF[t.lg][g.opp]?.name || g.opp)} · to play"><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
     const veil = Math.round(100 - Math.max(0, Math.min(100, m.poss)))
     const keys = [`m${m.id}`, ...m.for.filter((x: Dict) => x.kind !== 'og').map((x: Dict) => `p${slug(x.by)}`)].join(' ')
-    const det = `MD${m.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${TEAMS[g.opp]?.name || g.opp} · ${m.gf}-${m.ga}` +
+    const det = `MD${m.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${TEAMS_OF[t.lg][g.opp]?.name || g.opp} · ${m.gf}-${m.ga}` +
       (m.for.length ? ` · ${m.for.map((x: Dict) => `${x.min} ${x.kind === 'og' ? 'own goal' : x.by}`).join(', ')}` : '') +
       ` · ${m.poss}% possession · ${m.sot}/${m.sh} shots on target`
     return `<div class="c2 tm" data-h="m${m.id}" data-k="${keys}" title="${esc(det)}">
@@ -121,11 +128,13 @@ function goalLine(t: Dict) {
   })).sort((a: Dict, b: Dict) => a.x - b.x)
   const lanes = (pts: Dict[]) => { const L: number[] = []; for (const q of pts) { let l = 0; while (L[l] != null && q.x - L[l] < 2.2) l++; L[l] = q.x; q.lane = l } return Math.max(1, L.length) }
   const up = mk('for'), dn = mk('against'), nu = lanes(up), nd = lanes(dn)
-  const upH = 6 + nu * 11, dnH = 6 + nd * 11
+  // a pile of goals at nearby minutes stacks in lanes, 11px apart; past three lanes they close up so the line never grows taller
+  const su = Math.min(11, 33 / nu), sd = Math.min(11, 33 / nd)
+  const upH = 6 + nu * su, dnH = 6 + nd * sd
   const dot = (q: Dict, side: string) => {
     const og = q.g.kind === 'og', cls = side === 'for' ? `gd${og ? ' og' : q.g.kind === 'pen' ? ' pen' : q.g.kind === 'head' ? ' head' : q.g.kind === 'fk' ? ' fk' : ''}` : `gd ag${og ? ' og' : ''}`
     const keys = [`m${q.m.id}`, side === 'for' && !og ? `p${slug(q.g.by)}` : ''].filter(Boolean).join(' ')
-    const pos = side === 'for' ? `bottom:${dnH + 2 + q.lane * 11}px` : `top:${upH + 2 + q.lane * 11}px`
+    const pos = side === 'for' ? `bottom:${dnH + 2 + q.lane * su}px` : `top:${upH + 2 + q.lane * sd}px`
     return `<i class="${cls}" style="left:${(q.x / 93) * 100}%;${pos}" data-h="m${q.m.id}" data-k="${keys}" title="${esc(q.g.min)} ${side === 'for' ? (og ? 'own goal' : `${q.g.by} · ${kindName(q.g.kind)}`) : `conceded${og ? ' (own goal)' : ` · ${q.g.by}`}`} · MD${q.m.w} ${q.m.ha === 'H' ? 'vs' : 'at'} ${esc(q.m.opp)}"></i>`
   }
   const ticks = [0, 15, 30, 45, 60, 75, 90].map(v => `<span style="left:${(v / 93) * 100}%">${v}'</span>`).join('')
@@ -136,7 +145,7 @@ function goalLine(t: Dict) {
 function posLine(t: Dict, club: Dict) {
   const N = (club.games || []).length || 38
   const x = (md: number) => ((md - 1) / Math.max(1, N - 1)) * 100
-  const y = (p: number) => ((p - 1) / Math.max(1, N_CLUBS - 1)) * 100
+  const y = (p: number) => ((p - 1) / Math.max(1, N_OF[t.lg] - 1)) * 100
   // only matchdays the club played: a round still under way (or a postponed game) moves the table without them
   const mOf: Record<number, Dict> = Object.fromEntries(t.matches.map((m: Dict) => [m.w, m]))
   const pts = (t.posPath as number[][]).filter(([md]) => mOf[md])
@@ -151,10 +160,10 @@ function posLine(t: Dict, club: Dict) {
   const tag = lmd ? `<span class="plast" style="top:${y(lp)}%;${right ? `right:${100 - x(lmd)}%;margin-right:12px` : `left:${x(lmd)}%;margin-left:12px`}">${ord(lp)}</span>` : ''
   return `<div class="pline"><div class="plot">
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
-      <rect class="zone" x="0" y="0" width="100" height="${y(4.5)}" fill="#177a41"/><rect class="zone" x="0" y="${y(N_CLUBS - 2.5)}" width="100" height="${100 - y(N_CLUBS - 2.5)}" fill="#b3323a"/>
+      <rect class="zone" x="0" y="0" width="100" height="${y(4.5)}" fill="#177a41"/><rect class="zone" x="0" y="${y(N_OF[t.lg] - 2.5)}" width="100" height="${100 - y(N_OF[t.lg] - 2.5)}" fill="#b3323a"/>
       ${pts.length > 1 ? `<polyline points="${poly}" fill="none" stroke="#8a9099" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>` : ''}
     </svg>${dots}${tag}</div>
-    <div class="ax2"><span>MD 1</span><span>1st top · ${N_CLUBS}th bottom</span><span>MD ${N}</span></div></div>`
+    <div class="ax2"><span>MD 1</span><span>1st top · ${N_OF[t.lg]}th bottom</span><span>MD ${N}</span></div></div>`
 }
 
 // ---------- the squad as a deck of player tiles (like the NBA team cards): portrait on a wash of the club colour,
@@ -168,8 +177,8 @@ function squadGrid(t: Dict) {
       ? [[`${p.min}'`, 'min'], [p.SV ?? 0, 'saves'], [p.GA ?? 0, 'conc.']]
       : [[`${p.min}'`, 'min'], [p.G, 'goals'], [p.A, 'assists']]
     const tip = `${p.name}${p.jersey ? ` · #${p.jersey}` : ''}${p.age ? ` · ${p.age}` : ''}${p.nat ? ` · ${p.nat}` : ''} — ${p.apps ? `${p.apps} games (${p.starts} starts), ${p.min}'` : 'no league minutes yet'}${p.YC ? ` · ${p.YC} yellow` : ''}${p.RC ? ` · ${p.RC} red` : ''}${p.inj ? ` · ${p.inj}` : ''}`
-    const sc = SCORER_CARD[p.espnId]
-    const open = sc ? `<a class="pm${p.apps ? '' : ' unused'} has-card" href="scorers.html?lg=${LG}#${sc}" title="${esc(tip)} — open his scorer card">` : `<div class="pm${p.apps ? '' : ' unused'}" title="${esc(tip)}">`
+    const sc = SCORER_CARD[t.lg]?.[p.espnId]
+    const open = sc ? `<a class="pm${p.apps ? '' : ' unused'} has-card" href="scorers.html?lg=${t.lg}#${sc}" title="${esc(tip)} — open his scorer card">` : `<div class="pm${p.apps ? '' : ' unused'}" title="${esc(tip)}">`
     return `${open}
       <span class="pmshot">${tag}<i class="pmfb">${esc(ini(p.name))}</i>${p.thumb ? `<img src="${p.thumb}" alt="" loading="lazy">` : ''}${p.jersey ? `<b class="pmwm">${esc(p.jersey)}</b>` : ''}${p.inj ? '<i class="inj" title="injured">+</i>' : ''}
         <span class="pmpills">${pills.map(([v, k]) => `<b>${v}<i>${k}</i></b>`).join('')}</span></span>
@@ -194,29 +203,39 @@ function scorerChips(t: Dict) {
 }
 
 // ---------- the standard card-film chrome ----------
-const P: Dict[] = TEAMCARDS.teams
+// one league: its table order. All leagues: points per game, then goal difference per game, then goals per game
+const pg = (t: Dict, v: number) => t.played ? v / t.played : -1
+const P: Dict[] = ALL
+  ? Object.values(CARDS_OF).flatMap(c => c.teams).sort((a, b) => ppgOf(b) - ppgOf(a) || pg(b, b.GF - b.GA) - pg(a, a.GF - a.GA) || pg(b, b.GF) - pg(a, a.GF))
+  : CARDS_OF[LG].teams
+P.forEach((t, i) => t.rank = i + 1)
+const UPDATED = Math.max(...Object.values(CARDS_OF).map(c => +new Date(c.updated)))
+const nameOf = (t: Dict) => TEAMS_OF[t.lg][t.code]?.name || t.code
 const $ = (id: string) => document.getElementById(id)!
 const film = $('film')
 film.innerHTML = P.map(card).join('')
 const lgUrl = (lg: string) => { const q = new URLSearchParams(location.search); q.set('lg', lg); return location.pathname + '?' + q.toString() }
-$('lgs').innerHTML = LG_ORDER.map(lg => `<a class="lgb${lg === LG ? ' on' : ''}${has(lg) ? '' : ' soon'}" href="${lgUrl(lg)}" title="${LEAGUE_NAME[lg]}${has(lg) ? ' team cards' : ' — coming soon'}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"></a>`).join('')
-$('cnote').innerHTML = `${P.length} clubs of ${LEAGUE_NAME[LG]}, in table order. Season ${SEASON.replace('-', '/')}, updated ${new Date(TEAMCARDS.updated).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
+$('lgs').innerHTML = `<a class="lgb all${ALL ? ' on' : ''}" href="${lgUrl('ALL')}" title="All five leagues in one film, ranked by points per game"><b>All Leagues</b></a>` + LG_ORDER.map(lg => `<a class="lgb${lg === LG ? ' on' : ''}${has(lg) ? '' : ' soon'}" data-lg="${lg}" href="${lgUrl(lg)}" title="${LEAGUE_NAME[lg]}${has(lg) ? ' team cards' : ' — coming soon'}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"></a>`).join('')
+$('cnote').innerHTML = `${ALL ? `All ${P.length} clubs of the five leagues, ranked by points per game (then goal difference per game, then goals per game), so leagues with fewer games compare fairly. It says nothing about how strong each league is` : `${P.length} clubs of ${LEAGUE_NAME[LG]}, in table order`}. Season ${SEASON.replace('-', '/')}, updated ${new Date(UPDATED).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
 
 const KEY = 'top5.teams.card.' + LG + (SEASON === '2026-27' ? '' : '.' + SEASON)
 function onPaint(i: number) {
   const t = P[i]
-  $('ctx').innerHTML = `${LEAGUE_NAME[LG]} ${SEASON.replace('-', '/')} · <b>${esc(TEAMS[t.code]?.name || t.code)}</b> · ${t.pos ? ord(t.pos) : '–'}, ${t.pts} pts`
+  $('ctx').innerHTML = ALL
+    ? `All Leagues ${SEASON.replace('-', '/')} · by points per game · <b>${esc(nameOf(t))}</b> · ${ppgOf(t) >= 0 ? ppgOf(t).toFixed(2) : '–'} a game, ${t.pos ? ord(t.pos) : '–'} in ${LEAGUE_NAME[t.lg]}`
+    : `${LEAGUE_NAME[LG]} ${SEASON.replace('-', '/')} · <b>${esc(nameOf(t))}</b> · ${t.pos ? ord(t.pos) : '–'}, ${t.pts} pts`
+  if (ALL) $('lgs').querySelectorAll<HTMLElement>('.lgb[data-lg]').forEach(b => b.classList.toggle('cur', b.dataset.lg === t.lg))   // mark this card's league
   const meta = (n: string, v: string) => document.querySelector(`meta[name="agwas:${n}"]`)?.setAttribute('content', v)
-  meta('mentions', LG_IG[LG]); meta('title', `${TEAMS[t.code]?.name || t.code} · ${t.pts} pts · ${LEAGUE_NAME[LG]}`)
+  meta('mentions', LG_IG[t.lg]); meta('title', `${nameOf(t)} · ${ALL ? `${ppgOf(t).toFixed(2)} pts/game · top-5 leagues` : `${t.pts} pts · ${LEAGUE_NAME[LG]}`}`)
 }
 
 // search: a club, or any of its scorers; a number jumps to that card
-const INDEX = P.map((t, i) => ({ i, label: TEAMS[t.code]?.name || t.code, sub: `${t.pos ? ord(t.pos) : '–'} · ${t.pts} pts`,
-  key: [TEAMS[t.code]?.name, t.code, ...t.scorers.map((s: Dict) => s.name)].join(' ').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() }))
+const INDEX = P.map((t, i) => ({ i, label: nameOf(t), sub: ALL ? `${LEAGUE_NAME[t.lg]} ${t.pos ? ord(t.pos) : '–'} · ${ppgOf(t) >= 0 ? ppgOf(t).toFixed(2) : '–'}/game` : `${t.pos ? ord(t.pos) : '–'} · ${t.pts} pts`,
+  key: [nameOf(t), t.code, LEAGUE_NAME[t.lg], ...t.scorers.map((s: Dict) => s.name)].join(' ').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() }))
 function jumpHTML(q: string) {
   const qq = q.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
   const hits = /^\d+$/.test(qq) ? INDEX.filter(x => x.i === +qq - 1) : INDEX.filter(x => qq.split(/\s+/).every(w => x.key.includes(w)))
-  return hits.length ? `<div class="jsec"><div class="jsechd"><img src="leagues/${LG}.png" alt="">${LEAGUE_NAME[LG]}<span>${hits.length}</span></div><div class="jgrid">${hits.map(x =>
+  return hits.length ? `<div class="jsec"><div class="jsechd">${ALL ? 'All Leagues' : `<img src="leagues/${LG}.png" alt="">${LEAGUE_NAME[LG]}`}<span>${hits.length}</span></div><div class="jgrid">${hits.map(x =>
     `<div class="jrow" data-i="${x.i}"><span class="jn">${x.i + 1}</span><span class="jl">${esc(x.label)}<span class="jt">${esc(x.sub)}</span></span></div>`).join('')}</div></div>` : '<p>No club matches.</p>'
 }
 

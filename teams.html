@@ -93,6 +93,9 @@
     .tab span{font-weight:700;color:#b0b5bc;margin-left:3px}
     .tab:hover{color:#3a3f47}
     .tab.on{color:#15181d;border-bottom-color:var(--c)}
+    /* all leagues: the big number is points per game ("2.60"), four characters where points have two */
+    .card .pan .gbig.ppg b{font-size:clamp(64px,8.2vw,136px);-webkit-text-stroke:2.5px rgba(255,255,255,.85)}
+    @media (max-width: 760px){ .card .pan .gbig.ppg b{font-size:clamp(54px,16vw,90px);-webkit-text-stroke:2px rgba(255,255,255,.85)} }
     .pane{display:flex;flex-direction:column;gap:clamp(6px,1.3vh,18px);flex:1 1 auto;min-height:0}
     /* phones: the card body scrolls, so nothing shrinks to fit — the position chart gets a fixed height */
     @media (max-width: 760px){ .card .pane,.card .duo{flex:none} .card .duo>.s2:last-child{max-height:none} .card .pline .plot{flex:none;height:110px} }
