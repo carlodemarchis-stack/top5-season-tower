@@ -249,7 +249,39 @@ const setTab = (t: string) => {
   TAB = t; document.body.classList.toggle('tab-squad', t === 'squad')
   film.querySelectorAll<HTMLElement>('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t))
   try { localStorage.setItem('top5.teams.tab', t) } catch { }
+  sizeDeck()
 }
+// Squad tab: one tile size for every club in the film, the size at which the biggest squad fills the space under
+// the header (on phones the card scrolls and the tiles keep their own size)
+const NMAX = Math.max(...P.map(t => (t.squad || []).length)), GAP = 7, RATIO = 1.42, MIN_W = 86
+function sizeDeck() {
+  const on = TAB === 'squad' && innerWidth > 760
+  film.classList.toggle('fit', false)
+  if (!on) return
+  const boxes = [...film.querySelectorAll<HTMLElement>('.sq')].map(e => [e.clientWidth - 4, e.clientHeight - 6])
+  const W = Math.min(...boxes.map(b => b[0])), H = Math.min(...boxes.map(b => b[1]))
+  // the column count whose tiles fill both the width and the height: the biggest tiles whose shape stays
+  // between 1 : 1.2 and 1 : 1.7
+  let pick: number[] | null = null
+  for (let c = 1; c <= NMAX; c++) {
+    const rows = Math.ceil(NMAX / c), w = (W - (c - 1) * GAP) / c, h = (H - (rows - 1) * GAP) / rows
+    if (h / w >= 1.2 && h / w <= 1.7 && (!pick || w * h > pick[3])) pick = [c, w, h, w * h]
+  }
+  if (!pick) {   // no column count fits both ways: the largest tile of the usual shape that fits
+    let w = 0, c0 = 1
+    for (let c = 1; c <= NMAX; c++) { const rows = Math.ceil(NMAX / c), v = Math.min((W - (c - 1) * GAP) / c, (H - (rows - 1) * GAP) / rows / RATIO); if (v > w) { w = v; c0 = c } }
+    pick = [c0, w, w * RATIO, 0]
+  }
+  if (pick[1] < MIN_W) {   // too small to read: tiles of at least MIN_W across the width, and the biggest squads scroll
+    const c = Math.max(1, Math.floor((W + GAP) / (MIN_W + GAP))), w = (W - (c - 1) * GAP) / c
+    pick = [c, w, w * RATIO, 0]
+  }
+  film.style.setProperty('--cols', String(pick[0])); film.style.setProperty('--tw', Math.floor(pick[1]) + 'px'); film.style.setProperty('--th', Math.floor(pick[2]) + 'px')
+  film.style.setProperty('--k', String(Math.min(1.5, Math.max(1, pick[1] / 100))))   // text grows with the tile on big screens
+  film.classList.toggle('fit', true)
+}
+let rz: number | undefined
+addEventListener('resize', () => { clearTimeout(rz); rz = window.setTimeout(sizeDeck, 120) })
 setTab(TAB)
 film.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.tab'); if (b) setTab(b.dataset.tab!) })
 addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector('.mod.on') && !e.metaKey && !e.ctrlKey) setTab(TAB === 'squad' ? 'season' : 'squad') })
