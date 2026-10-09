@@ -101,14 +101,11 @@ function strip(t: Dict, club: Dict) {
   const half = Math.ceil(all.length / 2)
   const cell = (g: Dict) => {
     const m = byId[g.id], at = g.ha === 'A' ? '@' : ''
-    if (!m) return `<div class="c2 tm up" title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(TEAMS_OF[t.lg][g.opp]?.name || g.opp)} · to play"><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
+    if (!m) return `<div class="c2 tm up" data-gid="${g.id}"><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
     const veil = Math.round(100 - Math.max(0, Math.min(100, m.poss)))
     const keys = [`m${m.id}`, ...m.for.filter((x: Dict) => x.kind !== 'og').map((x: Dict) => `p${slug(x.by)}`)].join(' ')
-    const det = `MD${m.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${TEAMS_OF[t.lg][g.opp]?.name || g.opp} · ${m.gf}-${m.ga}` +
-      (m.for.length ? ` · ${m.for.map((x: Dict) => `${x.min} ${x.kind === 'og' ? 'own goal' : x.by}`).join(', ')}` : '') +
-      ` · ${m.poss}% possession · ${m.sot}/${m.sh} shots on target`
-    return `<div class="c2 tm" data-h="m${m.id}" data-k="${keys}" title="${esc(det)}">
+    return `<div class="c2 tm" data-h="m${m.id}" data-k="${keys}" data-gid="${g.id}">
       <div class="bx" style="background:${bg};color:${veil > 55 ? '#15181d' : fg}"><span class="vl" style="height:${veil}%"></span><b>${m.gf}-${m.ga}</b></div>
       <div class="op">${at}${esc(g.opp)}</div></div>`
   }
@@ -153,7 +150,7 @@ function posLine(t: Dict, club: Dict) {
   // each matchday's dot takes that game's result shade (same six as the strip)
   const dots = pts.map(([md, p], i) => {
     const m = mOf[md], last = i === pts.length - 1, d = last ? 12 : 9
-    return `<i class="pd" data-h="m${m.id}" data-k="m${m.id}" style="position:absolute;left:${x(md)}%;top:${y(p)}%;width:${d}px;height:${d}px;margin:-${d / 2}px 0 0 -${d / 2}px;border-radius:50%;background:${RES6[res6(m.gf, m.ga)][0]};box-shadow:0 0 0 1.5px #fff" title="after MD${md}: ${ord(p)} · ${m.ha === 'H' ? 'vs' : 'at'} ${m.opp} ${m.gf}-${m.ga}"></i>`
+    return `<i class="pd" data-h="m${m.id}" data-k="m${m.id}" style="position:absolute;left:${x(md)}%;top:${y(p)}%;width:${d}px;height:${d}px;margin:-${d / 2}px 0 0 -${d / 2}px;border-radius:50%;background:${RES6[res6(m.gf, m.ga)][0]};box-shadow:0 0 0 1.5px #fff" data-gid="${m.id}" data-after="${p}"></i>`
   }).join('')
   // the latest position written beside the last dot (on its left once the line nears the end of the season)
   const [lmd, lp] = pts[pts.length - 1] || [], right = lmd && x(lmd) > 88
@@ -340,4 +337,45 @@ addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector(
 
 // hover / tap a match, a goal or a scorer: everything sharing its key lights up in the club colour, the rest dims
 initHighlight(film, '[data-h]', k => `[data-k~="${k}"]`, el => el.dataset.h!)
+
+// ---------- match card on hover / tap: a match box or a position dot ----------
+const tipEl = document.createElement('div'); tipEl.id = 'mtip'; document.body.appendChild(tipEl)
+const KIND: Record<string, string> = { pen: 'pen', head: 'header', fk: 'free kick', og: 'own goal' }
+const surname = (n: string) => n.split(/\s+/).length > 1 ? n.split(/\s+/).slice(1).join(' ') : n
+function matchTip(t: Dict, gid: string, after?: string) {
+  const club = TEAMS_OF[t.lg][t.code] || {}, g = (club.games || []).find((x: Dict) => x.id === gid), m = t.matches.find((x: Dict) => x.id === gid)
+  if (!g) return ''
+  const opp = TEAMS_OF[t.lg][g.opp] || {}, when = g.et ? new Date(g.et.replace(' ', 'T')) : null
+  // fixture times are CET, as in the tower; a small-hours time is a placeholder for a kick-off not fixed yet
+  const hh = g.et ? g.et.slice(11, 16) : '', tbc = !hh || +hh.slice(0, 2) < 6
+  const date = when ? when.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + (m || tbc ? '' : ` · ${hh} CET`) : ''
+  const side = (code: string, name: string, lg: string) => `<span class="mt-team"><img src="${logo(code, lg)}" alt="">${esc(name)}</span>`
+  const home = g.ha === 'H' ? [t.code, club.name] : [g.opp, opp.name || g.oppFull || g.opp], away = g.ha === 'H' ? [g.opp, opp.name || g.oppFull || g.opp] : [t.code, club.name]
+  const head = `<div class="mt-top">MD ${g.w}${date ? ` · ${date}` : ''} · ${g.ha === 'H' ? 'home' : 'away'}${after ? ` · ${ord(+after)} after it` : ''}</div>`
+  if (!m) return `${head}<div class="mt-score">${side(home[0], home[1], t.lg)}<b class="mt-vs">vs</b>${side(away[0], away[1], t.lg)}</div><div class="mt-foot">to play</div>`
+  const [bg, fg] = RES6[res6(m.gf, m.ga)], hs = g.ha === 'H' ? `${m.gf}–${m.ga}` : `${m.ga}–${m.gf}`
+  const goal = (x: Dict, ours: boolean) => `<div class="mt-g${ours ? '' : ' ag'}"><span class="mt-min">${esc(x.min)}</span><span>${x.kind === 'og' ? (ours ? 'own goal' : `${esc(surname(x.by || ''))} (own goal)`) : esc(x.by)}${x.kind && x.kind !== 'og' ? ` <em>${KIND[x.kind] || x.kind}</em>` : ''}${ours && x.ast ? ` <i>· ${esc(surname(x.ast))}</i>` : ''}</span></div>`
+  const goals: [Dict, boolean][] = [...m.for.map((x: Dict) => [x, true]), ...m.against.map((x: Dict) => [x, false])]
+  goals.sort((a, b) => { const p = parseMin(a[0].min), q = parseMin(b[0].min); return p.base - q.base || p.extra - q.extra })
+  return `${head}
+    <div class="mt-score">${side(home[0], home[1], t.lg)}<b class="mt-res" style="background:${bg};color:${fg}">${hs}</b>${side(away[0], away[1], t.lg)}</div>
+    ${goals.length ? `<div class="mt-goals">${goals.map(([x, o]) => goal(x, o)).join('')}</div>` : ''}
+    <div class="mt-poss"><span>possession</span><div class="mt-bar"><i style="width:${m.poss}%"></i></div><b>${Math.round(m.poss)}%</b></div>
+    <div class="mt-stats"><span><b>${m.sh}</b> shots</span><span><b>${m.sot}</b> on target</span><span><b>${m.pass}%</b> passing</span><span><b>${m.cor}</b> corners</span>${m.yc || m.rc ? `<span><b>${m.yc}</b><i class="yc"></i>${m.rc ? ` <b>${m.rc}</b><i class="rc"></i>` : ''}</span>` : ''}</div>`
+}
+let tipFor: HTMLElement | null = null
+function showTip(el: HTMLElement) {
+  const card = el.closest<HTMLElement>('.card'); if (!card) return
+  const t = P[[...film.children].indexOf(card)]; const html = matchTip(t, el.dataset.gid!, el.dataset.after); if (!html) return
+  tipFor = el; tipEl.innerHTML = html; tipEl.style.setProperty('--c', getComputedStyle(card).getPropertyValue('--c')); tipEl.classList.add('on')
+  const r = el.getBoundingClientRect(), w = tipEl.offsetWidth, h = tipEl.offsetHeight
+  const x = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2))
+  const y = r.top - h - 10 > 8 ? r.top - h - 10 : r.bottom + 10
+  tipEl.style.left = x + 'px'; tipEl.style.top = y + 'px'
+}
+const hideTip = () => { tipFor = null; tipEl.classList.remove('on') }
+film.addEventListener('mouseover', e => { const el = (e.target as HTMLElement).closest<HTMLElement>('[data-gid]'); if (el) { if (el !== tipFor) showTip(el) } else if (tipFor) hideTip() })
+film.addEventListener('mouseleave', hideTip)
+film.addEventListener('click', e => { const el = (e.target as HTMLElement).closest<HTMLElement>('[data-gid]'); if (el) showTip(el); else hideTip() })
+film.addEventListener('scroll', hideTip, { passive: true })
 initFilm({ count: P.length, key: KEY, onPaint, jumpHTML, self: 'teams.html' })
