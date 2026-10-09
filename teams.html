@@ -98,6 +98,13 @@
     .sortby button:hover{color:#3a3f47;border-color:var(--line)}
     .sortby button.on{color:#15181d;border-color:var(--c);background:#fff}
     .sortby button i{font-style:normal}
+    /* 0′ players: a small switch before Order by */
+    .sortby .u0{display:inline-flex;align-items:center;gap:6px;margin-right:16px;border-color:var(--line);background:#fff}
+    .sortby .u0 i{position:relative;width:22px;height:12px;border-radius:6px;background:#c9ced4;transition:background .15s}
+    .sortby .u0 i::after{content:'';position:absolute;left:2px;top:2px;width:8px;height:8px;border-radius:50%;background:#fff;transition:left .15s}
+    .sortby .u0.on{color:#15181d}
+    .sortby .u0.on i{background:var(--c)}
+    .sortby .u0.on i::after{left:12px}
     /* the key to the four numbers, one line under the deck */
     .sqkey{flex:none;display:flex;flex-wrap:wrap;gap:4px 22px;padding-top:6px;font-size:11px;font-weight:600;color:#6b717a}
     .sqkey b{display:inline-block;padding:0 5px;border-radius:4px;background:var(--c);color:var(--hlink);font-weight:800}

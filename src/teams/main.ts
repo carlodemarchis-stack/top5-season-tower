@@ -172,7 +172,11 @@ function posLine(t: Dict, club: Dict) {
 // clicking the chosen one again reverses it
 const SORT = { k: 'role', rev: false }
 try { const v = localStorage.getItem('top5.teams.sort') || ''; if (/^(role|min|age)(-r)?$/.test(v)) { SORT.k = v.replace('-r', ''); SORT.rev = v.endsWith('-r') } } catch { }
-const SORTBAR = `<span class="sortby">Order by${[['role', 'Role'], ['min', 'Minutes'], ['age', 'Age']].map(([k, l]) => `<button data-sort="${k}">${l}<i></i></button>`).join('')}</span>`
+// players with no league minute yet: shown (default) or hidden, one choice for every card, remembered
+let SHOW0 = true
+try { SHOW0 = localStorage.getItem('top5.teams.unused') !== 'hide' } catch { }
+const played = (t: Dict) => (t.squad || []).filter((p: Dict) => SHOW0 || p.apps)
+const SORTBAR = `<span class="sortby"><button class="u0" title="show or hide the players with no league minutes yet"><i></i>0′ players</button>Order by${[['role', 'Role'], ['min', 'Minutes'], ['age', 'Age']].map(([k, l]) => `<button data-sort="${k}">${l}<i></i></button>`).join('')}</span>`
 // "Christian Pulisic" → "C. Pulisic" (a one-word name stays as it is)
 const initialName = (n: string) => { const w = n.trim().split(/\s+/); return w.length > 1 ? `${w[0][0]}. ${w.slice(1).join(' ')}` : n }
 // a tile shows the full name when it fits, else "C. Pulisic", else "Pulisic" (still too long: the ellipsis)
@@ -189,7 +193,7 @@ function fitNames() {
 const SQKEY = `<div class="sqkey"><span><b>age</b> · minutes · goals · assists</span><span>goalkeepers: <b>age</b> · minutes · saves · goals conceded</span></div>`
 const POSN: [string, string, string][] = [['G', 'Goalkeepers', 'GK'], ['D', 'Defenders', 'DEF'], ['M', 'Midfielders', 'MID'], ['F', 'Forwards', 'FWD']]
 function squadGrid(t: Dict) {
-  const sq: Dict[] = t.squad || []
+  const sq: Dict[] = played(t)
   const ini = (n: string) => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('')
   const short = (p: Dict) => POSN.find(x => x[0] === p.pos)?.[2] || ''
   const tile = (p: Dict) => {
@@ -280,9 +284,11 @@ const setTab = (t: string) => {
 }
 // Squad tab: one tile size for every club in the film, the size at which the biggest squad fills the space under
 // the header (on phones the card scrolls and the tiles keep their own size)
-const NMAX = Math.max(...P.map(t => (t.squad || []).length)), GAP = 7, RATIO = 1.42, MIN_W = 86
+let NMAX = 0
+const GAP = 7, RATIO = 1.42, MIN_W = 86
 function sizeDeck() {
   const on = TAB === 'squad' && innerWidth > 760
+  NMAX = Math.max(1, ...P.map(t => played(t).length))
   film.classList.toggle('fit', false)
   if (!on) return
   const boxes = [...film.querySelectorAll<HTMLElement>('.sq')].map(e => [e.clientWidth - 4, e.clientHeight - 6])
@@ -306,18 +312,28 @@ function sizeDeck() {
 }
 let rz: number | undefined
 addEventListener('resize', () => { clearTimeout(rz); rz = window.setTimeout(sizeDeck, 120) })
-const markSort = () => film.querySelectorAll<HTMLElement>('.sortby button').forEach(b => {
+const markSort = () => film.querySelectorAll<HTMLElement>('.sortby button[data-sort]').forEach(b => {
   b.classList.toggle('on', b.dataset.sort === SORT.k)
   b.querySelector('i')!.textContent = b.dataset.sort === SORT.k && SORT.k !== 'role' ? ((SORT.k === 'min') !== SORT.rev ? ' ↓' : ' ↑') : ''
 })
+function setShow0(v: boolean) {
+  SHOW0 = v
+  try { localStorage.setItem('top5.teams.unused', v ? 'show' : 'hide') } catch { }
+  film.querySelectorAll<HTMLElement>('.pane-squad').forEach((el, i) => el.innerHTML = squadGrid(P[i]))
+  markSort(); sizeDeck()
+}
 function setSort(k: string) {
   SORT.rev = k === SORT.k && k !== 'role' ? !SORT.rev : false; SORT.k = k
   try { localStorage.setItem('top5.teams.sort', k + (SORT.rev ? '-r' : '')) } catch { }
   film.querySelectorAll<HTMLElement>('.pane-squad').forEach((el, i) => el.innerHTML = squadGrid(P[i]))
   markSort(); fitNames()
 }
-markSort()
-film.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.sortby button'); if (b) setSort(b.dataset.sort!) })
+const markShow0 = () => film.querySelectorAll('.u0').forEach(b => b.classList.toggle('on', SHOW0))
+markSort(); markShow0()
+film.addEventListener('click', e => {
+  const b = (e.target as HTMLElement).closest<HTMLElement>('.sortby button'); if (!b) return
+  if (b.classList.contains('u0')) { setShow0(!SHOW0); markShow0() } else setSort(b.dataset.sort!)
+})
 setTab(TAB)
 film.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.tab'); if (b) setTab(b.dataset.tab!) })
 addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector('.mod.on') && !e.metaKey && !e.ctrlKey) setTab(TAB === 'squad' ? 'season' : 'squad') })
