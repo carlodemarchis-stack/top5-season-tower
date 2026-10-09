@@ -172,25 +172,37 @@ function posLine(t: Dict, club: Dict) {
 // clicking the chosen one again reverses it
 const SORT = { k: 'role', rev: false }
 try { const v = localStorage.getItem('top5.teams.sort') || ''; if (/^(role|min|age)(-r)?$/.test(v)) { SORT.k = v.replace('-r', ''); SORT.rev = v.endsWith('-r') } } catch { }
-const SORTBAR = `<span class="sortby"><span class="pmkey" title="goalkeepers: minutes · saves · goals conceded">min′ · goals · assists</span>Order by${[['role', 'Role'], ['min', 'Minutes'], ['age', 'Age']].map(([k, l]) => `<button data-sort="${k}">${l}<i></i></button>`).join('')}</span>`
+const SORTBAR = `<span class="sortby"><span class="pmkey" title="goalkeepers: age · minutes · saves · goals conceded">age · min′ · goals · assists</span>Order by${[['role', 'Role'], ['min', 'Minutes'], ['age', 'Age']].map(([k, l]) => `<button data-sort="${k}">${l}<i></i></button>`).join('')}</span>`
+// "Christian Pulisic" → "C. Pulisic" (a one-word name stays as it is)
+const initialName = (n: string) => { const w = n.trim().split(/\s+/); return w.length > 1 ? `${w[0][0]}. ${w.slice(1).join(' ')}` : n }
+// a tile shows the full name when it fits, else "C. Pulisic", else "Pulisic" (still too long: the ellipsis)
+function fitNames() {
+  if (TAB !== 'squad') return
+  // all writes, then all reads, then the swaps: two layouts in all, not one per name
+  const els = [...film.querySelectorAll<HTMLElement>('.pmname span[data-f]')]
+  els.forEach(el => { el.textContent = el.dataset.f! })
+  const long = els.filter(el => el.scrollWidth > el.clientWidth)
+  long.forEach(el => { el.textContent = el.dataset.s! })
+  long.filter(el => el.scrollWidth > el.clientWidth).forEach(el => { el.textContent = el.dataset.s!.replace(/^\S\. /, '') })
+}
 const POSN: [string, string, string][] = [['G', 'Goalkeepers', 'GK'], ['D', 'Defenders', 'DEF'], ['M', 'Midfielders', 'MID'], ['F', 'Forwards', 'FWD']]
 function squadGrid(t: Dict) {
   const sq: Dict[] = t.squad || []
   const ini = (n: string) => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('')
   const short = (p: Dict) => POSN.find(x => x[0] === p.pos)?.[2] || ''
   const tile = (p: Dict) => {
-    // every tile: its role and age in the club colour; the three numbers carry no labels (the key is on the tab line)
-    const tag = `<b class="grptag">${short(p)}${p.age ? ` · ${p.age}` : ''}</b>`
+    // every tile: its role in the club colour; four numbers without labels, age first (the key is on the tab line)
+    const tag = `<b class="grptag">${short(p)}</b>`
     const pills = p.pos === 'G'
-      ? [[`${p.min}'`, 'min'], [p.SV ?? 0, 'saves'], [p.GA ?? 0, 'conc.']]
-      : [[`${p.min}'`, 'min'], [p.G, 'goals'], [p.A, 'assists']]
+      ? [[p.age ?? '–', 'age'], [`${p.min}'`, 'minutes'], [p.SV ?? 0, 'saves'], [p.GA ?? 0, 'goals conceded']]
+      : [[p.age ?? '–', 'age'], [`${p.min}'`, 'minutes'], [p.G, 'goals'], [p.A, 'assists']]
     const tip = `${p.name}${p.jersey ? ` · #${p.jersey}` : ''}${p.age ? ` · ${p.age}` : ''}${p.nat ? ` · ${p.nat}` : ''} — ${p.apps ? `${p.apps} games (${p.starts} starts), ${p.min}'` : 'no league minutes yet'}${p.YC ? ` · ${p.YC} yellow` : ''}${p.RC ? ` · ${p.RC} red` : ''}${p.inj ? ` · ${p.inj}` : ''}`
     const sc = SCORER_CARD[t.lg]?.[p.espnId]
     const open = sc ? `<a class="pm${p.apps ? '' : ' unused'} has-card" href="scorers.html?lg=${t.lg}#${sc}" title="${esc(tip)} — open his scorer card">` : `<div class="pm${p.apps ? '' : ' unused'}" title="${esc(tip)}">`
     return `${open}
       <span class="pmshot">${tag}<i class="pmfb">${esc(ini(p.name))}</i>${p.thumb ? `<img src="${p.thumb}" alt="" loading="lazy">` : ''}${p.jersey ? `<b class="pmwm">${esc(p.jersey)}</b>` : ''}${p.inj ? '<i class="inj" title="injured">+</i>' : ''}
         <span class="pmpills">${pills.map(([v, k]) => `<b title="${k}">${v}</b>`).join('')}</span></span>
-      <span class="pmname"><span>${esc(p.name)}</span>${p.RC ? '<i class="rc"></i>' : p.YC ? '<i class="yc"></i>' : ''}${sc ? '<i class="sclink" title="has a scorer card"></i>' : ''}</span>${sc ? '</a>' : '</div>'}`
+      <span class="pmname"><span data-f="${esc(p.name)}" data-s="${esc(initialName(p.name))}">${esc(p.name)}</span>${p.RC ? '<i class="rc"></i>' : p.YC ? '<i class="yc"></i>' : ''}${sc ? '<i class="sclink" title="has a scorer card"></i>' : ''}</span>${sc ? '</a>' : '</div>'}`
   }
   // Minutes / Age: one run in that order
   if (SORT.k !== 'role') {
@@ -288,6 +300,7 @@ function sizeDeck() {
   film.style.setProperty('--cols', String(pick[0])); film.style.setProperty('--tw', Math.floor(pick[1]) + 'px'); film.style.setProperty('--th', Math.floor(pick[2]) + 'px')
   film.style.setProperty('--k', String(Math.min(1.5, Math.max(1, pick[1] / 100))))   // text grows with the tile on big screens
   film.classList.toggle('fit', true)
+  fitNames()
 }
 let rz: number | undefined
 addEventListener('resize', () => { clearTimeout(rz); rz = window.setTimeout(sizeDeck, 120) })
@@ -299,7 +312,7 @@ function setSort(k: string) {
   SORT.rev = k === SORT.k && k !== 'role' ? !SORT.rev : false; SORT.k = k
   try { localStorage.setItem('top5.teams.sort', k + (SORT.rev ? '-r' : '')) } catch { }
   film.querySelectorAll<HTMLElement>('.pane-squad').forEach((el, i) => el.innerHTML = squadGrid(P[i]))
-  markSort()
+  markSort(); fitNames()
 }
 markSort()
 film.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.sortby button'); if (b) setSort(b.dataset.sort!) })
