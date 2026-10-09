@@ -172,12 +172,15 @@ function posLine(t: Dict, club: Dict) {
 // clicking the chosen one again reverses it
 const SORT = { k: 'role', rev: false }
 try { const v = localStorage.getItem('top5.teams.sort') || ''; if (/^(role|min|age)(-r)?$/.test(v)) { SORT.k = v.replace('-r', ''); SORT.rev = v.endsWith('-r') } } catch { }
-const SORTBAR = `<span class="sortby">Order by${[['role', 'Role'], ['min', 'Minutes'], ['age', 'Age']].map(([k, l]) => `<button data-sort="${k}">${l}<i></i></button>`).join('')}</span>`
+const SORTBAR = `<span class="sortby"><span class="pmkey" title="goalkeepers: minutes · saves · goals conceded">min′ · goals · assists</span>Order by${[['role', 'Role'], ['min', 'Minutes'], ['age', 'Age']].map(([k, l]) => `<button data-sort="${k}">${l}<i></i></button>`).join('')}</span>`
 const POSN: [string, string, string][] = [['G', 'Goalkeepers', 'GK'], ['D', 'Defenders', 'DEF'], ['M', 'Midfielders', 'MID'], ['F', 'Forwards', 'FWD']]
 function squadGrid(t: Dict) {
   const sq: Dict[] = t.squad || []
   const ini = (n: string) => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('')
-  const tile = (p: Dict, tag = '') => {
+  const short = (p: Dict) => POSN.find(x => x[0] === p.pos)?.[2] || ''
+  const tile = (p: Dict) => {
+    // every tile: its role and age in the club colour; the three numbers carry no labels (the key is on the tab line)
+    const tag = `<b class="grptag">${short(p)}${p.age ? ` · ${p.age}` : ''}</b>`
     const pills = p.pos === 'G'
       ? [[`${p.min}'`, 'min'], [p.SV ?? 0, 'saves'], [p.GA ?? 0, 'conc.']]
       : [[`${p.min}'`, 'min'], [p.G, 'goals'], [p.A, 'assists']]
@@ -186,22 +189,19 @@ function squadGrid(t: Dict) {
     const open = sc ? `<a class="pm${p.apps ? '' : ' unused'} has-card" href="scorers.html?lg=${t.lg}#${sc}" title="${esc(tip)} — open his scorer card">` : `<div class="pm${p.apps ? '' : ' unused'}" title="${esc(tip)}">`
     return `${open}
       <span class="pmshot">${tag}<i class="pmfb">${esc(ini(p.name))}</i>${p.thumb ? `<img src="${p.thumb}" alt="" loading="lazy">` : ''}${p.jersey ? `<b class="pmwm">${esc(p.jersey)}</b>` : ''}${p.inj ? '<i class="inj" title="injured">+</i>' : ''}
-        <span class="pmpills">${pills.map(([v, k]) => `<b>${v}<i>${k}</i></b>`).join('')}</span></span>
+        <span class="pmpills">${pills.map(([v, k]) => `<b title="${k}">${v}</b>`).join('')}</span></span>
       <span class="pmname"><span>${esc(p.name)}</span>${p.RC ? '<i class="rc"></i>' : p.YC ? '<i class="yc"></i>' : ''}${sc ? '<i class="sclink" title="has a scorer card"></i>' : ''}</span>${sc ? '</a>' : '</div>'}`
   }
-  // Minutes / Age: one run in that order, every tile tagged with its role (and age)
+  // Minutes / Age: one run in that order
   if (SORT.k !== 'role') {
     const v = (p: Dict) => SORT.k === 'min' ? p.min : p.age ?? null
     const dir = (SORT.k === 'min' ? -1 : 1) * (SORT.rev ? -1 : 1)
     const ps = [...sq].sort((a, b) => (v(a) == null ? 1 : v(b) == null ? -1 : (v(a) - v(b)) * dir) || b.min - a.min)
-    const short = (p: Dict) => POSN.find(x => x[0] === p.pos)?.[2] || ''
-    return `<div class="sq"><div class="deck">${ps.map(p => tile(p, `<b class="grptag">${SORT.k === 'age' && p.age ? `${p.age} · ` : ''}${short(p)}</b>`)).join('')}</div></div>`
+    return `<div class="sq"><div class="deck">${ps.map(tile).join('')}</div></div>`
   }
-  // Role: one continuous run of tiles (no gaps between positions); each position is tagged on its first tile
-  return `<div class="sq"><div class="deck">${POSN.map(([k, label, short]) => {
-    const ps = sq.filter(p => p.pos === k).sort((a, b) => b.min - a.min || b.apps - a.apps || (+a.jersey || 99) - (+b.jersey || 99))
-    return ps.map((p, i) => tile(p, i ? '' : `<b class="grptag" title="${label}: ${ps.length}">${short} · ${ps.length}</b>`)).join('')
-  }).join('')}</div></div>`
+  // Role: one continuous run, goalkeepers to forwards, most minutes first within each
+  return `<div class="sq"><div class="deck">${POSN.map(([k]) => sq.filter(p => p.pos === k)
+    .sort((a, b) => b.min - a.min || b.apps - a.apps || (+a.jersey || 99) - (+b.jersey || 99)).map(tile).join('')).join('')}</div></div>`
 }
 
 // the top three as photo pills, everyone else as one compact line

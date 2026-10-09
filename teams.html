@@ -98,6 +98,7 @@
     .sortby button:hover{color:#3a3f47;border-color:var(--line)}
     .sortby button.on{color:#15181d;border-color:var(--c);background:#fff}
     .sortby button i{font-style:normal}
+    .pmkey{margin-right:14px;letter-spacing:.04em;text-transform:none;font-weight:600;color:#9aa0a8}
     .tab:hover{color:#3a3f47}
     .tab.on{color:#15181d;border-bottom-color:var(--c)}
     /* all leagues: the big number is points per game ("2.60"), four characters where points have two */
@@ -124,13 +125,12 @@
     .fit .deck{grid-template-columns:repeat(var(--cols),var(--tw))}
     .fit .pm{height:var(--th)}
     .fit .pmpills b{font-size:calc(10.5px * var(--k,1))}
-    .fit .pmpills b i{font-size:calc(7.5px * var(--k,1))}
     .fit .pmname{font-size:calc(11px * var(--k,1))}
     .fit .pmwm{font-size:calc(30px * var(--k,1))}
     .fit .pmfb{font-size:calc(24px * var(--k,1))}
     .fit .grptag{font-size:calc(8.5px * var(--k,1))}
     /* a position's first tile carries its label */
-    .grptag{position:absolute;left:0;top:0;z-index:4;max-width:100%;padding:3px 7px 3px 6px;border-radius:10px 0 8px 0;background:#15181d;color:#fff;font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .grptag{position:absolute;left:0;top:0;z-index:4;max-width:100%;padding:3px 7px 3px 6px;border-radius:10px 0 8px 0;background:var(--c);color:var(--hlink);font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .pm{position:relative;display:flex;flex-direction:column;height:132px;overflow:hidden;border:1px solid var(--line);border-radius:11px;background:#fff;transition:border-color .14s,transform .14s}
     .pm:hover{border-color:var(--c);transform:translateY(-2px)}
     .pmshot{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
@@ -140,7 +140,6 @@
     .pmwm{position:absolute;right:5px;top:1px;font-size:30px;font-weight:900;line-height:1;color:var(--c);opacity:.28;letter-spacing:-.04em}
     .pmpills{position:absolute;left:0;right:0;bottom:0;z-index:2;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:14px 3px 3px;background:linear-gradient(180deg,transparent,rgba(21,24,29,.72) 60%)}
     .pmpills b{display:flex;flex-direction:column;align-items:center;padding:1px 0 2px;font-size:10.5px;font-weight:800;line-height:1.05;border-radius:4px;background:rgba(21,24,29,.62);color:#fff;font-variant-numeric:tabular-nums}
-    .pmpills b i{font-style:normal;font-size:7.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.7}
     .pmname{flex:0 0 auto;display:flex;align-items:center;gap:4px;padding:3px 6px 4px;font-size:11px;font-weight:700;color:#15181d;border-top:1px solid var(--line)}
     .pmname span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .pm.unused{opacity:.45}
