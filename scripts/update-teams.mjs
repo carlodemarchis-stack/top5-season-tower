@@ -61,7 +61,8 @@ const clubs = await pool(espnTeams, 4, async (team) => {
     })
     const gFor = goals.filter(x => x.for), gAg = goals.filter(x => !x.for)
     if (gFor.length !== gf || gAg.length !== ga) errors.push(`${code} MD${g.w} vs ${opp}: key events ${gFor.length}-${gAg.length} ≠ score ${gf}-${ga}`)
-    for (const x of gFor) if (x.kind !== 'og' && x.byId) { const s = scorers.get(x.byId) || { espnId: x.byId, name: x.by, G: 0, A: 0 }; s.G++; scorers.set(x.byId, s) }
+    for (const x of gFor) if (x.kind !== 'og' && x.byId) { const s = scorers.get(x.byId) || scorers.get('a:' + x.by) || { name: x.by, G: 0, A: 0 }   // an earlier assist-only line becomes his
+      scorers.delete('a:' + x.by); s.espnId = x.byId; s.G++; scorers.set(x.byId, s) }
     for (const x of gFor) if (x.ast) { const s = [...scorers.values()].find(v => v.name === x.ast) || { espnId: null, name: x.ast, G: 0, A: 0 }; s.A++; if (!s.espnId) scorers.set('a:' + x.ast, s) }
     matches.push({ id: g.id, w: g.w, opp, ha, gf, ga,
       poss: num(st.possessionPct), sh: num(st.totalShots), sot: num(st.shotsOnTarget), pass: Math.round(num(st.passPct) * 100), passes: num(st.totalPasses),

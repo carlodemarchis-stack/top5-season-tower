@@ -144,7 +144,7 @@ function posLine(t: Dict, club: Dict) {
   const dots = pts.map(([md, p], i) => {
     const m = mOf[md], last = i === pts.length - 1, d = last ? 12 : 9
     const fill = m ? RES6[res6(m.gf, m.ga)][0] : '#fff'   // no game that matchday (postponed / bye): an empty ring
-    return `<i class="pd"${m ? ` data-h="m${m.id}" data-k="m${m.id}"` : ''} style="position:absolute;left:${x(md)}%;top:${y(p)}%;width:${d}px;height:${d}px;margin:-${d / 2}px 0 0 -${d / 2}px;border-radius:50%;background:${fill};box-shadow:${m ? '0 0 0 1.5px #fff' : 'inset 0 0 0 2px #9aa0a8'}${last ? ',0 0 0 3.5px var(--c)' : ''}" title="after MD${md}: ${ord(p)}${m ? ` · ${m.ha === 'H' ? 'vs' : 'at'} ${m.opp} ${m.gf}-${m.ga}` : ' · no game that matchday'}"></i>`
+    return `<i class="pd"${m ? ` data-h="m${m.id}" data-k="m${m.id}"` : ''} style="position:absolute;left:${x(md)}%;top:${y(p)}%;width:${d}px;height:${d}px;margin:-${d / 2}px 0 0 -${d / 2}px;border-radius:50%;background:${fill};box-shadow:${m ? '0 0 0 1.5px #fff' : 'inset 0 0 0 2px #9aa0a8'}" title="after MD${md}: ${ord(p)}${m ? ` · ${m.ha === 'H' ? 'vs' : 'at'} ${m.opp} ${m.gf}-${m.ga}` : ' · no game that matchday'}"></i>`
   }).join('')
   return `<div class="pline"><div class="plot">
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
