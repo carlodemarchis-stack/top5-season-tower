@@ -146,11 +146,14 @@ function posLine(t: Dict, club: Dict) {
     const m = mOf[md], last = i === pts.length - 1, d = last ? 12 : 9
     return `<i class="pd" data-h="m${m.id}" data-k="m${m.id}" style="position:absolute;left:${x(md)}%;top:${y(p)}%;width:${d}px;height:${d}px;margin:-${d / 2}px 0 0 -${d / 2}px;border-radius:50%;background:${RES6[res6(m.gf, m.ga)][0]};box-shadow:0 0 0 1.5px #fff" title="after MD${md}: ${ord(p)} · ${m.ha === 'H' ? 'vs' : 'at'} ${m.opp} ${m.gf}-${m.ga}"></i>`
   }).join('')
+  // the latest position written beside the last dot (on its left once the line nears the end of the season)
+  const [lmd, lp] = pts[pts.length - 1] || [], right = lmd && x(lmd) > 88
+  const tag = lmd ? `<span class="plast" style="top:${y(lp)}%;${right ? `right:${100 - x(lmd)}%;margin-right:12px` : `left:${x(lmd)}%;margin-left:12px`}">${ord(lp)}</span>` : ''
   return `<div class="pline"><div class="plot">
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
       <rect class="zone" x="0" y="0" width="100" height="${y(4.5)}" fill="#177a41"/><rect class="zone" x="0" y="${y(N_CLUBS - 2.5)}" width="100" height="${100 - y(N_CLUBS - 2.5)}" fill="#b3323a"/>
       ${pts.length > 1 ? `<polyline points="${poly}" fill="none" stroke="#8a9099" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>` : ''}
-    </svg>${dots}</div>
+    </svg>${dots}${tag}</div>
     <div class="ax2"><span>MD 1</span><span>1st top · ${N_CLUBS}th bottom</span><span>MD ${N}</span></div></div>`
 }
 

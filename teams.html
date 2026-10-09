@@ -59,6 +59,8 @@
 @container (max-width: 760px){ .card .nums{gap:12px} .card .n b{font-size:clamp(18px,2.4vw,30px)} .card .n.big b{font-size:clamp(48px,6vw,80px)} .card .n span{letter-spacing:.06em;font-size:10px} }
     .pline .zone{opacity:.09}
     .pline .pd{transition:transform .12s,opacity .12s}
+    .pline .plast{position:absolute;transform:translateY(-50%);font-weight:800;font-size:13px;line-height:1;white-space:nowrap;pointer-events:none}
+    .hlon .pline .plast{opacity:.35}
     .pline .pd.hl{transform:scale(1.7);box-shadow:0 0 0 2px #fff,0 0 0 4px var(--c)!important;z-index:2}
     .hlon .pline .pd:not(.hl){opacity:.35}
     .pline .ax2{display:flex;justify-content:space-between;font-size:9.5px;color:#8a9099;margin-top:2px}
@@ -92,6 +94,8 @@
     .tab:hover{color:#3a3f47}
     .tab.on{color:#15181d;border-bottom-color:var(--c)}
     .pane{display:flex;flex-direction:column;gap:clamp(6px,1.3vh,18px);flex:1 1 auto;min-height:0}
+    /* phones: the card body scrolls, so nothing shrinks to fit — the position chart gets a fixed height */
+    @media (max-width: 760px){ .card .pane,.card .duo{flex:none} .card .duo>.s2:last-child{max-height:none} .card .pline .plot{flex:none;height:110px} }
     body.tab-squad .pane-season,body:not(.tab-squad) .pane-squad{display:none}
     /* squad deck: player tiles like the NBA team cards; the deck scrolls inside the card if a big squad doesn't fit */
     .sq{flex:1 1 auto;min-height:0;overflow:auto;max-width:1040px;padding:2px 2px 4px}
