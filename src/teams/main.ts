@@ -137,14 +137,14 @@ function posLine(t: Dict, club: Dict) {
   const N = (club.games || []).length || 38
   const x = (md: number) => ((md - 1) / Math.max(1, N - 1)) * 100
   const y = (p: number) => ((p - 1) / Math.max(1, N_CLUBS - 1)) * 100
-  const pts = t.posPath as number[][]
-  const poly = pts.map(([md, p]) => `${x(md)},${y(p)}`).join(' ')
-  // each matchday's dot takes that game's result shade (same six as the strip); the current one gets the club ring
+  // only matchdays the club played: a round still under way (or a postponed game) moves the table without them
   const mOf: Record<number, Dict> = Object.fromEntries(t.matches.map((m: Dict) => [m.w, m]))
+  const pts = (t.posPath as number[][]).filter(([md]) => mOf[md])
+  const poly = pts.map(([md, p]) => `${x(md)},${y(p)}`).join(' ')
+  // each matchday's dot takes that game's result shade (same six as the strip)
   const dots = pts.map(([md, p], i) => {
     const m = mOf[md], last = i === pts.length - 1, d = last ? 12 : 9
-    const fill = m ? RES6[res6(m.gf, m.ga)][0] : '#fff'   // no game that matchday (postponed / bye): an empty ring
-    return `<i class="pd"${m ? ` data-h="m${m.id}" data-k="m${m.id}"` : ''} style="position:absolute;left:${x(md)}%;top:${y(p)}%;width:${d}px;height:${d}px;margin:-${d / 2}px 0 0 -${d / 2}px;border-radius:50%;background:${fill};box-shadow:${m ? '0 0 0 1.5px #fff' : 'inset 0 0 0 2px #9aa0a8'}" title="after MD${md}: ${ord(p)}${m ? ` · ${m.ha === 'H' ? 'vs' : 'at'} ${m.opp} ${m.gf}-${m.ga}` : ' · no game that matchday'}"></i>`
+    return `<i class="pd" data-h="m${m.id}" data-k="m${m.id}" style="position:absolute;left:${x(md)}%;top:${y(p)}%;width:${d}px;height:${d}px;margin:-${d / 2}px 0 0 -${d / 2}px;border-radius:50%;background:${RES6[res6(m.gf, m.ga)][0]};box-shadow:0 0 0 1.5px #fff" title="after MD${md}: ${ord(p)} · ${m.ha === 'H' ? 'vs' : 'at'} ${m.opp} ${m.gf}-${m.ga}"></i>`
   }).join('')
   return `<div class="pline"><div class="plot">
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
