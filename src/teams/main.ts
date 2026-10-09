@@ -203,10 +203,10 @@ function scorerChips(t: Dict) {
 }
 
 // ---------- the standard card-film chrome ----------
-// one league: its table order. All leagues: points per game, then goal difference per game, then goals per game
-const pg = (t: Dict, v: number) => t.played ? v / t.played : -1
+// one league: its table order. All leagues: points per game, then fewer defeats (0-0-4 ahead of 0-0-5), then goal
+// difference, then goals scored
 const P: Dict[] = ALL
-  ? Object.values(CARDS_OF).flatMap(c => c.teams).sort((a, b) => ppgOf(b) - ppgOf(a) || pg(b, b.GF - b.GA) - pg(a, a.GF - a.GA) || pg(b, b.GF) - pg(a, a.GF))
+  ? Object.values(CARDS_OF).flatMap(c => c.teams).sort((a, b) => ppgOf(b) - ppgOf(a) || a.L - b.L || (b.GF - b.GA) - (a.GF - a.GA) || b.GF - a.GF)
   : CARDS_OF[LG].teams
 P.forEach((t, i) => t.rank = i + 1)
 const UPDATED = Math.max(...Object.values(CARDS_OF).map(c => +new Date(c.updated)))
@@ -216,7 +216,7 @@ const film = $('film')
 film.innerHTML = P.map(card).join('')
 const lgUrl = (lg: string) => { const q = new URLSearchParams(location.search); q.set('lg', lg); return location.pathname + '?' + q.toString() }
 $('lgs').innerHTML = `<a class="lgb all${ALL ? ' on' : ''}" href="${lgUrl('ALL')}" title="All five leagues in one film, ranked by points per game"><b>All Leagues</b></a>` + LG_ORDER.map(lg => `<a class="lgb${lg === LG ? ' on' : ''}${has(lg) ? '' : ' soon'}" data-lg="${lg}" href="${lgUrl(lg)}" title="${LEAGUE_NAME[lg]}${has(lg) ? ' team cards' : ' — coming soon'}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"></a>`).join('')
-$('cnote').innerHTML = `${ALL ? `All ${P.length} clubs of the five leagues, ranked by points per game (then goal difference per game, then goals per game), so leagues with fewer games compare fairly. It says nothing about how strong each league is` : `${P.length} clubs of ${LEAGUE_NAME[LG]}, in table order`}. Season ${SEASON.replace('-', '/')}, updated ${new Date(UPDATED).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
+$('cnote').innerHTML = `${ALL ? `All ${P.length} clubs of the five leagues, ranked by points per game (then fewer defeats, goal difference, goals scored), so leagues with fewer games compare fairly. It says nothing about how strong each league is` : `${P.length} clubs of ${LEAGUE_NAME[LG]}, in table order`}. Season ${SEASON.replace('-', '/')}, updated ${new Date(UPDATED).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
 
 const KEY = 'top5.teams.card.' + LG + (SEASON === '2026-27' ? '' : '.' + SEASON)
 function onPaint(i: number) {
