@@ -249,10 +249,17 @@ const film = $('film')
 const SHORT: Record<string, string> = { 'ENG:BHA': 'Brighton', 'ESP:ESP': 'Espanyol', 'FRA:OM': 'Marseille', 'FRA:PSG': 'Paris SG', 'FRA:RCL': 'Lens',
   'FRA:SR': 'Rennes', 'FRA:STR': 'Strasbourg', 'FRA:OL': 'Lyon', 'FRA:ASM': 'Monaco', 'GER:B04': 'Leverkusen', 'GER:BMG': 'Gladbach', 'GER:SCF': 'Freiburg',
   'GER:SGE': 'Frankfurt', 'GER:FCB': 'Bayern', 'GER:BVB': 'Dortmund' }
+// points per game on a scale: 0 red → 1.5 amber → 3 green (the result shades, the amber darkened to read as text)
+function ppgColor(v: number) {
+  if (v < 0) return '#9aa0a8'
+  const stops: [number, number[]][] = [[0, [179, 50, 58]], [1.5, [212, 160, 6]], [3, [23, 122, 65]]]
+  const i = v <= 1.5 ? 0 : 1, [a, ca] = stops[i], [b, cb] = stops[i + 1], f = Math.max(0, Math.min(1, (v - a) / (b - a)))
+  return `rgb(${ca.map((x, k) => Math.round(x + (cb[k] - x) * f)).join(',')})`
+}
 function tableCard() {
   const row = (t: Dict) => {
     const c = TEAMS_OF[t.lg][t.code]?.primary || '#555', ink = lum(c) > 0.55 ? '#15181d' : c
-    return `<a class="tr" data-i="${t.rank - 1}" title="${esc(nameOf(t))} · ${LEAGUE_NAME[t.lg]}"><span class="tr-rk">${t.rank}</span><img class="tr-lg" src="leagues/${t.lg}.png" alt="${LEAGUE_NAME[t.lg]}"><b class="tr-ppg" style="color:${ink}">${ppgOf(t) >= 0 ? ppgOf(t).toFixed(2) : '–'}</b><span class="tr-nm">${esc(SHORT[`${t.lg}:${t.code}`] || nameOf(t))}</span><span class="tr-sub">${t.pos ? ord(t.pos) : '–'} · ${t.pts} pts</span></a>`
+    return `<a class="tr" data-i="${t.rank - 1}" title="${esc(nameOf(t))} · ${LEAGUE_NAME[t.lg]}"><span class="tr-rk">${t.rank}</span><img class="tr-lg" src="leagues/${t.lg}.png" alt="${LEAGUE_NAME[t.lg]}"><b class="tr-ppg" style="color:${ppgColor(ppgOf(t))}">${ppgOf(t) >= 0 ? ppgOf(t).toFixed(2) : '–'}</b><span class="tr-nm" style="color:${ink}">${esc(SHORT[`${t.lg}:${t.code}`] || nameOf(t))}</span><span class="tr-sub">${t.pos ? ord(t.pos) : '–'} · ${t.pts} pts</span></a>`
   }
   return `<section class="card tbl" id="t-table"><div class="tb">
     <div class="tb-hd"><h2>All ${P.length} clubs</h2><span>by points per game · then fewer defeats, goal difference, goals scored</span></div>
