@@ -230,7 +230,7 @@ function scorerChips(t: Dict) {
   const k = (s: Dict) => `data-h="p${slug(s.name)}" data-k="${[`p${slug(s.name)}`, ...new Set(inM[slug(s.name)] || [])].join(' ')}"`
   const thumbOf: Record<string, string> = Object.fromEntries((t.squad || []).filter((p: Dict) => p.thumb).map((p: Dict) => [p.espnId, p.thumb]))
   const top = all.slice(0, 3).map((s: Dict) => `<span class="sc" ${k(s)}>${thumbOf[s.espnId] ? `<img src="${thumbOf[s.espnId]}" alt="">` : '<i class="nophoto"></i>'}${esc(s.name)} <b>${s.G}</b>${s.A ? ` · ${s.A} ast` : ''}</span>`).join('')
-  const rest = all.slice(3).map((s: Dict) => `<span class="sc2" ${k(s)}>${esc(s.name)} <b>${s.G}</b></span>`).join('')
+  const rest = all.slice(3).map((s: Dict) => `<span class="sc2" ${k(s)}>${esc(s.name)} <b>${s.G}</b></span>`).join(' ')   // spaces: the line can wrap
   return top + (rest ? `<div class="rest">${rest}</div>` : '')
 }
 
