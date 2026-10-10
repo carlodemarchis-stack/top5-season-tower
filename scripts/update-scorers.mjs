@@ -16,7 +16,8 @@
  *   our own data    — matchIds, results, standings (the cards' team strip uses OUR results, cross-checked vs ESPN)
  *
  * Never writes unverified numbers: for every player the per-match goals / assists / appearances summed from the
- * match reports must equal ESPN's season totals, and every ESPN score must equal ours. Any failure → exit 1.
+ * match reports must equal ESPN's season totals (or exceed them by no more than his last two games — ESPN's totals
+ * lag on match days), and every ESPN score must equal ours. Any failure → exit 1.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -129,13 +130,23 @@ const players = (await pool(union, 4, async (pl) => {
     const line = playerLine(sm, pl.espnTeam, pl.espnId)
     matches.push({ id: g.id, w: g.w, opp, ha, gf, ga, ...line })
   }
+  // his last two games by date (ESPN's season totals can trail them by a day on match days)
+  const recent = (k) => matches.slice(-2).reduce((s, m) => s + m[k], 0)
   matches.sort((a, b) => a.w - b.w)   // matchday order, like the towers (a postponed MD1 played later stays MD1)
   const sum = (k) => matches.reduce((s, m) => s + m[k], 0)
   const apps = matches.filter(m => m.role).length
   const G = sum('G'), A = sum('A'), goalsListed = matches.reduce((s, m) => s + m.goals.length, 0)
-  if (G !== pl.G) errors.push(`${pl.name} (${lg}): match reports give ${G} goals, ESPN season total ${pl.G}`)
+  // the cards count from the match reports. Fewer than ESPN's season total = a report is missing → stop. More = ESPN's
+  // totals not refreshed yet after his latest games → a note, as long as those games account for the difference
+  const check = (n, total, what, rec) => {
+    if (n === total) return
+    const msg = `${pl.name} (${lg}): match reports give ${n} ${what}, ESPN season total ${total}`
+    if (n > total && n - total <= rec) warns.push(`${msg} — ESPN's totals lag his last games`)
+    else errors.push(msg)
+  }
+  check(G, pl.G, 'goals', recent('G'))
   if (goalsListed !== G) errors.push(`${pl.name}: ${goalsListed} goal events vs ${G} goals in box scores`)
-  if (A !== pl.A) errors.push(`${pl.name} (${lg}): match reports give ${A} assists, ESPN season total ${pl.A}`)
+  check(A, pl.A, 'assists', recent('A'))
   // appearances only warn: ESPN's season APP can credit a postponed fixture (2026-10: Levante–Athletic MD6) — the
   // cards count appearances from the match reports, which is what the strip shows; goals/assists stay hard checks
   if (pl.APP != null && apps !== pl.APP) warns.push(`${pl.name} (${lg}): ${apps} appearances in the match reports, ESPN's season stat says ${pl.APP}`)
@@ -209,7 +220,7 @@ for (const p of players) console.log(`${String(p.rank ?? '–').padStart(2)}. ${
 if (warns.length) console.log(`\n${warns.length} note(s):\n  ` + [...new Set(warns)].join('\n  '))
 if (errors.length && !LENIENT) { console.error(`\n✗ ${errors.length} verification error(s) — nothing written:\n  ` + errors.join('\n  ')); process.exit(1) }
 if (errors.length) console.error(`\n⚠ --lenient: writing despite ${errors.length} verification error(s):\n  ` + errors.join('\n  '))
-if (!errors.length) console.log(`\n✓ verified: per-match goals + assists match ESPN season totals for all ${players.length}; every ESPN score matches ours`)
+if (!errors.length) console.log(`\n✓ verified: per-match goals + assists match ESPN season totals for all ${players.length} (or run ahead of them by his latest games only); every ESPN score matches ours`)
 if (DRY) process.exit(0)
 players.forEach(p => delete p._match)
 const OUT = path.join(DATA, `scorers-TOP5-${SEASON}.js`)
