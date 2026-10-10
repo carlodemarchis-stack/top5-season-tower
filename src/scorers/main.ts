@@ -1,7 +1,7 @@
 // Top-scorers card film: one full-screen card per player (top 50 by goals across the top 5 leagues, ties included).
 // Data: src/data/scorers-TOP5-<season>.js (built + verified by scripts/update-scorers.mjs); club colours/names from the schedules.
 import '../film/film.css'
-import { initFilm, initHighlight } from '../film/chrome'
+import { initFilm, initHighlight, initTip } from '../film/chrome'
 type Dict = Record<string, any>
 // ?season=2025-26 loads a past season (data from `update-scorers.mjs --season`)
 const QS = new URLSearchParams(location.search)
@@ -87,16 +87,14 @@ function strip2(p: Dict, club: Dict) {
   const cell = (g: Dict) => {
     const m = byId[g.id]
     const at = g.ha === 'A' ? '@' : ''
-    if (!m) return `<div class="c2 up" title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(TEAMS[p.lg][g.opp]?.name || g.opp)} · to play"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
+    if (!m) return `<div class="c2 up" data-gid="${g.id}"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
     const marks = [...m.goals.map((x: Dict) => `<i class="gl${x.kind === 'pen' ? ' pen' : ''}"></i>`), ...Array.from({ length: m.A }, () => '<i class="as"></i>')].reverse().join('')
     // the box reads bottom-up as the 90': the unplayed share is veiled — at the top for a starter (he played the start),
     // at the bottom for a sub (he played the end), so the darker part sits where his minutes were
     const veil = m.role ? Math.round((1 - Math.min(m.min, 90) / 90) * 100) : 100
     const ink = !m.role || m.min < 45 ? '#15181d' : fg
-    const det = `MD${m.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(TEAMS[p.lg][g.opp]?.name || g.opp)} · <b>${m.gf}-${m.ga}</b> · ` +
-      (m.role ? `${m.role === 'B' ? 'off the bench, ' : ''}${m.min}'` + (m.goals.length ? ` · ${m.goals.map((x: Dict) => `${esc(x.min)} ${kindName(x.kind)}${x.ast ? ` (ast ${esc(x.ast)})` : ''}`).join(', ')}` : '') + (m.A ? ` · ${m.A} assist${m.A > 1 ? 's' : ''}` : '') + ` · ${m.SH} shots, ${m.SOG} on target` : 'did not play')
-    return `<div class="c2${m.role ? (m.role === 'B' ? ' sub' : '') : ' dnp'}" data-mid="${g.id}" title="${det.replace(/<\/?b>/g, '').replace(/"/g, '&quot;')}">
+    return `<div class="c2${m.role ? (m.role === 'B' ? ' sub' : '') : ' dnp'}" data-mid="${g.id}" data-gid="${g.id}">
       <div class="mk">${marks}</div>
       <div class="bx" style="background:${bg};color:${ink}"><span class="vl" style="height:${veil}%"></span><b>${m.gf}-${m.ga}</b></div>
       <div class="op">${at}${esc(g.opp)}</div></div>`
@@ -180,4 +178,27 @@ function jumpHTML(q: string) {
 
 // hover / tap a match → its goals light up in the minute line and the goal list (and the other way round); the rest dims
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
+
+// ---------- match card on hover / tap of a season box: the game, and his part in it ----------
+const KIND: Record<string, string> = { pen: 'pen', head: 'header', fk: 'free kick' }
+function matchTip(p: Dict, gid: string) {
+  const club = TEAMS[p.lg][p.team] || {}, g = (club.games || []).find((x: Dict) => x.id === gid), m = p.matches.find((x: Dict) => x.id === gid)
+  if (!g) return ''
+  const opp = TEAMS[p.lg][g.opp] || {}, when = g.et ? new Date(g.et.replace(' ', 'T')) : null
+  const hh = g.et ? g.et.slice(11, 16) : '', tbc = !hh || +hh.slice(0, 2) < 6   // CET, as in the tower; a small-hours time = not fixed yet
+  const date = when ? when.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + (m || tbc ? '' : ` · ${hh} CET`) : ''
+  const side = (code: string, name: string) => `<span class="mt-team"><img src="${logo(p.lg, code)}" alt="">${esc(name)}</span>`
+  const us: [string, string] = [p.team, club.name || p.team], them: [string, string] = [g.opp, opp.name || g.oppFull || g.opp]
+  const [home, away] = g.ha === 'H' ? [us, them] : [them, us]
+  const head = `<div class="mt-top">MD ${g.w}${date ? ` · ${date}` : ''} · ${g.ha === 'H' ? 'home' : 'away'}</div>`
+  if (!m) return `${head}<div class="mt-score">${side(...home)}<b class="mt-vs">vs</b>${side(...away)}</div><div class="mt-foot">to play</div>`
+  const [bg, fg] = RES6[res6(m.gf, m.ga)], hs = g.ha === 'H' ? `${m.gf}–${m.ga}` : `${m.ga}–${m.gf}`
+  const short = p.name
+  const part = !m.role ? `<div class="mt-foot">${esc(short)} did not play</div>`
+    : `<div class="mt-me"><b>${esc(short)}</b> · ${m.role === 'B' ? 'off the bench' : 'started'} · <b>${m.min}′</b></div>
+      ${m.goals.length ? `<div class="mt-goals">${m.goals.map((x: Dict) => `<div class="mt-g"><span class="mt-min">${esc(x.min)}</span><span>goal${x.kind ? ` <em>${KIND[x.kind] || x.kind}</em>` : ''}${x.ast ? ` <i>· ${esc(x.ast)}</i>` : ''}</span></div>`).join('')}</div>` : ''}
+      <div class="mt-stats"><span><b>${m.G}</b> goal${m.G === 1 ? '' : 's'}</span><span><b>${m.A}</b> assist${m.A === 1 ? '' : 's'}</span><span><b>${m.SH}</b> shots</span><span><b>${m.SOG}</b> on target</span>${m.YC || m.RC ? `<span><b>${m.YC || m.RC}</b><i class="${m.RC ? 'rc' : 'yc'}"></i></span>` : ''}</div>`
+  return `${head}<div class="mt-score">${side(...home)}<b class="mt-res" style="background:${bg};color:${fg}">${hs}</b>${side(...away)}</div>${part}`
+}
+initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!))
 initFilm({ count: P.length, key: 'top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON) + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'scorers.html' })

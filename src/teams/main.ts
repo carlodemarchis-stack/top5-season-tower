@@ -2,7 +2,7 @@
 // or all five leagues in one film ranked by points per game (?lg=ALL), so leagues of 18 and 20 clubs compare fairly.
 // Data: src/data/teams-<LG>-<season>.js (built + verified by scripts/update-teams.mjs); club colours/names from the schedule.
 import '../film/film.css'
-import { initFilm, initHighlight } from '../film/chrome'
+import { initFilm, initHighlight, initTip } from '../film/chrome'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -380,7 +380,6 @@ addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector(
 initHighlight(film, '[data-h]', k => `[data-k~="${k}"]`, el => el.dataset.h!)
 
 // ---------- match card on hover / tap: a match box or a position dot ----------
-const tipEl = document.createElement('div'); tipEl.id = 'mtip'; document.body.appendChild(tipEl)
 const KIND: Record<string, string> = { pen: 'pen', head: 'header', fk: 'free kick', og: 'own goal' }
 const surname = (n: string) => n.split(/\s+/).length > 1 ? n.split(/\s+/).slice(1).join(' ') : n
 function matchTip(t: Dict, gid: string, after?: string) {
@@ -404,19 +403,5 @@ function matchTip(t: Dict, gid: string, after?: string) {
     <div class="mt-poss"><span>possession</span><div class="mt-bar"><i style="width:${m.poss}%"></i></div><b>${Math.round(m.poss)}%</b></div>
     <div class="mt-stats"><span><b>${m.sh}</b> shots</span><span><b>${m.sot}</b> on target</span><span><b>${m.pass}%</b> passing</span><span><b>${m.cor}</b> corners</span>${m.yc || m.rc ? `<span><b>${m.yc}</b><i class="yc"></i>${m.rc ? ` <b>${m.rc}</b><i class="rc"></i>` : ''}</span>` : ''}</div>`
 }
-let tipFor: HTMLElement | null = null
-function showTip(el: HTMLElement) {
-  const card = el.closest<HTMLElement>('.card'); if (!card) return
-  const t = P[[...film.children].indexOf(card)]; const html = matchTip(t, el.dataset.gid!, el.dataset.after); if (!html) return
-  tipFor = el; tipEl.innerHTML = html; tipEl.style.setProperty('--c', getComputedStyle(card).getPropertyValue('--c')); tipEl.classList.add('on')
-  const r = el.getBoundingClientRect(), w = tipEl.offsetWidth, h = tipEl.offsetHeight
-  const x = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2))
-  const y = r.top - h - 10 > 8 ? r.top - h - 10 : r.bottom + 10
-  tipEl.style.left = x + 'px'; tipEl.style.top = y + 'px'
-}
-const hideTip = () => { tipFor = null; tipEl.classList.remove('on') }
-film.addEventListener('mouseover', e => { const el = (e.target as HTMLElement).closest<HTMLElement>('[data-gid]'); if (el) { if (el !== tipFor) showTip(el) } else if (tipFor) hideTip() })
-film.addEventListener('mouseleave', hideTip)
-film.addEventListener('click', e => { const el = (e.target as HTMLElement).closest<HTMLElement>('[data-gid]'); if (el) showTip(el); else hideTip() })
-film.addEventListener('scroll', hideTip, { passive: true })
+initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!, el.dataset.after))
 initFilm({ count: P.length + (ALL ? 2 : 0), key: KEY, onPaint, jumpHTML, self: 'teams.html' })
