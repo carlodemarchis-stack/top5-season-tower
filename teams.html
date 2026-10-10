@@ -106,6 +106,18 @@
       .tb-grid{flex:none;grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row}
       .tr{padding:7px 4px;font-size:13px}
     }
+    /* All Leagues: the column chart card */
+    .cc-wrap{position:relative;flex:1 1 auto;min-height:0;display:flex;gap:2px;padding-left:28px}
+    .cc-grid{position:absolute;left:28px;right:0;top:0;bottom:43px;pointer-events:none}   /* = code (26 + 3) + logo (12 + 2) */
+    .cc-grid span{position:absolute;left:0;right:0;border-top:1px dashed #dfe2e6}
+    .cc-grid em{position:absolute;left:-28px;top:-7px;font-style:normal;font-size:10px;font-weight:700;color:#9aa0a8}
+    .cc{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;cursor:pointer}
+    .cc-bar{flex:1 1 auto;width:100%;display:flex;align-items:flex-end;border-bottom:1px solid #E7E9EC}
+    .cc-bar i{display:block;width:100%;min-height:2px;border-radius:3px 3px 0 0}
+    .cc:hover .cc-bar i{filter:brightness(1.1);box-shadow:0 0 0 2px #15181d}
+    .cc-ab{height:26px;margin-top:3px;font-size:8.5px;font-weight:900;letter-spacing:.3px;writing-mode:vertical-rl;transform:rotate(180deg)}
+    .cc-lg{width:12px;height:12px;object-fit:contain;margin-top:2px;flex:none}
+    @media (max-width: 760px){ .cc-wrap{overflow-x:auto;padding-bottom:4px} .cc{flex:0 0 12px} }
     /* match card on hover / tap */
     #mtip{position:fixed;z-index:60;width:300px;padding:11px 13px 12px;border-radius:14px;background:#fff;border:1px solid var(--line);box-shadow:0 14px 40px rgba(21,24,29,.18),0 2px 6px rgba(21,24,29,.06);font-size:12px;color:#15181d;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s}
     #mtip.on{opacity:1;transform:none}

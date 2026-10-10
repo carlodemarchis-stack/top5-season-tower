@@ -265,7 +265,21 @@ function tableCard() {
     <div class="tb-hd"><h2>All ${P.length} clubs</h2><span>by points per game · then fewer defeats, goal difference, goals scored</span></div>
     <div class="tb-grid" style="--rows:${Math.ceil(P.length / 4)}">${P.map(row).join('')}</div></div></section>`
 }
-film.innerHTML = P.map(card).join('') + (ALL ? tableCard() : '')
+// All Leagues: and the same ranking as columns, like the tower's all-leagues view (3-letter codes underneath)
+function chartCard() {
+  const zone = (t: Dict) => { const n = N_OF[t.lg], r = t.pos; return !r ? '#8b9098' : r <= 4 ? '#0B4DA2' : r === 5 ? '#E8820B' : r === 6 ? '#0B8A3D' : r > n - 3 ? '#C23A2E' : '#8b9098' }
+  const col = (t: Dict, i: number) => {
+    const club = TEAMS_OF[t.lg][t.code] || {}, v = Math.max(0, ppgOf(t))
+    return `<div class="cc" data-i="${t.rank - 1}" title="${t.rank}. ${esc(nameOf(t))} · ${ppgOf(t) >= 0 ? ppgOf(t).toFixed(2) : '–'} a game · ${t.pos ? ord(t.pos) : '–'} in ${LEAGUE_NAME[t.lg]}, ${t.pts} pts">
+      <div class="cc-bar"><i style="height:${(v / 3) * 100}%;background:${club.primary || '#555'}${i === 0 ? ';outline:2px solid #0B8A3D;outline-offset:1px' : ''}"></i></div>
+      <b class="cc-ab" style="color:${zone(t)}">${esc(club.abbr || t.code)}</b><img class="cc-lg" src="leagues/${t.lg}.png" alt=""></div>`
+  }
+  return `<section class="card tbl" id="t-chart"><div class="tb">
+    <div class="tb-hd"><h2>Points per game</h2><span>all ${P.length} clubs · codes coloured by their place in their own league: top four, 5th, 6th, bottom three</span></div>
+    <div class="cc-wrap"><div class="cc-grid">${[3, 2, 1].map(v => `<span style="bottom:${(v / 3) * 100}%"><em>${v.toFixed(1)}</em></span>`).join('')}</div>${P.map(col).join('')}</div></div></section>`
+}
+film.innerHTML = P.map(card).join('') + (ALL ? tableCard() + chartCard() : '')
+film.addEventListener('click', e => { const c = (e.target as HTMLElement).closest<HTMLElement>('.cc'); if (c) (window as any).go(+c.dataset.i!) })
 film.addEventListener('click', e => { const r = (e.target as HTMLElement).closest<HTMLElement>('.tr'); if (r) (window as any).go(+r.dataset.i!) })
 const lgUrl = (lg: string) => { const q = new URLSearchParams(location.search); q.set('lg', lg); return location.pathname + '?' + q.toString() }
 $('lgs').innerHTML = `<a class="lgb all${ALL ? ' on' : ''}" href="${lgUrl('ALL')}" title="All five leagues in one film, ranked by points per game"><b>All Leagues</b></a>` + LG_ORDER.map(lg => `<a class="lgb${lg === LG ? ' on' : ''}${has(lg) ? '' : ' soon'}" data-lg="${lg}" href="${lgUrl(lg)}" title="${LEAGUE_NAME[lg]}${has(lg) ? ' team cards' : ' — coming soon'}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"></a>`).join('')
@@ -274,8 +288,8 @@ $('cnote').innerHTML = `${ALL ? `All ${P.length} clubs of the five leagues, rank
 const KEY = 'top5.teams.card.' + LG + (SEASON === '2026-27' ? '' : '.' + SEASON)
 function onPaint(i: number) {
   const t = P[i]
-  if (!t) {   // the table card
-    $('ctx').innerHTML = `All Leagues ${SEASON.replace('-', '/')} · by points per game · <b>the table</b>`
+  if (!t) {   // the table card, then the column chart
+    $('ctx').innerHTML = `All Leagues ${SEASON.replace('-', '/')} · by points per game · <b>${i === P.length ? 'the table' : 'the chart'}</b>`
     $('lgs').querySelectorAll<HTMLElement>('.lgb[data-lg]').forEach(b => b.classList.remove('cur'))
     return
   }
@@ -405,4 +419,4 @@ film.addEventListener('mouseover', e => { const el = (e.target as HTMLElement).c
 film.addEventListener('mouseleave', hideTip)
 film.addEventListener('click', e => { const el = (e.target as HTMLElement).closest<HTMLElement>('[data-gid]'); if (el) showTip(el); else hideTip() })
 film.addEventListener('scroll', hideTip, { passive: true })
-initFilm({ count: P.length + (ALL ? 1 : 0), key: KEY, onPaint, jumpHTML, self: 'teams.html' })
+initFilm({ count: P.length + (ALL ? 2 : 0), key: KEY, onPaint, jumpHTML, self: 'teams.html' })
