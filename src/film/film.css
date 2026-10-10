@@ -203,7 +203,7 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 .mt-g .mt-min{font-weight:800;font-variant-numeric:tabular-nums;color:#15181d}
 .mt-g em{font-style:normal;font-size:10px;font-weight:700;color:#8a9099;text-transform:uppercase;letter-spacing:.05em}
 .mt-g i{font-style:normal;font-weight:500;color:#8a9099}
-.mt-g.ag{color:#b3323a}.mt-g.ag .mt-min{color:#b3323a}
+.mt-g.ag .mt-min{color:inherit}   /* the opponent's goals: colour set inline (their club colour) */
 .mt-poss{margin-top:10px;display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:10.5px;color:#5b626c;font-weight:600}
 .mt-poss b{color:#15181d;font-weight:800}
 .mt-bar{height:6px;border-radius:3px;background:#e4e7eb;overflow:hidden}.mt-bar i{display:block;height:100%;background:var(--c)}

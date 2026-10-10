@@ -394,7 +394,9 @@ function matchTip(t: Dict, gid: string, after?: string) {
   const head = `<div class="mt-top">MD ${g.w}${date ? ` · ${date}` : ''} · ${g.ha === 'H' ? 'home' : 'away'}${after ? ` · ${ord(+after)} after it` : ''}</div>`
   if (!m) return `${head}<div class="mt-score">${side(home[0], home[1], t.lg)}<b class="mt-vs">vs</b>${side(away[0], away[1], t.lg)}</div><div class="mt-foot">to play</div>`
   const [bg, fg] = RES6[res6(m.gf, m.ga)], hs = g.ha === 'H' ? `${m.gf}–${m.ga}` : `${m.ga}–${m.gf}`
-  const goal = (x: Dict, ours: boolean) => `<div class="mt-g${ours ? '' : ' ag'}"><span class="mt-min">${esc(x.min)}</span><span>${x.kind === 'og' ? (ours ? 'own goal' : `${esc(surname(x.by || ''))} (own goal)`) : esc(x.by)}${x.kind && x.kind !== 'og' ? ` <em>${KIND[x.kind] || x.kind}</em>` : ''}${ours && x.ast ? ` <i>· ${esc(surname(x.ast))}</i>` : ''}</span></div>`
+  // the opponent's goals in the opponent's colour (dark grey when it is too pale to read)
+  const oc = opp.primary || '#5b626c', oppInk = lum(oc) > 0.45 ? '#5b626c' : oc
+  const goal = (x: Dict, ours: boolean) => `<div class="mt-g${ours ? '' : ' ag'}"${ours ? '' : ` style="color:${oppInk}"`}><span class="mt-min">${esc(x.min)}</span><span>${x.kind === 'og' ? (ours ? 'own goal' : `${esc(surname(x.by || ''))} (own goal)`) : esc(x.by)}${x.kind && x.kind !== 'og' ? ` <em>${KIND[x.kind] || x.kind}</em>` : ''}${ours && x.ast ? ` <i>· ${esc(surname(x.ast))}</i>` : ''}</span></div>`
   const goals: [Dict, boolean][] = [...m.for.map((x: Dict) => [x, true]), ...m.against.map((x: Dict) => [x, false])]
   goals.sort((a, b) => { const p = parseMin(a[0].min), q = parseMin(b[0].min); return p.base - q.base || p.extra - q.extra })
   return `${head}
