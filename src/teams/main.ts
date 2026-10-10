@@ -66,6 +66,7 @@ function card(t: Dict) {
     <div class="pan">
       <img class="wm team" src="${logo(t.code, t.lg)}" alt="" onerror="this.remove()">
       <div class="rk">#${ALL ? t.rank : t.pos ?? '–'}</div>
+      <div class="wdl"><span><b>${t.W}</b>–<b>${t.D}</b>–<b>${t.L}</b></span><span class="wl">W – D – L</span></div>
       <div class="gbig${ALL ? ' ppg' : ''}">${ALL ? `<b>${ppg}</b><span>points per game</span>` : `<b>${t.pts}</b><span>point${t.pts === 1 ? '' : 's'}</span>`}</div>
       ${group}
     </div>
