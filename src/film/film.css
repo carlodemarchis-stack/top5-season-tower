@@ -200,10 +200,10 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 .mt-vs{font-size:12px;font-weight:800;color:#8a9099}
 .mt-goals{margin-top:10px;padding-top:8px;border-top:1px solid var(--line);display:grid;gap:3px}
 .mt-g{display:grid;grid-template-columns:34px 1fr;gap:6px;align-items:baseline;font-weight:600}
-.mt-g .mt-min{font-weight:800;font-variant-numeric:tabular-nums;color:#15181d}
+.mt-g .mt-min{font-weight:800;font-variant-numeric:tabular-nums}
 .mt-g em{font-style:normal;font-size:10px;font-weight:700;color:#8a9099;text-transform:uppercase;letter-spacing:.05em}
 .mt-g i{font-style:normal;font-weight:500;color:#8a9099}
-.mt-g.ag .mt-min{color:inherit}   /* the opponent's goals: colour set inline (their club colour) */
+.mt-g .mt-min{color:inherit}   /* each side's goals: colour set inline (its club colour) */
 .mt-poss{margin-top:10px;display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:10.5px;color:#5b626c;font-weight:600}
 .mt-poss b{color:#15181d;font-weight:800}
 .mt-bar{height:6px;border-radius:3px;background:#e4e7eb;overflow:hidden}.mt-bar i{display:block;height:100%;background:var(--c)}
