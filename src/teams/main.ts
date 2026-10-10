@@ -244,7 +244,22 @@ const UPDATED = Math.max(...Object.values(CARDS_OF).map(c => +new Date(c.updated
 const nameOf = (t: Dict) => TEAMS_OF[t.lg][t.code]?.name || t.code
 const $ = (id: string) => document.getElementById(id)!
 const film = $('film')
-film.innerHTML = P.map(card).join('')
+// All Leagues: one last card, the whole ranking on one screen (4 columns, read down); a row jumps to its club
+// the table's short forms for the long official names (league:code)
+const SHORT: Record<string, string> = { 'ENG:BHA': 'Brighton', 'ESP:ESP': 'Espanyol', 'FRA:OM': 'Marseille', 'FRA:PSG': 'Paris SG', 'FRA:RCL': 'Lens',
+  'FRA:SR': 'Rennes', 'FRA:STR': 'Strasbourg', 'FRA:OL': 'Lyon', 'FRA:ASM': 'Monaco', 'GER:B04': 'Leverkusen', 'GER:BMG': 'Gladbach', 'GER:SCF': 'Freiburg',
+  'GER:SGE': 'Frankfurt', 'GER:FCB': 'Bayern', 'GER:BVB': 'Dortmund' }
+function tableCard() {
+  const row = (t: Dict) => {
+    const c = TEAMS_OF[t.lg][t.code]?.primary || '#555', ink = lum(c) > 0.55 ? '#15181d' : c
+    return `<a class="tr" data-i="${t.rank - 1}" title="${esc(nameOf(t))} · ${LEAGUE_NAME[t.lg]}"><span class="tr-rk">${t.rank}</span><img class="tr-lg" src="leagues/${t.lg}.png" alt="${LEAGUE_NAME[t.lg]}"><b class="tr-ppg" style="color:${ink}">${ppgOf(t) >= 0 ? ppgOf(t).toFixed(2) : '–'}</b><span class="tr-nm">${esc(SHORT[`${t.lg}:${t.code}`] || nameOf(t))}</span><span class="tr-sub">${t.pos ? ord(t.pos) : '–'} · ${t.pts} pts</span></a>`
+  }
+  return `<section class="card tbl" id="t-table"><div class="tb">
+    <div class="tb-hd"><h2>All ${P.length} clubs</h2><span>by points per game · then fewer defeats, goal difference, goals scored</span></div>
+    <div class="tb-grid" style="--rows:${Math.ceil(P.length / 4)}">${P.map(row).join('')}</div></div></section>`
+}
+film.innerHTML = P.map(card).join('') + (ALL ? tableCard() : '')
+film.addEventListener('click', e => { const r = (e.target as HTMLElement).closest<HTMLElement>('.tr'); if (r) (window as any).go(+r.dataset.i!) })
 const lgUrl = (lg: string) => { const q = new URLSearchParams(location.search); q.set('lg', lg); return location.pathname + '?' + q.toString() }
 $('lgs').innerHTML = `<a class="lgb all${ALL ? ' on' : ''}" href="${lgUrl('ALL')}" title="All five leagues in one film, ranked by points per game"><b>All Leagues</b></a>` + LG_ORDER.map(lg => `<a class="lgb${lg === LG ? ' on' : ''}${has(lg) ? '' : ' soon'}" data-lg="${lg}" href="${lgUrl(lg)}" title="${LEAGUE_NAME[lg]}${has(lg) ? ' team cards' : ' — coming soon'}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"></a>`).join('')
 $('cnote').innerHTML = `${ALL ? `All ${P.length} clubs of the five leagues, ranked by points per game (then fewer defeats, goal difference, goals scored), so leagues with fewer games compare fairly. It says nothing about how strong each league is` : `${P.length} clubs of ${LEAGUE_NAME[LG]}, in table order`}. Season ${SEASON.replace('-', '/')}, updated ${new Date(UPDATED).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
@@ -252,6 +267,11 @@ $('cnote').innerHTML = `${ALL ? `All ${P.length} clubs of the five leagues, rank
 const KEY = 'top5.teams.card.' + LG + (SEASON === '2026-27' ? '' : '.' + SEASON)
 function onPaint(i: number) {
   const t = P[i]
+  if (!t) {   // the table card
+    $('ctx').innerHTML = `All Leagues ${SEASON.replace('-', '/')} · by points per game · <b>the table</b>`
+    $('lgs').querySelectorAll<HTMLElement>('.lgb[data-lg]').forEach(b => b.classList.remove('cur'))
+    return
+  }
   $('ctx').innerHTML = ALL
     ? `All Leagues ${SEASON.replace('-', '/')} · by points per game · <b>${esc(nameOf(t))}</b> · ${ppgOf(t) >= 0 ? ppgOf(t).toFixed(2) : '–'} a game, ${t.pos ? ord(t.pos) : '–'} in ${LEAGUE_NAME[t.lg]}`
     : `${LEAGUE_NAME[LG]} ${SEASON.replace('-', '/')} · <b>${esc(nameOf(t))}</b> · ${t.pos ? ord(t.pos) : '–'}, ${t.pts} pts`
@@ -378,4 +398,4 @@ film.addEventListener('mouseover', e => { const el = (e.target as HTMLElement).c
 film.addEventListener('mouseleave', hideTip)
 film.addEventListener('click', e => { const el = (e.target as HTMLElement).closest<HTMLElement>('[data-gid]'); if (el) showTip(el); else hideTip() })
 film.addEventListener('scroll', hideTip, { passive: true })
-initFilm({ count: P.length, key: KEY, onPaint, jumpHTML, self: 'teams.html' })
+initFilm({ count: P.length + (ALL ? 1 : 0), key: KEY, onPaint, jumpHTML, self: 'teams.html' })
