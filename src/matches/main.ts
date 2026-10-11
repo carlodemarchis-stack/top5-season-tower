@@ -167,10 +167,10 @@ function card(M: Dict) {
   const scorers = (s: string) => {
     const t = s === 'h' ? H : A, by: Dict = {}
     M.goals.forEach((g: Dict, i: number) => { if (g.s !== s) return
-      const r = (by[g.byId || g.by] ||= { g, mins: [] as string[], is: [] as number[], pens: 0 }); r.mins.push(g.min); r.is.push(i); if (g.kind === 'pen') r.pens++ })
+      const r = (by[g.byId || g.by] ||= { g, mins: [] as string[], is: [] as number[], asts: [] as string[], pens: 0 }); r.mins.push(g.min); r.is.push(i); if (g.ast && !r.asts.includes(short(g.ast))) r.asts.push(short(g.ast)); if (g.kind === 'pen') r.pens++ })
     const rows = Object.values(by).sort((a: Dict, b: Dict) => minOf(a.mins[0]) - minOf(b.mins[0])).map((r: Dict) => {
       const p = byId[r.g.byId], og = r.g.kind === 'og'
-      return `<span class="s" style="--tc:${og ? '#8a9099' : t.color}" data-h="p${r.g.byId}" data-k="p${r.g.byId} ${r.is.map((i: number) => 'g' + i).join(' ')}"><span class="ph">${p?.ph ? `<img src="squad/${p.id}.webp" alt="" loading="lazy">` : og ? 'OG' : esc(ini(r.g.by))}</span>${esc(short(r.g.by))} <small>${r.mins.map(esc).join(' · ')}${r.pens ? ' (pen)' : ''}${og ? ' (og)' : ''}</small></span>`
+      return `<span class="s" style="--tc:${og ? '#8a9099' : t.color}" data-h="p${r.g.byId}" data-k="p${r.g.byId} ${r.is.map((i: number) => 'g' + i).join(' ')}"><span class="ph">${p?.ph ? `<img src="squad/${p.id}.webp" alt="" loading="lazy">` : og ? 'OG' : esc(ini(r.g.by))}</span><span class="tx"><span>${esc(short(r.g.by))} <small>${r.mins.map(esc).join(' · ')}${r.pens ? ' (pen)' : ''}${og ? ' (og)' : ''}</small></span>${r.asts.length ? `<em>○ ${r.asts.map(esc).join(' · ')}</em>` : ''}</span></span>`
     })
     return `<div class="scs">${rows.join('') || '<span class="none">no goals</span>'}</div>`
   }
