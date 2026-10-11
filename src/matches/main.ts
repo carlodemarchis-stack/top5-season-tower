@@ -138,7 +138,7 @@ function card(M: Dict) {
   const cnt = (s: string, k?: string) => M.shots.filter((x: Dict) => x.s === s && (!k || x.k === k)).length
 
   // ---- right: on goal (shooter's view; misses outside the frame) · scorers · the numbers ----
-  const PL: Record<string, number[]> = { bl: [.17, .74], br: [.83, .74], tl: [.17, .27], tr: [.83, .27], c: [.5, .52], tc: [.5, .25], bc: [.5, .76], xl: [-.14, .62], xr: [1.14, .62], xh: [.5, -.32], xhl: [.08, -.32], xhr: [.92, -.32], pl: [0, .5], pr: [1, .5], bar: [.5, 0] }
+  const PL: Record<string, number[]> = { bl: [.17, .74], br: [.83, .74], tl: [.17, .27], tr: [.83, .27], c: [.5, .52], tc: [.5, .25], bc: [.5, .76], xl: [-.14, .62], xr: [1.14, .62], xh: [.5, -.32], xhl: [.08, -.32], xhr: [.92, -.32], pl: [0, .5], pr: [1, .5], bar: [.5, 0], ntl: [-.07, -.16], ntr: [1.07, -.16] }
   const frame = (s: string) => {
     const t = s === 'h' ? H : A, c = t.color, list = M.shots.filter((x: Dict) => x.s === s && x.p && PL[x.p])
     const W = 100, Hh = 33, ox = 20, oy = 16

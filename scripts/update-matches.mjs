@@ -57,7 +57,8 @@ console.log(`${LG}: ${all.length} played matches over MD ${mdsPlayed[0]}–${mds
 // ---------- one match report → one record ----------
 const ZONES = [['six yard box', 'six'], ['very close range', 'six'], ['centre of the box', 'box-c'], ['left side of the box', 'box-l'], ['right side of the box', 'box-r'],
   ['difficult angle on the left', 'angle-l'], ['difficult angle on the right', 'angle-r'], ['more than 35 yards', 'long'], ['long range', 'long'], ['outside the box', 'out']]
-const PLACES = [['bottom left corner', 'bl'], ['bottom right corner', 'br'], ['top left corner', 'tl'], ['top right corner', 'tr'], ['top centre of the goal', 'tc'], ['centre of the goal', 'c'],
+// a near miss ("is close, but misses the top left corner") first: it went just outside that corner, not into it
+const PLACES = [['misses the top left corner', 'ntl'], ['misses the top right corner', 'ntr'], ['bottom left corner', 'bl'], ['bottom right corner', 'br'], ['top left corner', 'tl'], ['top right corner', 'tr'], ['top centre of the goal', 'tc'], ['centre of the goal', 'c'],
   ['bottom centre', 'bc'], ['high and wide to the left', 'xhl'], ['high and wide to the right', 'xhr'], ['too high', 'xh'], ['misses to the left', 'xl'], ['misses to the right', 'xr'],
   ['left post', 'pl'], ['right post', 'pr'], ['crossbar', 'bar'], ['high and wide', 'xh']]
 const STATS = ['possessionPct', 'totalShots', 'shotsOnTarget', 'totalPasses', 'accuratePasses', 'wonCorners', 'saves', 'foulsCommitted', 'yellowCards', 'redCards']
@@ -107,7 +108,7 @@ async function build({ ev, g, hc, ac }) {
     const k = /^Goal|Penalty - Scored|Own Goal/i.test(t) ? 'goal' : /Shot On Target|Penalty - Saved/.test(t) ? 'on' : t === 'Shot Blocked' ? 'blk' : 'off'
     const ownWho = (txt.match(/Own Goal by ([^,]+),/i) || [])[1]
     const who = ownWho ? `${ownWho} (og)` : ((txt.match(/(?:Goal!.*?\.|Attempt (?:saved|missed|blocked)\.|Penalty (?:saved|missed)!.*?\.)\s*([^()]+?)\s*\(/) || [])[1] || '')
-    shots.push({ s, min: mm, ex, k, z: pen ? 'pen' : ZONES.find(z => txt.includes(z[0]))?.[1] || 'box-c', p: PLACES.find(p => txt.includes(p[0]))?.[1] || null, who, pen: pen ? 1 : 0 })
+    shots.push({ s, min: mm, ex, k, z: pen ? 'pen' : ZONES.find(z => txt.includes(z[0]))?.[1] || 'box-c', p: k === 'blk' ? null : PLACES.find(p => txt.includes(p[0]))?.[1] || null, who, pen: pen ? 1 : 0 })
   }
   // a commentary goal takes its side from the key-event goal at the same minute (the commentary files own goals
   // under either team, the key events always under the team the goal counts for)
