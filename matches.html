@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Match cards · top-5 EU leagues</title>
+  <meta name="description" content="Every league match on one card: both line-ups with every goal, card and substitution, every shot, who pushed when, and the numbers. Produced with passion by A Guy With A Scarf (Carlo De Marchis)." />
+  <link rel="canonical" href="https://top5.aguywithascarf.com/matches.html" />
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="A Guy With A Scarf" />
+  <meta property="og:title" content="Match cards — top-5 EU leagues" />
+  <meta property="og:description" content="Every league match on one card: both line-ups with every goal, card and substitution, every shot, who pushed when, and the numbers — one film per matchday." />
+  <meta property="og:url" content="https://top5.aguywithascarf.com/matches.html" />
+  <meta property="og:image" content="https://top5.aguywithascarf.com/og-teams.png?v=1" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <!-- Twitter/X -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Match cards — top-5 EU leagues" />
+  <meta name="twitter:description" content="Every league match on one card — line-ups, shots, the flow and the numbers." />
+  <meta name="twitter:image" content="https://top5.aguywithascarf.com/og-teams.png?v=1" />
+  <!-- favicon: a pitch on the app green -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B8A3D'/%3E%3Crect x='7' y='5' width='18' height='22' rx='1.5' fill='none' stroke='%23fff' stroke-width='1.8'/%3E%3Cpath d='M7 16h18' stroke='%23fff' stroke-width='1.8'/%3E%3Ccircle cx='16' cy='16' r='3.2' fill='none' stroke='%23fff' stroke-width='1.8'/%3E%3C/svg%3E" />
+  <!-- AGWAS social capture -->
+  <meta name="agwas:title"    content="Match cards, top-5 leagues">
+  <meta name="agwas:cta"      content="Every match on one card — full film below">
+  <meta name="agwas:mentions" content="seriea">
+  <meta name="agwas:tags"     content="football dataviz">
+  <meta name="agwas:bg"       content="https://top5.aguywithascarf.com/social/football.jpg">
+  <!-- Umami --><script>try{/[?&#]noumami\b/.test(location.href)&&localStorage.setItem('umami.disabled','1')}catch(e){}</script><script defer src="https://m.aguywithascarf.com/k.js" data-website-id="795be6fc-5a41-4d66-85bc-774157d5d2c7"></script>
+    <script defer src="https://dataviz.aguywithascarf.com/ver.js"></script><!-- End Umami -->
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "b7ca744dce3341b2a233a864179a4f42"}'></script><!-- End Cloudflare Web Analytics -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <!-- shared styles: src/film/film.css (imported by src/matches/main.ts); match-card additions here -->
+  <style>
+    /* ---------- a match card: three columns, each split at the halfway line — home on top, away below ---------- */
+    .card.m3{grid-template-columns:minmax(300px,36%) minmax(300px,36%) minmax(0,1fr)}
+    .card.m3.empty{background:#F5F6F4}
+
+    /* left: both XIs on one pitch, each half in its club colour */
+    .pan.pitch{background:linear-gradient(180deg,var(--ch) 0 50%,var(--ca) 50% 100%)}
+    .pan.pitch::after{background:repeating-linear-gradient(180deg,rgba(255,255,255,.035) 0 6.25%,transparent 6.25% 12.5%),linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.06) 50%,rgba(0,0,0,.18))}
+    .pitch svg.mk{position:absolute;inset:14px;width:calc(100% - 28px);height:calc(100% - 28px);z-index:1;pointer-events:none}
+    .tlab{position:absolute;left:18px;z-index:3;display:flex;flex-wrap:wrap;max-width:36%;align-items:center;gap:2px 8px;color:#fff;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 1px 3px rgba(0,0,0,.4)}
+    .tlab img{width:22px;height:22px;object-fit:contain;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+    .tlab b{font-weight:900;letter-spacing:.06em;opacity:.85}
+    .tlab b + b{flex-basis:100%;padding-left:30px}
+    .tlab.t{top:16px}.tlab.b{bottom:16px}
+    .bigsc{position:absolute;right:20px;z-index:1;pointer-events:none}
+    .bigsc b{display:block;font-weight:900;font-size:clamp(110px,12vw,180px);line-height:.8;letter-spacing:-.05em;color:var(--sc);-webkit-text-stroke:3px rgba(255,255,255,.88);paint-order:stroke fill;text-shadow:0 6px 24px rgba(0,0,0,.2)}
+    .bigsc.t{bottom:calc(50% + 6px)}.bigsc.b{top:calc(50% + 10px)}
+    .pl{position:absolute;z-index:2;transform:translate(-50%,calc(var(--fs) / -2));display:flex;flex-direction:column;align-items:center;gap:2px;width:98px}
+    .face{position:relative;width:var(--fs);height:var(--fs);border-radius:50%;background:rgba(255,255,255,.92);border:2px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.35)}
+    .face img{width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:top}
+    .face .ini{position:absolute;inset:0;display:grid;place-items:center;font-weight:900;font-size:13px;color:var(--tc)}
+    .face .num{position:absolute;left:-7px;bottom:-4px;min-width:18px;height:16px;padding:0 4px;border-radius:9px;background:#15181d;color:#fff;font-size:10px;font-weight:800;line-height:14px;text-align:center;border:1.5px solid #fff}
+    .face .cd{position:absolute;right:-4px;top:-3px;width:9px;height:13px;border-radius:2px;background:#EAB308;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+    .face .cd.r{background:#d92d20}
+    .nm{max-width:100%;padding:0 6px;border-radius:7px;background:rgba(14,16,20,.55);color:#fff;font-size:10.5px;font-weight:700;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .chips{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;max-width:112px}
+    .ch{display:inline-flex;align-items:center;gap:3px;padding:0 5px;border-radius:7px;font-size:9.5px;font-weight:800;line-height:14px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+    .ch.g{background:#fff;color:#15181d}.ch.g i{width:7px;height:7px;border-radius:50%;background:#15181d}
+    .ch.as{background:rgba(255,255,255,.85);color:#15181d;font-weight:700}.ch.as i{width:7px;height:7px;border-radius:50%;border:1.5px solid #15181d}
+    .ch.sub{background:rgba(14,16,20,.62);color:#fff;font-weight:700}.ch.sub em{font-style:normal;color:#8fd3ff;font-weight:900}
+    .ch.sub .cd{display:inline-block;width:6px;height:9px;border-radius:1px;background:#EAB308}.ch.sub .gb{display:inline-block;width:7px;height:7px;border-radius:50%;background:#fff}
+
+    /* middle: every attempt (home at the top goal, away at the bottom one), the flow across halfway */
+    .mid{position:relative;overflow:hidden;background:#e8ede8;border-right:1px solid var(--line)}
+    .mid svg.sp{position:absolute;inset:14px;width:calc(100% - 28px);height:calc(100% - 28px)}
+    .mid .dir{position:absolute;left:24px;z-index:2;font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+    .mid .dir.t{top:calc(38.5% - 66px)}.mid .dir.b{top:calc(61.5% + 70px)}
+    .mid .dir span{font-weight:600;letter-spacing:0;text-transform:none;color:#6b717a;margin-left:6px}
+    .flow{position:absolute;left:7%;right:7%;top:38.5%;height:23%;z-index:2}
+    .flow svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+    .flow .gl{position:absolute;transform:translateX(-50%);font-size:10px;font-weight:800;white-space:nowrap;color:#15181d;text-align:center;line-height:1.15}
+    .flow .gl small{display:block;font-weight:600;color:#8a9099;font-size:9.5px}
+    .flow .tk{position:absolute;bottom:-14px;transform:translateX(-50%);font-size:9.5px;color:#9aa0a8;font-weight:600}
+    .flow .lbl{position:absolute;left:-22px;top:50%;transform:translateY(-50%) rotate(180deg);writing-mode:vertical-rl;font-size:9.5px;font-weight:800;letter-spacing:.18em;color:#6b717a}
+
+    /* right: goal frame · scorers | the numbers | scorers · goal frame */
+    .body.sym{display:grid;grid-template-rows:minmax(0,1fr) auto minmax(0,1fr);gap:0;padding:clamp(14px,2.2vh,24px) clamp(16px,1.6vw,26px)}
+    .sym .half{display:flex;flex-direction:column;justify-content:space-between;gap:clamp(6px,1.1vh,12px);min-height:0}
+    .sym .half.top{padding-bottom:12px}.sym .half.bot{padding-top:12px}
+    .gm1 svg{width:100%;max-height:clamp(90px,17vh,170px);display:block}
+    .gm1 .cap{font-size:10.5px;font-weight:700;color:#5b626c;text-align:center;margin-top:3px}
+    .scs{display:flex;flex-wrap:wrap;gap:6px}
+    .scs .s{display:inline-flex;align-items:center;gap:7px;padding:3px 10px 3px 3px;border-radius:99px;background:#fff;border:1px solid var(--line);font-size:12px;font-weight:700;min-width:0}
+    .scs .s .ph{position:relative;flex:none;width:30px;height:30px;border-radius:50%;overflow:hidden;background:var(--tc);display:grid;place-items:center;color:#fff;font-size:11px;font-weight:900}
+    .scs .s .ph img{width:100%;height:100%;object-fit:cover;object-position:top}
+    .scs .s small{font-weight:600;color:#6b717a}
+    .scs .none{font-size:11.5px;color:#9aa0a8;font-weight:600}
+    .mstat{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:4px;height:clamp(150px,24vh,220px)}
+    .ms{display:grid;grid-template-rows:auto 1fr auto 1fr auto;align-items:stretch;text-align:center;min-width:0}
+    .ms .v{font-size:11.5px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.2}
+    .ms .v.lo{color:#9aa0a8}
+    .ms .up,.ms .dn{display:flex;justify-content:center}.ms .up{align-items:flex-end}.ms .dn{align-items:flex-start}
+    .ms .up i,.ms .dn i{display:block;width:60%;max-width:22px}.ms .up i{border-radius:4px 4px 0 0}.ms .dn i{border-radius:0 0 4px 4px}
+    .ms .lb{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#6b717a;padding:4px 0;border-top:2px solid #15181d;border-bottom:2px solid #15181d;margin:0 -2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    /* top bar: the matchday switch */
+    .mdsw{display:flex;align-items:center;gap:4px;flex:0 0 auto}
+    .mdsw a{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:#fff;color:#15181d;text-decoration:none;font-weight:800}
+    .mdsw a.off{opacity:.3;pointer-events:none}
+    .mdsw b{min-width:64px;text-align:center;font-size:12px;font-weight:900;letter-spacing:.04em}
+    .lgb.soon{opacity:.25;pointer-events:none}
+
+    /* phones: the three columns stack and the card scrolls */
+    @media (max-width: 760px){
+      .card.m3{display:block;overflow-y:auto}
+      .card.m3 .pan.pitch,.card.m3 .mid{height:150vw;max-height:none}
+      .card.m3 .mid{border-right:0;border-bottom:1px solid var(--line)}
+      .card.m3 .body.sym{display:grid;min-height:120vw}
+      .bigsc b{font-size:clamp(80px,24vw,120px)}
+      .card.m3 .pl{transform:translate(-50%,calc(var(--fs) / -2)) scale(.78);transform-origin:50% 0}
+    }
+  </style>
+</head>
+<body>
+  <div id="topbar">
+    <a class="pill" href="./#ALL/2026-27" title="Back to the Season Tower">←<span class="lbl"> Season Tower</span></a>
+    <div id="lgs"></div>
+    <div class="mdsw" id="mdsw"></div>
+    <div id="ctx"></div>
+    <div id="credit">Produced with passion by <b>Carlo De Marchis</b> · <a href="#" onclick="openMod('cmodal');return false">Credits</a><a class="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></div>
+  </div>
+
+  <main id="film" aria-label="Match cards"></main>
+
+  <div id="ctlbar">
+    <button class="ic" title="Restart (Home)" onclick="go(0)"><svg viewBox="0 0 24 24"><path d="M2 5v6h6"/><path d="M4.6 15.5a8.5 8.5 0 1 0 2-8.8L2 11"/></svg></button>
+    <button class="ic" title="Previous (←)" onclick="step(-1)"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="ic" id="playb" title="Play" onclick="togglePlay()"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></button>
+    <button class="ic" title="Next (→)" onclick="step(1)"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+    <button id="counter" title="Jump to a match (g)" onclick="openJump()"></button>
+    <button class="ic" title="More sports experiences" onclick="openMod('mmodal')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="ic" title="Help (h)" onclick="openMod('hmodal')"><svg viewBox="0 0 24 24"><path d="M12 17h.01M9.1 9a3 3 0 1 1 4.2 2.7c-.8.4-1.3 1.1-1.3 2"/></svg></button>
+    <button class="ic" title="Fullscreen (f)" onclick="fs()"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M15 4h5v5M9 20H4v-5"/></svg></button>
+  </div>
+
+  <div class="mod" id="jmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <input id="jq" placeholder="Club or scorer — or a card number" autocomplete="off" />
+    <div id="jlist"></div>
+  </div></div>
+
+  <div class="mod" id="hmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>How to read a match card</h3>
+    <p>One card per match, one film per matchday, in kick-off order. Every column is split at the halfway line: <b>the home team on top, the away team below</b>.</p>
+    <ul>
+      <li><b>The line-ups</b>: both elevens by formation, each half in its club colour. On a player: his goals (white chip), assists (outlined), a card on the photo, and — when he went off — who came on and when, with what that substitute did. The big numbers are the score; the corner labels give each club's formation and its table place before → after.</li>
+      <li><b>Every shot</b>: each attempt in the zone it was taken from (the match commentary names the zone, not the exact spot) — a ring = goal, a dot = on target, a circle = off target, a cross = blocked.</li>
+      <li><b>The flow</b>, across the halfway line: who pushed in every 5 minutes (shots, shots on target, corners, goals), home up, away down; the centre line takes the colour of whoever is ahead.</li>
+      <li><b>On goal</b>: where each side's attempts went — goals, saves, and misses wide or over. <b>The numbers</b> across the middle: home up, away down, the lower value greyed.</li>
+    </ul>
+    <p><kbd>←</kbd> <kbd>→</kbd> previous / next · <kbd>space</kbd> play / pause · <kbd>Home</kbd> <kbd>End</kbd> first / last · <kbd>g</kbd> or <kbd>/</kbd> find a match · <kbd>f</kbd> fullscreen · <kbd>h</kbd> this help · <kbd>Esc</kbd> close</p>
+    <p class="agwas-rel">Release notes <a class="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>
+  </div></div>
+
+  <div class="mod" id="cmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>Credits</h3>
+    <p id="cnote"></p>
+    <p>Line-ups, goals, cards, substitutions, team stats and the attempts from ESPN match reports and their commentary, checked every update: ESPN's score must equal the result in the Season Tower (football-data.org) and the goals in the report must add up to it. Table places from the official standings. Player photos are the official season portraits published by the leagues. Club crests via TheSportsDB; league logos from the leagues.</p>
+    <p>Built by Carlo De Marchis — <i>A Guy With A Scarf</i>.</p>
+  </div></div>
+
+  <div class="mod" id="mmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>More sports experiences</h3>
+    <div class="applist" id="applist"></div>
+    <p style="margin-top:12px"><a href="https://dataviz.aguywithascarf.com" target="_blank" rel="noopener">See them all →</a></p>
+  </div></div>
+
+  <script type="module" src="/src/matches/main.ts"></script>
+</body>
+</html>

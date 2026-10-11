@@ -12,6 +12,7 @@ const APPS: [string, string, string, string][] = [
   ['Season Tower', 'This app · the top-5 leagues, a whole season on one screen', '#0B8A3D', './#ALL/2026-27'],
   ['Top Scorers', 'This app · one card per goalscorer', '#F4C400', './scorers.html'],
   ['Team cards', 'This app · one card per club, in table order', '#2f9e58', './teams.html'],
+  ['Match cards', 'This app · one card per match, line-ups to shots', '#177a41', './matches.html'],
   ['Formula 1', 'A season read lap by lap', '#00d7b6', 'https://f1.aguywithascarf.com/'],
   ['Tennis', 'The season, one player at a time', '#f2c14e', 'https://tennis.aguywithascarf.com/'],
   ['NFL', 'Wins up, losses down', '#4d94e0', 'https://nfl.aguywithascarf.com/'],
