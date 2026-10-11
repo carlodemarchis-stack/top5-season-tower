@@ -181,6 +181,9 @@ function zoneUefa(rank: number): { key: string; label: string; color: string } {
 }
 const zoneFor = (league: LeagueId, total = 20) => isUefa(league) ? zoneUefa : (rank: number) => zoneOf(rank, total)
 
+// leagues whose match cards exist (matches.html) — the tower's Matches button shows for these
+const MATCH_LEAGUES: string[] = ['ITA']
+
 export class SeasonTower extends React.Component<Props, State> {
   chartRef = React.createRef<HTMLDivElement>()
   ovTipRef = React.createRef<HTMLDivElement>()   // the overview's hover card, updated directly (no re-render per mouse move)
@@ -1128,6 +1131,10 @@ export class SeasonTower extends React.Component<Props, State> {
             {/* a football: the gold Scorers button (Golden Boot colour) leads into the card film */}
             <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="10" fill="#fff" stroke="currentColor" strokeWidth="2" /><path d="M12 7.5l4.3 3.1-1.6 5h-5.4l-1.6-5z" fill="currentColor" /><path d="M12 7.5V2.5M16.3 10.6l4.6-1.6M14.7 15.6l2.9 4M9.3 15.6l-2.9 4M7.7 10.6L3.1 9" stroke="currentColor" strokeWidth="1.6" /></svg>
             Scorers</a>}
+          {/* the match-card film: one card per match (leagues with match cards so far: MATCH_LEAGUES) */}
+          {((v.overview && v.ovKind !== 'uefa') || (!v.overview && MATCH_LEAGUES.includes(this.state.league))) && <a href={`matches.html?lg=${v.overview ? MATCH_LEAGUES[0] : this.state.league}`} title={`${(LEAGUES.find(l => l.id === (v.overview ? MATCH_LEAGUES[0] : this.state.league)) || { name: 'League' }).name} match cards — one card per match, line-ups to shots`} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 11px 5px 8px', border: '1px solid #15181d', borderRadius: '8px', background: 'linear-gradient(180deg,#2a2f37,#15181d)', color: '#fff', fontSize: '12px', fontWeight: 800, cursor: 'pointer', lineHeight: 1, textDecoration: 'none', whiteSpace: 'nowrap', boxShadow: '0 1px 3px rgba(21,24,29,.35)' }}>
+            <svg width="11" height="14" viewBox="0 0 18 24" aria-hidden><rect x="1" y="1" width="16" height="22" rx="1.5" fill="none" stroke="#fff" strokeWidth="1.8" /><path d="M1 12h16" stroke="#fff" strokeWidth="1.6" /><circle cx="9" cy="12" r="2.6" fill="none" stroke="#fff" strokeWidth="1.6" /></svg>
+            Matches</a>}
           {v.overview && v.ovKind !== 'uefa' && <button onClick={() => this.setState({ statsOpen: true }, () => this.syncUrl())} title="League comparison" style={{ padding: '6px 11px', border: '1px solid #D7DAE0', borderRadius: '8px', background: '#fff', color: '#15181d', fontSize: '12px', fontWeight: 800, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit' }}>Stats</button>}
           {/* top-5 overview: points bars ↔ results stacked bottom-up */}
           {v.overview && v.ovKind !== 'uefa' && <div style={{ display: 'flex', border: '1px solid #D7DAE0', borderRadius: '8px', overflow: 'hidden' }}>
