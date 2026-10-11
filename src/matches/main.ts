@@ -165,12 +165,15 @@ function card(M: Dict) {
     ['Passes', nv('h', 'totalPasses'), nv('a', 'totalPasses')], ['Acc', acc('h'), acc('a'), v => v + '%'], ['Corners', nv('h', 'wonCorners'), nv('a', 'wonCorners')],
     ['Saves', nv('h', 'saves'), nv('a', 'saves')], ['Fouls', nv('h', 'foulsCommitted'), nv('a', 'foulsCommitted')], ['Cards', nv('h', 'yellowCards') + nv('h', 'redCards'), nv('a', 'yellowCards') + nv('a', 'redCards')]]
   const col = ([lb, h, a, f = (v: number) => String(v)]: [string, number, number, ((v: number) => string)?]) => { const t = Math.max(1, h + a)
-    return `<div class="ms"><span class="v${h < a ? ' lo' : ''}">${f(h)}</span><div class="up"><i style="height:${Math.max(3, 100 * h / t)}%;background:${H.color}"></i></div><span class="lb" title="${lb}">${lb}</span><div class="dn"><i style="height:${Math.max(3, 100 * a / t)}%;background:${A.color}"></i></div><span class="v${a < h ? ' lo' : ''}">${f(a)}</span></div>` }
+    // the value sits inside its bar, at the base by the label line (dark on a light club colour)
+    const bar = (v: number, c: string) => `<i style="height:${100 * v / t}%;background:${c};color:${lum(c) > .62 ? '#15181d' : '#fff'}">${f(v)}</i>`
+    return `<div class="ms"><div class="up">${bar(h, H.color)}</div><span class="lb" title="${lb}">${lb}</span><div class="dn">${bar(a, A.color)}</div></div>` }
 
   return `
     <div class="pan pitch">${MARKS}
-      <div class="tlab t"><img src="${logo(H.code)}" alt="">${esc(H.name)} <b>${esc(H.form)}</b><b>· ${ord(M.table.h[0])} → ${ord(M.table.h[1])}</b></div>
-      <div class="tlab b"><img src="${logo(A.code)}" alt="">${esc(A.name)} <b>${esc(A.form)}</b><b>· ${ord(M.table.a[0])} → ${ord(M.table.a[1])}</b></div>
+      <img class="cw t" src="${logo(H.code)}" alt=""><img class="cw b" src="${logo(A.code)}" alt="">
+      <div class="tlab t"><span class="tn">${esc(H.name)}</span><span class="tx"><b>${esc(H.form)}</b>${ord(M.table.h[0])} → ${ord(M.table.h[1])}</span></div>
+      <div class="tlab b"><span class="tn">${esc(A.name)}</span><span class="tx"><b>${esc(A.form)}</b>${ord(M.table.a[0])} → ${ord(M.table.a[1])}</span></div>
       <div class="bigsc t" style="--sc:${H.color}"><b>${M.score.h}</b></div>
       <div class="bigsc b" style="--sc:${A.color}"><b>${M.score.a}</b></div>
       ${half(H, true)}${half(A, false)}
@@ -192,9 +195,32 @@ const $ = (id: string) => document.getElementById(id)!
 const film = $('film')
 film.innerHTML = P.map((M, i) => `<section class="card m3 empty" id="m-${i}" data-i="${i}" style="--c:${TEAMS[M.h]?.primary || '#555'};--ch:${TEAMS[M.h]?.primary || '#555'};--ca:${TEAMS[M.a]?.primary || '#555'}"></section>`).join('')
 const cardEls = [...film.children] as HTMLElement[]
+// the club names on the pitch: as big as fits their side of the goal — one line, or two when that's clearly bigger
+// ("Borussia / Dortmund"); each layout is measured in one pass over all names
+function fitNames(root: ParentNode) {
+  const els = [...root.querySelectorAll<HTMLElement>('.tlab .tn')]
+  const two = (n: string) => { const w = n.split(' '); if (w.length < 2) return null
+    let best = 1; for (let i = 1; i < w.length; i++) if (Math.max(w.slice(0, i).join(' ').length, w.slice(i).join(' ').length) < Math.max(w.slice(0, best).join(' ').length, w.slice(best).join(' ').length)) best = i
+    return esc(w.slice(0, best).join(' ')) + '<br>' + esc(w.slice(best).join(' ')) }
+  const fit = (e: HTMLElement) => e.clientWidth ? NAME_MAX * e.clientWidth / e.scrollWidth : 0   // 0: not laid out (hidden tab)
+  els.forEach(e => { e.dataset.n ??= e.textContent || ''; e.textContent = e.dataset.n; e.style.fontSize = '' })
+  const one = els.map(fit)
+  els.forEach(e => { const h = two(e.dataset.n!); if (h) e.innerHTML = h })
+  const dbl = els.map((e, i) => e.innerHTML.includes('<br>') ? Math.min(NAME_MAX2, fit(e)) : 0)
+  els.forEach((e, i) => {
+    const use2 = dbl[i] > Math.min(NAME_MAX, one[i]) * 1.25, fs = use2 ? dbl[i] : Math.min(NAME_MAX, one[i])
+    if (!use2) e.textContent = e.dataset.n!
+    if (fs) e.style.fontSize = Math.floor(fs * 10) / 10 + 'px'
+  })
+}
+const NAME_MAX = 46, NAME_MAX2 = 36
+let refit = 0
+addEventListener('resize', () => { cancelAnimationFrame(refit); refit = requestAnimationFrame(() => fitNames(film)) })
+
 function fill(i: number) {
   const el = cardEls[i]; if (!el || !el.classList.contains('empty')) return
   el.innerHTML = card(P[i]); el.classList.remove('empty')
+  fitNames(el)
   const A = TEAMS[P[i].a]?.primary || '#555', H = TEAMS[P[i].h]?.primary || '#555'
   if (Math.hypot(...rgb(H).map((v, k) => v - rgb(A)[k])) < 120) el.style.setProperty('--ca', '#4a5059')
 }
