@@ -205,6 +205,7 @@ function card(M: Dict) {
     <div class="mid">${shotSvg}
       <div class="dir t" style="color:${ink(H.color)}">↑ ${esc(H.name)} shots<span>${cnt('h')} · ${cnt('h', 'on') + cnt('h', 'goal')} on target</span></div>
       <div class="dir b" style="color:${ink(A.color)}">↓ ${esc(A.name)} shots<span>${cnt('a')} · ${cnt('a', 'on') + cnt('a', 'goal')} on target</span></div>
+      <div class="flk"><i class="ln" style="background:linear-gradient(90deg,${H.color} 0 40%,#c9ced4 40% 60%,${A.color} 60%)"></i>line: who was leading<i class="br"><b style="background:${H.color}"></b><b style="background:${A.color}"></b></i>bars: attacking push, every 5′</div>
       <div class="flow"><span class="lbl">THE FLOW</span>${flowSvg}${flowGoals}${ticks}</div>
     </div>
     <div class="body sym">
