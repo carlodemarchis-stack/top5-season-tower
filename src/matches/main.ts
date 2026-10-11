@@ -156,13 +156,16 @@ function card(M: Dict) {
   const PL: Record<string, number[]> = { bl: [.17, .74], br: [.83, .74], tl: [.17, .27], tr: [.83, .27], c: [.5, .52], tc: [.5, .25], bc: [.5, .76], xl: [-.14, .62], xr: [1.14, .62], xh: [.5, -.32], xhl: [.08, -.32], xhr: [.92, -.32], pl: [0, .5], pr: [1, .5], bar: [.5, 0], ntl: [-.07, -.16], ntr: [1.07, -.16] }
   const frame = (s: string) => {
     const t = s === 'h' ? H : A, c = t.color, list = M.shots.map((x: Dict, i: number) => ({ ...x, i })).filter((x: Dict) => x.s === s && x.p && PL[x.p]).sort((a: Dict, b: Dict) => +(a.k === 'goal') - +(b.k === 'goal'))
+    // the caption names who stood in this goal: the other side's keeper, then whoever replaced him (subs are listed as 'SUB')
+    const o = s === 'h' ? A : H, gk0 = o.players.find((p: Dict) => p.st && p.pos === 'G'), rep = gk0 && M.subs.find((x: Dict) => x.off === gk0.id)
+    const gks = [gk0, rep && byId[rep.on]].filter(Boolean)
     const W = 100, Hh = 33, ox = 20, oy = 16
     const pts = list.map((x: Dict, k: number) => { const [px, py] = PL[x.p], cx = ox + px * W + (rnd(x.i + 3) - .5) * 9, cy = oy + py * Hh + (rnd(x.i + 9) - .5) * 6
       return x.k === 'goal' ? `<g${gk(shotGoal[x.i])}><circle r="6" cx="${cx}" cy="${cy}" fill="transparent"/><circle cx="${cx}" cy="${cy}" r="4.2" fill="${c}" stroke="#fff" stroke-width="1.4"/></g>` : x.k === 'on' ? `<circle cx="${cx}" cy="${cy}" r="3.1" fill="#fff" stroke="${c}" stroke-width="1.6"/>` : `<circle cx="${cx}" cy="${cy}" r="2.6" fill="none" stroke="${c}" stroke-width="1" opacity=".55"/>` }).join('')
     return `<div class="gm1"><svg viewBox="0 0 140 51"><defs><pattern id="net${M.id}${s}" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M5 0H0V5" fill="none" stroke="#dfe3e6" stroke-width=".5"/></pattern></defs>
       <rect x="${ox}" y="${oy}" width="${W}" height="${Hh}" fill="url(#net${M.id}${s})"/><path d="M${ox} ${oy + Hh}V${oy}H${ox + W}V${oy + Hh}" fill="none" stroke="#15181d" stroke-width="2.2" stroke-linejoin="round"/>
       <line x1="4" x2="136" y1="${oy + Hh}" y2="${oy + Hh}" stroke="#c9ced4" stroke-width=".8"/>${pts}</svg>
-      <div class="cap"><b style="color:${ink(c)}">${esc(t.name)}</b> · ${M.score[s]} scored · ${cnt(s, 'on')} saved · ${list.filter((x: Dict) => x.k === 'off').length} off</div></div>`
+      <div class="cap"><b style="color:${ink(o.color)}">${gks.map((p: Dict) => esc(short(p.name))).join(' / ') || esc(o.name)}</b> · ${M.score[s]} scored · ${cnt(s, 'on')} saved · ${list.filter((x: Dict) => x.k === 'off').length} off</div></div>`
   }
   const scorers = (s: string) => {
     const t = s === 'h' ? H : A, by: Dict = {}
