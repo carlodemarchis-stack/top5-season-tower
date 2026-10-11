@@ -49,6 +49,9 @@ const LAYOUT: Record<string, number[][]> = {
   '3-5-2': [[4, 5, 6], [3, 8, 11, 7, 2], [9, 10]], '3-4-2-1': [[4, 5, 6], [3, 8, 7, 2], [11, 10], [9]], '3-4-3': [[4, 5, 6], [3, 8, 7, 2], [11, 9, 10]],
   '5-4-1': [[3, 4, 5, 6, 2], [11, 10, 8, 7], [9]], '5-3-2': [[3, 4, 5, 6, 2], [8, 11, 7], [9, 10]], '3-1-4-2': [[6, 4, 5], [8], [3, 11, 7, 2], [10, 9]],
   '4-1-4-1': [[3, 6, 5, 2], [4], [11, 8, 10, 7], [9]], '4-4-1-1': [[3, 6, 5, 2], [11, 8, 4, 7], [10], [9]],
+  '4-1-3-2': [[3, 6, 5, 2], [4], [11, 8, 7], [10, 9]], '4-3-2-1': [[3, 6, 5, 2], [7, 4, 8], [11, 10], [9]], '4-1-2-1-2': [[3, 6, 5, 2], [4], [11, 7], [8], [9, 10]],
+  '4-5-1': [[3, 6, 5, 2], [11, 8, 10, 4, 7], [9]], '3-4-1-2': [[4, 5, 6], [3, 8, 7, 2], [9], [11, 10]], '4-2-2-2': [[3, 6, 5, 2], [8, 4], [11, 7], [9, 10]],
+  '3-5-1-1': [[4, 5, 6], [3, 8, 11, 7, 2], [10], [9]],
 }
 const DEPTH = (p: string) => /^G/.test(p) ? 0 : /^(CD|CB|SW|LB|RB|D)/.test(p) ? 1 : /^DM/.test(p) ? 2 : /^(CM|LM|RM|M)/.test(p) ? 3 : /^AM/.test(p) ? 4 : 5
 const LAT = (p: string) => /^L/.test(p) ? -2 : /-L$/.test(p) ? -1 : /-R$/.test(p) ? 1 : /^R/.test(p) ? 2 : 0
@@ -86,9 +89,10 @@ function card(M: Dict) {
       <span class="nm">${esc(short(p.name))}</span>${chips ? `<div class="chips">${chips}</div>` : ''}</div>`
   }
   const half = (t: Dict, top: boolean) => {
-    const rows = rowsOf(t), n = rows.length, fs = n > 4 ? 36 : 40
+    // more lines (4-2-3-1, 4-1-2-1-2 …) spread over more of the half, on smaller markers
+    const rows = rowsOf(t), n = rows.length, fs = n > 5 ? 32 : n > 4 ? 36 : 40, span = n > 5 ? 41 : n > 4 ? 39 : 36, y0 = n > 4 ? 4 : 5
     return rows.map((r, i) => {
-      const y = top ? 5 + i * (36 / Math.max(1, n - 1)) : 91 - i * (36 / Math.max(1, n - 1))
+      const y = top ? y0 + i * (span / Math.max(1, n - 1)) : 100 - y0 - 4 - i * (span / Math.max(1, n - 1))
       return (top ? [...r].reverse() : r).map((p, j) => marker(p, (j + 1) / (r.length + 1) * 100, y, fs)).join('')
     }).join('')
   }

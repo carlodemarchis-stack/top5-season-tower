@@ -94,7 +94,7 @@ jobs:
       - name: Match cards (ESPN match reports)
         run: |
           if ! git diff --quiet -- 'src/data/results-*-2026-27.js' || [ "${{ github.event.schedule }}" = "0 8 * * *" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            for lg in ITA; do
+            for lg in ITA ENG ESP FRA GER; do
               node scripts/update-matches.mjs --league $lg --season 2026-27 || echo "::warning::match cards $lg not updated — will retry on the next trigger"
             done
           else

@@ -182,7 +182,7 @@ function zoneUefa(rank: number): { key: string; label: string; color: string } {
 const zoneFor = (league: LeagueId, total = 20) => isUefa(league) ? zoneUefa : (rank: number) => zoneOf(rank, total)
 
 // leagues whose match cards exist (matches.html) — the tower's Matches button shows for these
-const MATCH_LEAGUES: string[] = ['ITA']
+const MATCH_LEAGUES: string[] = ['ITA', 'ENG', 'ESP', 'FRA', 'GER']
 
 export class SeasonTower extends React.Component<Props, State> {
   chartRef = React.createRef<HTMLDivElement>()
