@@ -5,6 +5,6 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
     plugins: [react()],
     base: './',
-    // three pages: the Season Tower app, the top-scorers film and the team-card film
-    build: { target: 'es2022', rollupOptions: { input: { main: 'index.html', scorers: 'scorers.html', teams: 'teams.html' } } },
+    // four pages: the Season Tower app, the top-scorers film, the team-card film and the match-card film
+    build: { target: 'es2022', rollupOptions: { input: { main: 'index.html', scorers: 'scorers.html', teams: 'teams.html', matches: 'matches.html' } } },
 });
