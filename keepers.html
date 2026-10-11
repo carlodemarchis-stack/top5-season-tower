@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goalkeepers · top-5 EU leagues</title>
+  <meta name="description" content="Every regular goalkeeper in the five big European leagues, ranked by saves: every shot on target he faced on one goal, his season match by match. Produced with passion by A Guy With A Scarf (Carlo De Marchis)." />
+  <link rel="canonical" href="https://top5.aguywithascarf.com/keepers.html" />
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="A Guy With A Scarf" />
+  <meta property="og:title" content="Goalkeepers — top-5 EU leagues" />
+  <meta property="og:description" content="Every regular goalkeeper in the five leagues, ranked by saves — every shot on target he faced on one goal, and his season match by match." />
+  <meta property="og:url" content="https://top5.aguywithascarf.com/keepers.html" />
+  <meta property="og:image" content="https://top5.aguywithascarf.com/og-teams.png?v=1" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <!-- Twitter/X -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Goalkeepers — top-5 EU leagues" />
+  <meta name="twitter:description" content="The goalkeepers of the five big leagues, ranked by saves." />
+  <meta name="twitter:image" content="https://top5.aguywithascarf.com/og-teams.png?v=1" />
+  <!-- favicon: a pitch on the app green -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232563eb'/%3E%3Cpath d='M5 24V9h22v15' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linejoin='round'/%3E%3Ccircle cx='12' cy='16' r='3' fill='%23fff'/%3E%3Ccircle cx='21' cy='19' r='2.2' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3C/svg%3E" />
+  <!-- AGWAS social capture -->
+  <meta name="agwas:title"    content="Goalkeepers, top-5 leagues">
+  <meta name="agwas:cta"      content="Every save, on one goal — full film below">
+  <meta name="agwas:mentions" content="seriea">
+  <meta name="agwas:tags"     content="football dataviz">
+  <meta name="agwas:bg"       content="https://top5.aguywithascarf.com/social/football.jpg">
+  <!-- Umami --><script>try{/[?&#]noumami\b/.test(location.href)&&localStorage.setItem('umami.disabled','1')}catch(e){}</script><script defer src="https://m.aguywithascarf.com/k.js" data-website-id="795be6fc-5a41-4d66-85bc-774157d5d2c7"></script>
+    <script defer src="https://dataviz.aguywithascarf.com/ver.js"></script><!-- End Umami -->
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "b7ca744dce3341b2a233a864179a4f42"}'></script><!-- End Cloudflare Web Analytics -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <!-- shared styles: src/film/film.css (imported by src/keepers/main.ts); keeper-card additions here -->
+  <style>
+    /* the season goal: every shot on target he faced, where it went (the shooter's view), six zones */
+    .gwrap{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:clamp(16px,2vw,30px);flex:1 1 auto;min-height:0}
+    .gwrap>div{display:flex;flex-direction:column;min-height:0}
+    .gf{position:relative;flex:1 1 auto;min-height:120px}
+    .gf svg{position:absolute;inset:0;width:100%;height:100%}
+    .gleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;font-weight:600;color:#6b717a;margin-top:6px}
+    .gleg i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+    .clist{display:flex;flex-direction:column;gap:5px;overflow:auto;min-height:0;margin-top:6px}
+    .cg{display:flex;align-items:baseline;gap:8px;font-size:12px;font-weight:600;color:#3a3f47;padding:4px 8px;border-radius:8px;background:#fff;border:1px solid var(--line)}
+    .cg b{font-weight:900;color:#15181d;font-variant-numeric:tabular-nums;min-width:2.6em}
+    .cg em{font-style:normal;font-size:9.5px;font-weight:800;letter-spacing:.06em;padding:1px 5px;border-radius:4px;background:#15181d;color:#fff}
+    .cg small{margin-left:auto;color:#8a9099;font-weight:600;white-space:nowrap}
+    .cg.hl{border-color:var(--c);box-shadow:inset 3px 0 0 var(--c)}
+    .hlon .cg:not(.hl){opacity:.35}
+    /* the season strip: his saves in the box, the goals against him as red rings above */
+    .c2 .mk i.ga{background:#fff;border:2px solid #b3323a;box-sizing:border-box}
+    @media (max-width: 760px){ .gwrap{grid-template-columns:1fr} .gf{min-height:46vw} }
+  </style>
+</head>
+<body>
+  <div id="topbar">
+    <a class="pill" href="./#ALL/2026-27" title="Back to the Season Tower">←<span class="lbl"> Season Tower</span></a>
+    <div id="lgs"></div>
+        <div id="ctx"></div>
+    <div id="credit">Produced with passion by <b>Carlo De Marchis</b> · <a href="#" onclick="openMod('cmodal');return false">Credits</a><a class="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></div>
+  </div>
+
+  <main id="film" aria-label="Goalkeeper cards"></main>
+
+  <div id="ctlbar">
+    <button class="ic" title="Restart (Home)" onclick="go(0)"><svg viewBox="0 0 24 24"><path d="M2 5v6h6"/><path d="M4.6 15.5a8.5 8.5 0 1 0 2-8.8L2 11"/></svg></button>
+    <button class="ic" title="Previous (←)" onclick="step(-1)"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="ic" id="playb" title="Play" onclick="togglePlay()"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></button>
+    <button class="ic" title="Next (→)" onclick="step(1)"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+    <button id="counter" title="Jump to a keeper (g)" onclick="openJump()"></button>
+    <button class="ic" title="More sports experiences" onclick="openMod('mmodal')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="ic" title="Help (h)" onclick="openMod('hmodal')"><svg viewBox="0 0 24 24"><path d="M12 17h.01M9.1 9a3 3 0 1 1 4.2 2.7c-.8.4-1.3 1.1-1.3 2"/></svg></button>
+    <button class="ic" title="Fullscreen (f)" onclick="fs()"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M15 4h5v5M9 20H4v-5"/></svg></button>
+  </div>
+
+  <div class="mod" id="jmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <input id="jq" placeholder="Keeper or club — or a card number" autocomplete="off" />
+    <div id="jlist"></div>
+  </div></div>
+
+  <div class="mod" id="hmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>How to read a goalkeeper card</h3>
+    <p>One card per keeper, ranked by saves (ties share a rank). <b>All Leagues</b> is the top 25 across the five leagues; each league logo lists every club's first-choice keeper and anyone with three or more starts.</p>
+    <ul>
+      <li><b>The season</b>: one box per league game of his club — coloured by the result, his saves in it, a red ring above for every goal he conceded. Pale boxes are games he didn't start; empty outlines are still to play.</li>
+      <li><b>Every shot on target he faced</b>, on one goal as the shooter saw it: a ring = saved, a red dot = goal. Each of the six zones says how many he saved of those he faced there.</li>
+      <li><b>The goals against him</b>: minute, scorer, how (header, penalty, own goal) and the match. Hover or tap a game to light up its goals.</li>
+      <li><b>Saves</b> are ESPN's count when he played the whole game, else the commentary's while he was on; <b>save %</b> = saves ÷ (saves + goals conceded); a clean sheet needs the full game.</li>
+    </ul>
+    <p><kbd>←</kbd> <kbd>→</kbd> previous / next · <kbd>space</kbd> play / pause · <kbd>Home</kbd> <kbd>End</kbd> first / last · <kbd>g</kbd> or <kbd>/</kbd> find a match · <kbd>f</kbd> fullscreen · <kbd>h</kbd> this help · <kbd>Esc</kbd> close</p>
+    <p class="agwas-rel">Release notes <a class="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>
+  </div></div>
+
+  <div class="mod" id="cmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>Credits</h3>
+    <p id="cnote"></p>
+    <p>Saves, goals conceded, penalties and every shot on target with where it went on goal, from ESPN match reports and their commentary — each match checked against the result in the Season Tower (football-data.org). Age and nationality from ESPN rosters. Player photos are the official season portraits published by the leagues. Club crests via TheSportsDB; league logos from the leagues.</p>
+    <p>Built by Carlo De Marchis — <i>A Guy With A Scarf</i>.</p>
+  </div></div>
+
+  <div class="mod" id="mmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>More sports experiences</h3>
+    <div class="applist" id="applist"></div>
+    <p style="margin-top:12px"><a href="https://dataviz.aguywithascarf.com" target="_blank" rel="noopener">See them all →</a></p>
+  </div></div>
+
+  <script type="module" src="/src/keepers/main.ts"></script>
+</body>
+</html>
