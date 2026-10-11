@@ -76,13 +76,27 @@ function card(M: Dict) {
   const offBy: Dict = {}; for (const s of M.subs) if (s.off) offBy[s.off] = s
   const d = M.score.h - M.score.a
 
+  // ---- every trace of one goal (pitch chip, shot map, flow, goal frame, scorer) carries g<i> + p<scorer>: hover one, the rest light up ----
+  const clk = (c: string) => { const m = String(c).match(/(\d+)'(?:\+(\d+))?/) || []; return [+(m[1] || 0), +(m[2] || 0)] }
+  const gk = (i: number) => i < 0 ? '' : ` data-h="g${i}" data-k="g${i} p${M.goals[i].byId}"`
+  const taken = new Set<number>()
+  const shotGoal: number[] = M.shots.map((s: Dict) => {   // the commentary's goal → the key event at the same minute, same side
+    if (s.k !== 'goal') return -1
+    const free = M.goals.map((g: Dict, i: number) => i).filter((i: number) => M.goals[i].s === s.s && !taken.has(i))
+    const at = (i: number) => { const [m, x] = clk(M.goals[i].min); return Math.abs(m + x / 10 - s.min - (s.ex || 0) / 10) }
+    const i = free.sort((a: number, b: number) => at(a) - at(b))[0] ?? -1
+    if (i >= 0 && at(i) <= 2) { taken.add(i); return i } return -1
+  })
+  const goalOf = (p: Dict, lab: string) => M.goals.findIndex((g: Dict) => g.byId === p.id && g.min === lab)
+  const assistOf = (p: Dict, lab: string) => M.goals.findIndex((g: Dict) => g.min === lab && g.s === (p.team === H ? 'h' : 'a') && g.kind !== 'og')
+
   // ---- left: the pitch ----
   const marker = (p: Dict, x: number, y: number, fs: number) => {
     const goals = p.ev.filter((e: string[]) => e[0] === 'goal'), asts = p.ev.filter((e: string[]) => e[0] === 'ast'), cards = p.ev.filter((e: string[]) => e[0] === 'yc' || e[0] === 'rc'), sub = offBy[p.id]
-    let chips = goals.map((e: string[]) => `<span class="ch g"><i></i>${esc(e[1])}</span>`).join('') + asts.map((e: string[]) => `<span class="ch as"><i></i>${esc(e[1])}</span>`).join('')
+    let chips = goals.map((e: string[]) => `<span class="ch g"${gk(goalOf(p, e[1]))}><i></i>${esc(e[1])}</span>`).join('') + asts.map((e: string[]) => `<span class="ch as"${gk(assistOf(p, e[1]))}><i></i>${esc(e[1])}</span>`).join('')
     if (sub && byId[sub.on]) {
       const on = byId[sub.on], oev = on.ev.filter((e: string[]) => e[0] !== 'sub')
-      chips += `<span class="ch sub"><em>⇅</em>${esc(sub.min)} ${esc(short(on.name))}${oev.map((e: string[]) => e[0] === 'goal' ? ` <span class="gb"></span>${esc(e[1])}` : e[0] === 'ast' ? ` ○${esc(e[1])}` : e[0] === 'yc' || e[0] === 'rc' ? ` <span class="cd"${e[0] === 'rc' ? ' style="background:#d92d20"' : ''}></span>` : '').join('')}</span>`
+      chips += `<span class="ch sub"><em>⇅</em>${esc(sub.min)} ${esc(short(on.name))}${oev.map((e: string[]) => e[0] === 'goal' ? ` <span class="sg"${gk(goalOf(on, e[1]))}><span class="gb"></span>${esc(e[1])}</span>` : e[0] === 'ast' ? ` <span class="sg"${gk(assistOf(on, e[1]))}>○${esc(e[1])}</span>` : e[0] === 'yc' || e[0] === 'rc' ? ` <span class="cd"${e[0] === 'rc' ? ' style="background:#d92d20"' : ''}></span>` : '').join('')}</span>`
     }
     return `<div class="pl" style="left:${x}%;top:${y}%;--tc:${p.team.color};--fs:${fs}px" title="${esc(p.name)} · ${esc(p.pos)}">
       <div class="face">${p.ph ? `<img src="squad/${p.id}.webp" alt="" loading="lazy">` : `<span class="ini">${esc(ini(p.name))}</span>`}<b class="num">${esc(p.n)}</b>${cards.length ? `<i class="cd${cards.some((c: string[]) => c[0] === 'rc') ? ' r' : ''}"></i>` : ''}</div>
@@ -104,7 +118,7 @@ function card(M: Dict) {
   for (const s of M.shots) pr[s.s][bin(s.min + (s.ex ? .5 : 0))] += s.k === 'goal' ? 3 : s.k === 'on' ? 2 : 1
   for (const [s, m] of M.corners) pr[s][bin(m)] += .5
   const pmax = Math.max(4, ...pr.h, ...pr.a)
-  const goalsT = M.goals.map((g: Dict) => ({ s: g.s, m: minOf(g.min), who: short(g.by) + (g.kind === 'og' ? ' (og)' : ''), lab: g.min })).sort((a: Dict, b: Dict) => a.m - b.m)
+  const goalsT = M.goals.map((g: Dict, i: number) => ({ i, s: g.s, m: minOf(g.min), who: short(g.by) + (g.kind === 'og' ? ' (og)' : ''), lab: g.min })).sort((a: Dict, b: Dict) => a.m - b.m)
   const X = (m: number) => Math.min(100, m / 95 * 100)
   let hS = 0, aS = 0, last = 0; const segs: number[][] = []
   for (const g of goalsT) { segs.push([last, g.m, hS - aS]); g.s === 'h' ? hS++ : aS++; last = g.m }
@@ -117,7 +131,7 @@ function card(M: Dict) {
     <line x1="${X(45)}" x2="${X(45)}" y1="2" y2="98" stroke="#b9bec5" stroke-width=".25" stroke-dasharray="1 1" vector-effect="non-scaling-stroke"/></svg>`
   const glev: Dict = {}
   const flowGoals = goalsT.map((g: Dict) => { let lv = 0; while ((glev[g.s + lv] ?? -99) > X(g.m) - 6) lv++; glev[g.s + lv] = X(g.m)
-    return `<div class="gl" style="left:${X(g.m)}%;${g.s === 'h' ? `top:${-16 - lv * 22}px` : `bottom:${-44 - lv * 22}px`}">${esc(g.who)}<small>${esc(g.lab)}</small></div>` }).join('')
+    return `<div class="gl"${gk(g.i)} style="left:${X(g.m)}%;${g.s === 'h' ? `top:${-16 - lv * 22}px` : `bottom:${-44 - lv * 22}px`}">${esc(g.who)}<small>${esc(g.lab)}</small></div>` }).join('')
   const ticks = [0, 15, 30, 45, 60, 75, 90].map(v => `<span class="tk" style="left:${X(v)}%">${v}'</span>`).join('')
 
   // every attempt in the zone it came from: home shoots at the top goal (its left = the screen's left), away at the bottom
@@ -125,7 +139,7 @@ function card(M: Dict) {
   const dot = (s: Dict, k: number) => {
     const z = Z[s.z] || Z['box-c'], dd = z[0] + (z[1] - z[0]) * rnd(k + 1), y0 = z[2] + (z[3] - z[2]) * rnd(k + 7)
     const home = s.s === 'h', x = home ? y0 : 68 - y0, y = home ? dd : 105 - dd, c = home ? H.color : A.color
-    if (s.k === 'goal') return `<circle cx="${x}" cy="${y}" r="1" fill="${c}" stroke="#fff" stroke-width=".35"/><circle cx="${x}" cy="${y}" r="1.55" fill="none" stroke="${c}" stroke-width=".3"/><text x="${x + 2.1}" y="${y + .55}" font-size="1.5" font-weight="800" fill="#15181d" paint-order="stroke" stroke="#e8ede8" stroke-width=".5">${esc(short(s.who))}</text>`
+    if (s.k === 'goal') return `<g${gk(shotGoal[k])}><circle cx="${x}" cy="${y}" r="1" fill="${c}" stroke="#fff" stroke-width=".35"/><circle cx="${x}" cy="${y}" r="1.55" fill="none" stroke="${c}" stroke-width=".3"/><text x="${x + 2.1}" y="${y + .55}" font-size="1.5" font-weight="800" fill="#15181d" paint-order="stroke" stroke="#e8ede8" stroke-width=".5">${esc(short(s.who))}</text></g>`
     if (s.k === 'on') return `<circle cx="${x}" cy="${y}" r=".7" fill="${c}" stroke="#fff" stroke-width=".25"/>`
     if (s.k === 'blk') return `<g stroke="${c}" stroke-width=".4" opacity=".75"><line x1="${x - .5}" y1="${y - .5}" x2="${x + .5}" y2="${y + .5}"/><line x1="${x - .5}" y1="${y + .5}" x2="${x + .5}" y2="${y - .5}"/></g>`
     return `<circle cx="${x}" cy="${y}" r=".65" fill="none" stroke="${c}" stroke-width=".3" opacity=".9"/>`
@@ -140,10 +154,10 @@ function card(M: Dict) {
   // ---- right: on goal (shooter's view; misses outside the frame) · scorers · the numbers ----
   const PL: Record<string, number[]> = { bl: [.17, .74], br: [.83, .74], tl: [.17, .27], tr: [.83, .27], c: [.5, .52], tc: [.5, .25], bc: [.5, .76], xl: [-.14, .62], xr: [1.14, .62], xh: [.5, -.32], xhl: [.08, -.32], xhr: [.92, -.32], pl: [0, .5], pr: [1, .5], bar: [.5, 0], ntl: [-.07, -.16], ntr: [1.07, -.16] }
   const frame = (s: string) => {
-    const t = s === 'h' ? H : A, c = t.color, list = M.shots.filter((x: Dict) => x.s === s && x.p && PL[x.p])
+    const t = s === 'h' ? H : A, c = t.color, list = M.shots.map((x: Dict, i: number) => ({ ...x, i })).filter((x: Dict) => x.s === s && x.p && PL[x.p])
     const W = 100, Hh = 33, ox = 20, oy = 16
     const pts = list.map((x: Dict, k: number) => { const [px, py] = PL[x.p], cx = ox + px * W + (rnd(k + 3) - .5) * 9, cy = oy + py * Hh + (rnd(k + 9) - .5) * 6
-      return x.k === 'goal' ? `<circle cx="${cx}" cy="${cy}" r="4.2" fill="${c}" stroke="#fff" stroke-width="1.4"/>` : x.k === 'on' ? `<circle cx="${cx}" cy="${cy}" r="3.1" fill="#fff" stroke="${c}" stroke-width="1.6"/>` : `<circle cx="${cx}" cy="${cy}" r="2.6" fill="none" stroke="${c}" stroke-width="1" opacity=".55"/>` }).join('')
+      return x.k === 'goal' ? `<g${gk(shotGoal[x.i])}><circle cx="${cx}" cy="${cy}" r="4.2" fill="${c}" stroke="#fff" stroke-width="1.4"/></g>` : x.k === 'on' ? `<circle cx="${cx}" cy="${cy}" r="3.1" fill="#fff" stroke="${c}" stroke-width="1.6"/>` : `<circle cx="${cx}" cy="${cy}" r="2.6" fill="none" stroke="${c}" stroke-width="1" opacity=".55"/>` }).join('')
     return `<div class="gm1"><svg viewBox="0 0 140 51"><defs><pattern id="net${M.id}${s}" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M5 0H0V5" fill="none" stroke="#dfe3e6" stroke-width=".5"/></pattern></defs>
       <rect x="${ox}" y="${oy}" width="${W}" height="${Hh}" fill="url(#net${M.id}${s})"/><path d="M${ox} ${oy + Hh}V${oy}H${ox + W}V${oy + Hh}" fill="none" stroke="#15181d" stroke-width="2.2" stroke-linejoin="round"/>
       <line x1="4" x2="136" y1="${oy + Hh}" y2="${oy + Hh}" stroke="#c9ced4" stroke-width=".8"/>${pts}</svg>
@@ -151,10 +165,11 @@ function card(M: Dict) {
   }
   const scorers = (s: string) => {
     const t = s === 'h' ? H : A, by: Dict = {}
-    for (const g of M.goals.filter((x: Dict) => x.s === s)) (by[g.byId || g.by] ||= { g, mins: [] as string[], pens: 0 }).mins.push(g.min), g.kind === 'pen' && by[g.byId || g.by].pens++
+    M.goals.forEach((g: Dict, i: number) => { if (g.s !== s) return
+      const r = (by[g.byId || g.by] ||= { g, mins: [] as string[], is: [] as number[], pens: 0 }); r.mins.push(g.min); r.is.push(i); if (g.kind === 'pen') r.pens++ })
     const rows = Object.values(by).sort((a: Dict, b: Dict) => minOf(a.mins[0]) - minOf(b.mins[0])).map((r: Dict) => {
       const p = byId[r.g.byId], og = r.g.kind === 'og'
-      return `<span class="s" style="--tc:${og ? '#8a9099' : t.color}" data-h="p${r.g.byId}" data-k="p${r.g.byId}"><span class="ph">${p?.ph ? `<img src="squad/${p.id}.webp" alt="" loading="lazy">` : og ? 'OG' : esc(ini(r.g.by))}</span>${esc(short(r.g.by))} <small>${r.mins.map(esc).join(' · ')}${r.pens ? ' (pen)' : ''}${og ? ' (og)' : ''}</small></span>`
+      return `<span class="s" style="--tc:${og ? '#8a9099' : t.color}" data-h="p${r.g.byId}" data-k="p${r.g.byId} ${r.is.map((i: number) => 'g' + i).join(' ')}"><span class="ph">${p?.ph ? `<img src="squad/${p.id}.webp" alt="" loading="lazy">` : og ? 'OG' : esc(ini(r.g.by))}</span>${esc(short(r.g.by))} <small>${r.mins.map(esc).join(' · ')}${r.pens ? ' (pen)' : ''}${og ? ' (og)' : ''}</small></span>`
     })
     return `<div class="scs">${rows.join('') || '<span class="none">no goals</span>'}</div>`
   }
