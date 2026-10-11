@@ -27,6 +27,11 @@ const [{ MATCHES }, { TEAMS }] = await Promise.all([
   import(`../data/schedule-${LG}-${SEASON}.js`),
 ]) as Dict[]
 const P: Dict[] = MATCHES
+// ?m=<fixture id> (a game box on the scorer / team / keeper cards): open on that match, then drop it from the URL
+if (QS.has('m')) {
+  const at = P.findIndex(x => String(x.id) === QS.get('m')), q = new URLSearchParams(location.search); q.delete('m')
+  history.replaceState(null, '', location.pathname + '?' + q.toString() + (at >= 0 ? '#' + (at + 1) : location.hash))
+}
 
 // ---------- helpers ----------
 const RES = (d: number) => d >= 2 ? '#177a41' : d === 1 ? '#3a9e62' : d === 0 ? '#EAB308' : d === -1 ? '#dc5c5e' : '#b3323a'

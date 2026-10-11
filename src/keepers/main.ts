@@ -3,7 +3,7 @@
 // Data: src/data/keepers-TOP5-<season>.js (scripts/update-keepers.mjs, from the match cards); club colours / fixtures
 // from the schedules.
 import '../film/film.css'
-import { initFilm, initHighlight } from '../film/chrome'
+import { initFilm, initHighlight, initLinks } from '../film/chrome'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -54,16 +54,17 @@ function bigGoal(k: Dict, c: string) {
 }
 
 // ---------- the season in two rows: one box per fixture of his club — result colour, his saves, goals against above ----------
+const matchHref = (lg: string, md: number, id: string) => SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
 function strip(k: Dict, club: Dict) {
   const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w), byId: Dict = Object.fromEntries(k.games.map((g: Dict) => [g.id, g])), half = Math.ceil(all.length / 2)
   const maxMarks = Math.max(1, ...k.games.map((g: Dict) => g.conc))
   const cell = (g: Dict) => { const m = byId[g.id], at = g.ha === 'A' ? '@' : ''
     const miss = !m && (k.missed || []).find((x: any[]) => x[0] === g.id)
     if (miss) { const [bg] = RES6[res6(miss[1], miss[2])]
-      return `<div class="c2 dnp" title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} ${miss[1]}-${miss[2]} · he didn't start"><div class="mk"></div><div class="bx" style="background:${bg};color:#15181d"><span class="vl" style="height:100%"></span><b>–</b></div><div class="op">${at}${esc(g.opp)}</div></div>` }
+      return `<div class="c2 dnp"${matchHref(k.lg, g.w, g.id)} title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} ${miss[1]}-${miss[2]} · he didn't start"><div class="mk"></div><div class="bx" style="background:${bg};color:#15181d"><span class="vl" style="height:100%"></span><b>–</b></div><div class="op">${at}${esc(g.opp)}</div></div>` }
     if (!m) return `<div class="c2 up"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
-    return `<div class="c2" data-mid="${m.id}" title="MD${m.md} · ${m.ha === 'H' ? 'vs' : 'at'} ${esc(m.opp)} ${m.gf}-${m.ga} · ${m.sv} saves · ${m.conc} conceded${m.min < 90 ? ` · ${m.min}'` : ''}">
+    return `<div class="c2" data-mid="${m.id}"${matchHref(k.lg, g.w, m.id)} title="MD${m.md} · ${m.ha === 'H' ? 'vs' : 'at'} ${esc(m.opp)} ${m.gf}-${m.ga} · ${m.sv} saves · ${m.conc} conceded${m.min < 90 ? ` · ${m.min}'` : ''}">
       <div class="mk">${Array.from({ length: m.conc }, () => '<i class="ga"></i>').join('')}</div>
       <div class="bx" style="background:${bg};color:${fg}"><b>${m.sv}</b></div><div class="op">${at}${esc(m.opp)}</div></div>` }
   const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:${maxMarks}">${gs.map(cell).join('')}</div></div>`
@@ -142,5 +143,6 @@ function jumpHTML(q: string) {
 }
 
 // hover / tap a game: its goals against light up in the club colour
+initLinks(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
 initFilm({ count: P.length, key: 'top5.keepers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON) + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'keepers.html' })

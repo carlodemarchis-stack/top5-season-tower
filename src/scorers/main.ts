@@ -1,7 +1,7 @@
 // Top-scorers card film: one full-screen card per player (top 50 by goals across the top 5 leagues, ties included).
 // Data: src/data/scorers-TOP5-<season>.js (built + verified by scripts/update-scorers.mjs); club colours/names from the schedules.
 import '../film/film.css'
-import { initFilm, initHighlight, initTip } from '../film/chrome'
+import { initFilm, initHighlight, initTip, initLinks } from '../film/chrome'
 type Dict = Record<string, any>
 // ?season=2025-26 loads a past season (data from `update-scorers.mjs --season`)
 const QS = new URLSearchParams(location.search)
@@ -79,6 +79,7 @@ function card(p: Dict) {
 
 // ---------- the season in two rows — matchdays 1–19 over 20–38, unplayed fixtures included — plus the goals on a 0–90' line ----------
 const kindName = (k: string) => k === 'pen' ? 'penalty' : k === 'head' ? 'header' : k === 'fk' ? 'free kick' : 'goal'
+const matchHref = (lg: string, md: number, id: string) => SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
 function strip2(p: Dict, club: Dict) {
   const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w)
   const byId: Record<string, Dict> = Object.fromEntries(p.matches.map((m: Dict) => [m.id, m]))
@@ -94,7 +95,7 @@ function strip2(p: Dict, club: Dict) {
     // at the bottom for a sub (he played the end), so the darker part sits where his minutes were
     const veil = m.role ? Math.round((1 - Math.min(m.min, 90) / 90) * 100) : 100
     const ink = !m.role || m.min < 45 ? '#15181d' : fg
-    return `<div class="c2${m.role ? (m.role === 'B' ? ' sub' : '') : ' dnp'}" data-mid="${g.id}" data-gid="${g.id}">
+    return `<div class="c2${m.role ? (m.role === 'B' ? ' sub' : '') : ' dnp'}" data-mid="${g.id}" data-gid="${g.id}"${matchHref(p.lg, g.w, g.id)}>
       <div class="mk">${marks}</div>
       <div class="bx" style="background:${bg};color:${ink}"><span class="vl" style="height:${veil}%"></span><b>${m.gf}-${m.ga}</b></div>
       <div class="op">${at}${esc(g.opp)}</div></div>`
@@ -177,6 +178,7 @@ function jumpHTML(q: string) {
 }
 
 // hover / tap a match → its goals light up in the minute line and the goal list (and the other way round); the rest dims
+initLinks(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
 
 // ---------- match card on hover / tap of a season box: the game, and his part in it ----------

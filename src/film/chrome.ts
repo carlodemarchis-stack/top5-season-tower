@@ -140,3 +140,16 @@ export function initTip(film: HTMLElement, sel: string, render: (el: HTMLElement
   film.addEventListener('click', e => { const el = (e.target as HTMLElement).closest<HTMLElement>(sel); if (el) show(el); else hide() })
   film.addEventListener('scroll', hide, { passive: true })
 }
+
+// a box carrying data-href opens that page (the match card of a game): one click with a mouse (⌘/ctrl-click: a new tab);
+// on a touch screen the first tap shows the box's hover card, a second tap on the same box opens it
+export function initLinks(film: HTMLElement) {
+  const touch = matchMedia('(hover: none)').matches
+  let armed: Element | null = null
+  film.addEventListener('click', (e) => {
+    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-href]')
+    if (!el) { armed = null; return }
+    if (touch && armed !== el) { armed = el; return }
+    if (e.metaKey || e.ctrlKey) window.open(el.dataset.href, '_blank'); else location.href = el.dataset.href!
+  })
+}

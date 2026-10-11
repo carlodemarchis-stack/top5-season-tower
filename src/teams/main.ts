@@ -2,7 +2,7 @@
 // or all five leagues in one film ranked by points per game (?lg=ALL), so leagues of 18 and 20 clubs compare fairly.
 // Data: src/data/teams-<LG>-<season>.js (built + verified by scripts/update-teams.mjs); club colours/names from the schedule.
 import '../film/film.css'
-import { initFilm, initHighlight, initTip } from '../film/chrome'
+import { initFilm, initHighlight, initTip, initLinks } from '../film/chrome'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -96,6 +96,7 @@ function card(t: Dict) {
 }
 
 // ---------- the season in two rows; the darker part of each box = the club's possession ----------
+const matchHref = (lg: string, md: number, id: string) => SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
 function strip(t: Dict, club: Dict) {
   const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w)
   const byId: Record<string, Dict> = Object.fromEntries(t.matches.map((m: Dict) => [m.id, m]))
@@ -106,7 +107,7 @@ function strip(t: Dict, club: Dict) {
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
     const veil = Math.round(100 - Math.max(0, Math.min(100, m.poss)))
     const keys = [`m${m.id}`, ...m.for.filter((x: Dict) => x.kind !== 'og').map((x: Dict) => `p${slug(x.by)}`)].join(' ')
-    return `<div class="c2 tm" data-h="m${m.id}" data-k="${keys}" data-gid="${g.id}">
+    return `<div class="c2 tm" data-h="m${m.id}" data-k="${keys}" data-gid="${g.id}"${matchHref(t.lg, g.w, g.id)}>
       <div class="bx" style="background:${bg};color:${veil > 55 ? '#15181d' : fg}"><span class="vl" style="height:${veil}%"></span><b>${m.gf}-${m.ga}</b></div>
       <div class="op">${at}${esc(g.opp)}</div></div>`
   }
@@ -411,5 +412,6 @@ function matchTip(t: Dict, gid: string, after?: string) {
     <div class="mt-poss"><span>possession</span><div class="mt-bar"><i style="width:${m.poss}%"></i></div><b>${Math.round(m.poss)}%</b></div>
     <div class="mt-stats"><span><b>${m.sh}</b> shots</span><span><b>${m.sot}</b> on target</span><span><b>${m.pass}%</b> passing</span><span><b>${m.cor}</b> corners</span>${m.yc || m.rc ? `<span><b>${m.yc}</b><i class="yc"></i>${m.rc ? ` <b>${m.rc}</b><i class="rc"></i>` : ''}</span>` : ''}</div>`
 }
+initLinks(film)
 initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!, el.dataset.after))
 initFilm({ count: P.length + (ALL ? 2 : 0), key: KEY, onPaint, jumpHTML, self: 'teams.html' })
