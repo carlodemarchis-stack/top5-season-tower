@@ -106,7 +106,9 @@ const SQUAD = {
     const tid = (await plTeams)[code]; if (!tid) return []
     const sq = await get(`${A}/v1/competitions/8/seasons/${CUR_YEAR}/teams/${tid}/squad`) || []
     return sq.filter(p => !p.currentTeam?.loan).map(p => ({ num: String(p.shirtNum ?? ''), names: [p.name?.display, `${p.name?.first} ${p.name?.last}`],
-      src: `https://resources.premierleague.com/premierleague25/photos/players/500x500/${p.id.playerId}.png` }))
+      src: `https://resources.premierleague.com/premierleague25/photos/players/500x500/${p.id.playerId}.png`,
+      // a new signing's portrait comes late (Emiliano Martínez at Chelsea): the PL's older cutout, in his previous kit
+      alt: `https://resources.premierleague.com/premierleague/photos/players/250x250/p${p.id.playerId}.png` }))
   },
   async ESP(code) {
     const slug = LALIGA_SLUG[code]; if (!slug) return []
@@ -191,6 +193,12 @@ export function makeCodeFor(league, SEASON, errors) {
 }
 
 // official cutout → trimmed webp, ≤720px tall by default (squad thumbnails pass a smaller height)
+/** a squad hit's portrait: its source, else its alternate (when the league has one) → [buffer, the url that answered] */
+export async function getPhoto(hit) {
+  for (const u of [hit.src, hit.alt].filter(Boolean)) { const buf = await get(u, { json: false }); if (buf) return [buf, u] }
+  return [null, hit.src]
+}
+
 export async function savePhoto(buf, file, height = 720, quality = 82) {
   const sharp = (await import('sharp')).default
   await sharp(buf).trim().resize({ height, withoutEnlargement: true }).webp({ quality, alphaQuality: quality === 82 ? 90 : 80 }).toFile(file)

@@ -13,7 +13,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { LEAGUES, CUR, get, pool, espn, loadLeague, squad, matchPlayer, makeCodeFor, savePhoto, minutesOf, standIns, PHOTOS, DATA, ROOT } from './lib/football.mjs'
+import { LEAGUES, CUR, get, pool, espn, loadLeague, squad, matchPlayer, makeCodeFor, savePhoto, getPhoto, minutesOf, standIns, PHOTOS, DATA, ROOT } from './lib/football.mjs'
 
 const args = process.argv.slice(2)
 const has = (f) => args.includes(f)
@@ -125,10 +125,10 @@ await pool(teams, 3, async (t) => {
     if (!hit?.src) { noThumb++; return }
     const file = path.join(SQUAD_DIR, `${p.espnId}.webp`)
     p.thumb = `squad/${p.espnId}.webp`; p._src = hit.src; thumbs++
-    if (DRY || (squadCache[p.espnId] === hit.src && fs.existsSync(file))) return
-    const buf = await get(hit.src, { json: false })
+    if (DRY || ([hit.src, hit.alt].includes(squadCache[p.espnId]) && fs.existsSync(file))) { p._src = squadCache[p.espnId] || hit.src; return }
+    const [buf, url] = await getPhoto(hit)
     if (!buf) { delete p.thumb; delete p._src; thumbs--; noThumb++; return }
-    await savePhoto(buf, file, 200, 72); squadCache[p.espnId] = hit.src
+    await savePhoto(buf, file, 200, 72); squadCache[p.espnId] = p._src = url
   })
 })
 // drop the league's stand-in silhouettes (one picture shared by several players) — squad thumbs and scorer photos

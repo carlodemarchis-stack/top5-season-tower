@@ -22,7 +22,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { LEAGUES, CUR, get, pool, minutesOf, standIns, espn, loadLeague, squad, matchPlayer, makeCodeFor, savePhoto, PHOTOS, DATA } from './lib/football.mjs'
+import { LEAGUES, CUR, get, pool, minutesOf, standIns, espn, loadLeague, squad, matchPlayer, makeCodeFor, savePhoto, getPhoto, PHOTOS, DATA } from './lib/football.mjs'
 
 const __dir = path.dirname(fileURLToPath(import.meta.url))
 const PHOTO_CACHE = path.join(__dir, 'scorers-photo-cache.json')
@@ -201,11 +201,11 @@ if (!NO_PHOTOS) {
     if (!hit?.src) { warns.push(`photo: no official photo for ${p.name} (${p.lg} ${p.team}) → initials`); p.photo = null; return }
     const file = path.join(PHOTOS, `${p.espnId}.webp`)
     p.photo = `players/${p.espnId}.webp`; p._match = `${hit.names.find(Boolean)} #${hit.num}`
-    if (DRY || (photoCache[p.espnId] === hit.src && fs.existsSync(file))) return
-    const buf = await get(hit.src, { json: false })
+    if (DRY || ([hit.src, hit.alt].includes(photoCache[p.espnId]) && fs.existsSync(file))) return
+    const [buf, url] = await getPhoto(hit)
     if (!buf) { warns.push(`photo: ${hit.src} unreachable for ${p.name} → initials`); p.photo = null; return }
     await savePhoto(buf, file)
-    photoCache[p.espnId] = hit.src
+    photoCache[p.espnId] = url
   })
 }
 
