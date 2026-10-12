@@ -135,9 +135,13 @@ function card(M: Dict) {
     ${segs.map(([a, b, v]) => `<rect x="${X(a)}" width="${X(b) - X(a)}" y="47.5" height="5" fill="${lead(v)}"/>`).join('')}
     <line x1="${X(45)}" x2="${X(45)}" y1="2" y2="98" stroke="#b9bec5" stroke-width=".25" stroke-dasharray="1 1" vector-effect="non-scaling-stroke"/></svg>`
   const glev: Dict = {}
+  // each goal: a ball on the line at its minute + its name just past the bars of its slot (home above, away below)
+  const barH = (s: string, m: number) => { const i = bin(m); return 40 * Math.max(...[i - 1, i, i + 1].filter(k => k >= 0 && k < NB).map(k => pr[s][k])) / pmax }
   const flowGoals = goalsT.map((g: Dict) => { let lv = 0; while ((glev[g.s + lv] ?? -99) > X(g.m) - 6) lv++; glev[g.s + lv] = X(g.m)
-    return `<div class="gl"${gk(g.i)} style="left:${X(g.m)}%;${g.s === 'h' ? `top:${-16 - lv * 22}px` : `bottom:${-44 - lv * 22}px`}">${esc(g.who)}<small>${esc(g.lab)}</small></div>` }).join('')
-  const ticks = [0, 15, 30, 45, 60, 75, 90].map(v => `<span class="tk" style="left:${X(v)}%">${v}'</span>`).join('')
+    const c = g.s === 'h' ? H.color : A.color, at = `calc(${54 + barH(g.s, g.m)}% + ${3 + lv * 24}px)`
+    return `<i class="gm"${gk(g.i)} style="left:${X(g.m)}%;--gc:${c}"></i><div class="gl"${gk(g.i)} style="left:${X(g.m)}%;${g.s === 'h' ? 'bottom' : 'top'}:${at};--lc:${ink(c)}">${esc(g.who)}<small>${esc(g.lab)}</small></div>` }).join('')
+  // a minute tick under an away goal's label steps aside (the label carries its own minute)
+  const ticks = [0, 15, 30, 45, 60, 75, 90].filter(v => !goalsT.some((g: Dict) => g.s === 'a' && Math.abs(X(g.m) - X(v)) < 7)).map(v => `<span class="tk" style="left:${X(v)}%">${v}'</span>`).join('')
 
   // every attempt in the zone it came from: home shoots at the top goal (its left = the screen's left), away at the bottom
   const Z: Record<string, number[]> = { six: [1, 5, 27, 41], 'box-c': [6, 15, 24, 44], 'box-l': [6, 16, 14, 23], 'box-r': [6, 16, 45, 54], 'angle-l': [1, 5, 14, 21], 'angle-r': [1, 5, 47, 54], out: [17, 27, 18, 50], long: [29, 38, 20, 48], pen: [11, 11, 34, 34] }
@@ -203,8 +207,8 @@ function card(M: Dict) {
       ${half(H, true)}${half(A, false)}
     </div>
     <div class="mid">${shotSvg}
-      <div class="dir t" style="color:${ink(H.color)}">↑ ${esc(H.name)} shots<span>${cnt('h')} · ${cnt('h', 'on') + cnt('h', 'goal')} on target</span></div>
-      <div class="dir b" style="color:${ink(A.color)}">↓ ${esc(A.name)} shots<span>${cnt('a')} · ${cnt('a', 'on') + cnt('a', 'goal')} on target</span></div>
+      <div class="dir t" style="color:${ink(H.color)}">↑ Shots<span>${cnt('h')} · ${cnt('h', 'on') + cnt('h', 'goal')} on target</span></div>
+      <div class="dir b" style="color:${ink(A.color)}">↓ Shots<span>${cnt('a')} · ${cnt('a', 'on') + cnt('a', 'goal')} on target</span></div>
       <div class="flk"><i class="ln" style="background:linear-gradient(90deg,${H.color} 0 40%,#c9ced4 40% 60%,${A.color} 60%)"></i>line: who was leading<i class="br"><b style="background:${H.color}"></b><b style="background:${A.color}"></b></i>bars: attacking push, every 5′</div>
       <div class="flow"><span class="lbl">THE FLOW</span>${flowSvg}${flowGoals}${ticks}</div>
     </div>
