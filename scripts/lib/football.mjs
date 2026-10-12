@@ -2,6 +2,7 @@
 // player photos from the five league sites (+ name/shirt matching and the webp resize).
 import fs from 'node:fs'
 import path from 'node:path'
+import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 
 const __dir = path.dirname(fileURLToPath(import.meta.url))
@@ -112,11 +113,12 @@ const SQUAD = {
   },
   async ESP(code) {
     const slug = LALIGA_SLUG[code]; if (!slug) return []
-    const d = await get(`https://apim.laliga.com/public-service/api/v1/teams/${slug}/squad-manager?limit=80&offset=0&orderField=id&orderType=DESC&seasonYear=${CUR_YEAR}&contentLanguage=en&subscription-key=${LALIGA_KEY}`)
-    return (d?.squads || []).filter(p => p.role?.slug === 'jugador' && p.current && !p.loan_to).map(p => {
-      const v = p.photos?.['001'] || {}; const key = Object.keys(v).find(s => s.startsWith('1024x'))
-      return { num: String(p.shirt_number ?? ''), names: [p.person?.name, p.person?.nickname, `${p.person?.firstname} ${p.person?.lastname}`], src: key ? v[key] : null }
-    })
+    const d = await laligaSquad(slug, CUR_YEAR), last = await laligaLastSeason()
+    return (d?.squads || []).filter(p => p.role?.slug === 'jugador' && p.current && !p.loan_to).map(p => ({
+      num: String(p.shirt_number ?? ''), names: [p.person?.name, p.person?.nickname, `${p.person?.firstname} ${p.person?.lastname}`], src: laligaPhoto(p),
+      // a new signing's 2026 file is the club's stand-in silhouette until the shoot (Rodri at Barcelona): then his
+      // LaLiga portrait from last season (Gudelj at Sevilla), else the Premier League's older cutout (same Opta id)
+      alts: [last[p.opta_id], p.opta_id && `https://resources.premierleague.com/premierleague/photos/players/250x250/${p.opta_id}.png`].filter(Boolean) }))
   },
   async FRA(code) {
     const M = 'https://ma-api.ligue1.fr'
@@ -194,8 +196,43 @@ export function makeCodeFor(league, SEASON, errors) {
 
 // official cutout → trimmed webp, ≤720px tall by default (squad thumbnails pass a smaller height)
 /** a squad hit's portrait: its source, else its alternate (when the league has one) → [buffer, the url that answered] */
+// LaLiga: one season's squad of a club · a player's half-body portrait · last season's portraits by Opta id
+const laligaSquad = (slug, year) => get(`https://apim.laliga.com/public-service/api/v1/teams/${slug}/squad-manager?limit=80&offset=0&orderField=id&orderType=DESC&seasonYear=${year}&contentLanguage=en&subscription-key=${LALIGA_KEY}`)
+const laligaPhoto = (p) => { const v = p.photos?.['001'] || {}, key = Object.keys(v).find(s => s.startsWith('1024x')); return key ? v[key] : null }
+let llLast
+const laligaLastSeason = () => llLast ??= (async () => {
+  const m = {}
+  for (const slug of Object.values(LALIGA_SLUG)) for (const p of (await laligaSquad(slug, CUR_YEAR - 1))?.squads || []) { const u = laligaPhoto(p); if (u && p.opta_id && !u.includes('/default/')) m[p.opta_id] ??= u }
+  return m
+})()
+
+/** every source a squad hit may use, in order: its own, then its alternates */
+export const photoUrls = (hit) => [hit.src, ...(hit.alts || []), hit.alt].filter(Boolean)
+
+// a LaLiga file that is byte-for-byte its club's stand-in silhouette (…/default/…) is no portrait
+const md5 = (b) => crypto.createHash('md5').update(b).digest('hex'), standInHash = {}
+async function isLaligaStandIn(u, buf) {
+  const d = u.includes('assets.laliga.com/squad/') && u.replace(/\/p\d+\/(\d+x\d+)\/p\d+_/, '/default/$1/default_')
+  if (!d) return false
+  if (d === u) return true
+  standInHash[d] ??= get(d, { json: false }).then(b => b ? md5(b) : null)
+  return md5(buf) === await standInHash[d]
+}
+
+// any league's stand-in: a figure whose head is flat black (LaLiga's keeper silhouettes are one per club, so they never
+// repeat and never match the outfield default). Real faces score at most ~.45 even with dark hair and skin; silhouettes ~.8–1
+export async function isSilhouette(buf) {
+  const sharp = (await import('sharp')).default
+  const { data, info } = await sharp(buf).trim().ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  const { width: w, height: h } = info; let op = 0, blk = 0
+  for (let y = Math.floor(h * .03); y < h * .22; y++) for (let x = Math.floor(w * .38); x < w * .62; x++) {
+    const i = (y * w + x) * 4; if (data[i + 3] < 200) continue; op++; if (Math.max(data[i], data[i + 1], data[i + 2]) < 14) blk++ }
+  return op > 0 && blk / op > .7
+}
+
+/** a squad hit's portrait: its source, else its alternates (stand-in silhouettes skipped) → [buffer, the url that answered] */
 export async function getPhoto(hit) {
-  for (const u of [hit.src, hit.alt].filter(Boolean)) { const buf = await get(u, { json: false }); if (buf) return [buf, u] }
+  for (const u of photoUrls(hit)) { const buf = await get(u, { json: false }); if (buf && !(await isLaligaStandIn(u, buf)) && !(await isSilhouette(buf))) return [buf, u] }
   return [null, hit.src]
 }
 

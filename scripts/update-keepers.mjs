@@ -16,7 +16,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { LEAGUES, pool, squad, matchPlayer, savePhoto, getPhoto, standIns, loadLeague, PHOTOS, DATA } from './lib/football.mjs'
+import { LEAGUES, pool, squad, matchPlayer, savePhoto, getPhoto, photoUrls, standIns, loadLeague, PHOTOS, DATA } from './lib/football.mjs'
 
 const args = process.argv.slice(2), has = (f) => args.includes(f)
 const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] ? args[i + 1] : d }
@@ -89,7 +89,7 @@ if (!NO_PHOTOS) {
     const hit = matchPlayer(await squad(k.lg, k.team), { name: k.name, jersey: k.n })
     if (!hit?.src) { warns.push(`photo: no official photo for ${k.name} (${k.lg} ${k.team}) → initials`); k.photo = null; return }
     const file = path.join(PHOTOS, `${k.id}.webp`); k.photo = `players/${k.id}.webp`
-    if (DRY || ([hit.src, hit.alt].includes(photoCache[k.id]) && fs.existsSync(file))) return
+    if (DRY || (photoUrls(hit).includes(photoCache[k.id]) && fs.existsSync(file))) return
     const [buf, url] = await getPhoto(hit)
     if (!buf) { warns.push(`photo: ${hit.src} unreachable for ${k.name} → initials`); k.photo = null; return }
     await savePhoto(buf, file); photoCache[k.id] = url
