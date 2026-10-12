@@ -41,6 +41,11 @@ const minOf = (c: string) => { const m = String(c).match(/(\d+)'(?:\+(\d+))?/) |
 const ini = (n: string) => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('')
 const short = (n: string) => { const w = n.split(/\s+/); return w[w.length - 1] || n }
 const rgb = (h: string) => { const n = parseInt(h.replace('#', ''), 16); return [n >> 16, (n >> 8) & 255, n & 255] }
+const dist = (a: string, b: string) => Math.hypot(...rgb(a).map((v, k) => v - rgb(b)[k]))
+const mix = (c: string, to: number, f: number) => '#' + rgb(c).map(v => Math.round(v + (to - v) * f).toString(16).padStart(2, '0')).join('')
+// two clubs in the same colour: the away side wears a lighter shade of its own colour (a darker one when that is still
+// too close), light grey only as a last resort — never a dark grey that reads as "nobody"
+const awayColor = (h: string, a: string) => dist(h, a) >= 120 ? a : [mix(a, 255, .5), mix(a, 0, .45)].find(c => dist(h, c) >= 110) || '#a9b0b8'
 const lum = (h: string) => { const [r, g, b] = rgb(h); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 }
 const ink = (c: string) => lum(c) > .62 ? '#15181d' : c
 const rnd = (s: number) => { const x = Math.sin(s * 99.13) * 43758.5453; return x - Math.floor(x) }
@@ -74,8 +79,7 @@ function rowsOf(t: Dict): Dict[][] {
 function card(M: Dict) {
   const H = { code: M.h, name: nameOf(M.h), color: TEAMS[M.h]?.primary || '#555', ...M.home }
   const A = { code: M.a, name: nameOf(M.a), color: TEAMS[M.a]?.primary || '#555', ...M.away }
-  const close = Math.hypot(...rgb(H.color).map((v, k) => v - rgb(A.color)[k])) < 120
-  if (close) A.color = '#4a5059'   // two clubs in the same colour: the away side goes dark grey
+  A.color = awayColor(H.color, A.color)
   const byId: Dict = {}
   for (const t of [H, A]) for (const p of t.players) { p.team = t; byId[p.id] = p }
   const offBy: Dict = {}; for (const s of M.subs) if (s.off) offBy[s.off] = s
@@ -253,7 +257,7 @@ function fill(i: number) {
   el.innerHTML = card(P[i]); el.classList.remove('empty')
   fitNames(el)
   const A = TEAMS[P[i].a]?.primary || '#555', H = TEAMS[P[i].h]?.primary || '#555'
-  if (Math.hypot(...rgb(H).map((v, k) => v - rgb(A)[k])) < 120) el.style.setProperty('--ca', '#4a5059')
+  el.style.setProperty('--ca', awayColor(H, A))
 }
 
 // top bar: leagues (only those with match cards), the matchday switch
