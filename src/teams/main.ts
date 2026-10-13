@@ -289,6 +289,58 @@ function gameCard() {
     <div class="tb-hd"><h2>Game state</h2><span>the share of its minutes each club has spent <b class="k ld">leading</b> <b class="k lv">level</b> <b class="k tl">trailing</b> · 90′ a game, stoppage time not counted</span></div>
     <div class="tb-grid gs${ALL ? '' : ' nolg'}" style="--rows:${Math.ceil(rows.length / cols)};--cols:${cols}">${rows.map(row).join('')}</div></div></section>`
 }
+// comebacks & collapses: points won in games the club trailed at some point · points dropped from a winning position
+function swings(t: Dict) {
+  let won = 0, dropped = 0
+  for (const m of t.matches) {
+    if (m.gf == null) continue
+    const ev = [...(m.for || []).map((g: Dict) => [clock90(g.min), 1]), ...(m.against || []).map((g: Dict) => [clock90(g.min), -1])].sort((a, b) => a[0] - b[0])
+    let d = 0, behind = false, ahead = false
+    for (const [, s] of ev) { d += s; if (d < 0) behind = true; if (d > 0) ahead = true }
+    const pts = m.gf > m.ga ? 3 : m.gf === m.ga ? 1 : 0
+    if (behind) won += pts
+    if (ahead) dropped += 3 - pts
+  }
+  return { won, dropped }
+}
+function swingCard() {
+  const rows = P.map(t => ({ t, s: swings(t) })).sort((a, b) => (b.s.won - b.s.dropped) - (a.s.won - a.s.dropped) || b.s.won - a.s.won)
+  const max = Math.max(1, ...rows.map(r => Math.max(r.s.won, r.s.dropped)))
+  const row = ({ t, s }: Dict, i: number) => {
+    const c = TEAMS_OF[t.lg][t.code]?.primary || '#555', ink = lum(c) > 0.55 ? '#15181d' : c
+    return `<a class="gsr sw" data-i="${t.rank - 1}" title="${esc(nameOf(t))} · ${s.won} pts won from losing positions · ${s.dropped} dropped from winning positions"><span class="tr-rk">${i + 1}</span>${ALL ? `<img class="tr-lg" src="leagues/${t.lg}.png" alt="${LEAGUE_NAME[t.lg]}">` : ''}<span class="tr-nm" style="color:${ink}">${esc(SHORT[`${t.lg}:${t.code}`] || nameOf(t))}</span>
+      <span class="swb"><span class="sl"><em>${s.dropped ? '−' + s.dropped : ''}</em><i style="width:${(s.dropped / max) * 100}%"></i></span><span class="sr"><i style="width:${(s.won / max) * 100}%"></i><em>${s.won ? '+' + s.won : ''}</em></span></span></a>`
+  }
+  const cols = ALL ? 4 : 2
+  return `<section class="card tbl" id="t-swing"><div class="tb">
+    <div class="tb-hd"><h2>Comebacks &amp; collapses</h2><span><b class="k tl">dropped</b> points thrown away from a winning position · <b class="k ld">won</b> points won in games they trailed · ranked by the balance</span></div>
+    <div class="tb-grid gs${ALL ? '' : ' nolg'}" style="--rows:${Math.ceil(rows.length / cols)};--cols:${cols}">${rows.map(row).join('')}</div></div></section>`
+}
+// push vs payoff: each club's share of the attacking push in its games (the flow's weights: a shot 1, on target 2, a
+// goal 3, a corner .5 — from the match stats, the opponent's from its own record of the game) against its share of the goals
+function pushPay(t: Dict) {
+  let pf = 0, pa = 0
+  const push = (m: Dict) => m.sh + m.sot + (m.for || []).filter((g: Dict) => g.kind !== 'og').length + m.cor * .5
+  for (const m of t.matches) {
+    if (m.gf == null) continue
+    const o = OPP.get(`${m.id}:${t.code}`); if (!o) continue
+    pf += push(m); pa += push(o)
+  }
+  return { push: pf + pa ? pf / (pf + pa) : .5, goals: t.GF + t.GA ? t.GF / (t.GF + t.GA) : .5 }
+}
+const OPP = new Map<string, Dict>()   // "<match id>:<club>" → the opponent's record of that game
+for (const t of P) for (const m of t.matches) if (m.gf != null) for (const u of P) if (u !== t && u.lg === t.lg) { const o = u.matches.find((x: Dict) => x.id === m.id); if (o) { OPP.set(`${m.id}:${t.code}`, o); break } }
+function payCard() {
+  const lo = .1, hi = .9, at = (v: number) => (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo) * 100
+  const dots = P.map(t => { const p = pushPay(t)
+    return `<img class="ppc" data-i="${t.rank - 1}" src="${logo(t.code, t.lg)}" alt="" style="left:${at(p.push)}%;bottom:${at(p.goals)}%" title="${esc(nameOf(t))} · ${pc(p.push)}% of the push · ${pc(p.goals)}% of the goals (${t.GF}–${t.GA})">` }).join('')
+  const grid = [.25, .5, .75].map(v => `<span class="gx" style="left:${at(v)}%"><em>${pc(v)}%</em></span><span class="gy" style="bottom:${at(v)}%"><em>${pc(v)}%</em></span>`).join('')
+  return `<section class="card tbl" id="t-pay"><div class="tb">
+    <div class="tb-hd"><h2>Push vs payoff</h2><span>share of the attacking push in its games (shots, shots on target, goals, corners) against share of the goals · above the line: more goals than pressure</span></div>
+    <div class="pp${ALL ? '' : ' big'}"><div class="pp-plot">${grid}<i class="pp-diag"></i>
+      <b class="pp-q tl">clinical</b><b class="pp-q br">wasteful</b>${dots}</div>
+      <div class="pp-ax x">share of the push →</div><div class="pp-ax y">share of the goals →</div></div></div></section>`
+}
 function tableCard() {
   const row = (t: Dict) => {
     const c = TEAMS_OF[t.lg][t.code]?.primary || '#555', ink = lum(c) > 0.55 ? '#15181d' : c
@@ -311,9 +363,9 @@ function chartCard() {
     <div class="tb-hd"><h2>Points per game</h2><span>all ${P.length} clubs · codes coloured by their place in their own league: top four, 5th, 6th, bottom three</span></div>
     <div class="cc-wrap"><div class="cc-grid">${[3, 2, 1].map(v => `<span style="bottom:${(v / 3) * 100}%"><em>${v.toFixed(1)}</em></span>`).join('')}</div>${P.map(col).join('')}</div></div></section>`
 }
-film.innerHTML = P.map(card).join('') + (ALL ? tableCard() + chartCard() : '') + gameCard()
+film.innerHTML = P.map(card).join('') + (ALL ? tableCard() + chartCard() : '') + gameCard() + swingCard() + payCard()
 film.addEventListener('click', e => { const c = (e.target as HTMLElement).closest<HTMLElement>('.cc'); if (c) (window as any).go(+c.dataset.i!) })
-film.addEventListener('click', e => { const r = (e.target as HTMLElement).closest<HTMLElement>('.tr, .gsr'); if (r) (window as any).go(+r.dataset.i!) })
+film.addEventListener('click', e => { const r = (e.target as HTMLElement).closest<HTMLElement>('.tr, .gsr, .ppc'); if (r) (window as any).go(+r.dataset.i!) })
 const lgUrl = (lg: string) => { const q = new URLSearchParams(location.search); q.set('lg', lg); return location.pathname + '?' + q.toString() }
 $('lgs').innerHTML = `<a class="lgb all${ALL ? ' on' : ''}" href="${lgUrl('ALL')}" title="All five leagues in one film, ranked by points per game"><b>All Leagues</b></a>` + LG_ORDER.map(lg => `<a class="lgb${lg === LG ? ' on' : ''}${has(lg) ? '' : ' soon'}" data-lg="${lg}" href="${lgUrl(lg)}" title="${LEAGUE_NAME[lg]}${has(lg) ? ' team cards' : ' — coming soon'}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"></a>`).join('')
 $('cnote').innerHTML = `${ALL ? `All ${P.length} clubs of the five leagues, ranked by points per game (then fewer defeats, goal difference, goals scored), so leagues with fewer games compare fairly. It says nothing about how strong each league is` : `${P.length} clubs of ${LEAGUE_NAME[LG]}, in table order`}. Season ${SEASON.replace('-', '/')}, updated ${new Date(UPDATED).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
@@ -322,8 +374,8 @@ const KEY = 'top5.teams.card.' + LG + (SEASON === '2026-27' ? '' : '.' + SEASON)
 function onPaint(i: number) {
   const t = P[i]
   if (!t) {   // All Leagues: the table card, the column chart; then (every film) the game-state card
-    const what = (ALL ? ['the table', 'the chart', 'game state'] : ['game state'])[i - P.length]
-    $('ctx').innerHTML = ALL ? `All Leagues ${SEASON.replace('-', '/')} · ${what === 'game state' ? '' : 'by points per game · '}<b>${what}</b>` : `${LEAGUE_NAME[LG]} ${SEASON.replace('-', '/')} · <b>${what}</b>`
+    const what = [...(ALL ? ['the table', 'the chart'] : []), 'game state', 'comebacks & collapses', 'push vs payoff'][i - P.length]
+    $('ctx').innerHTML = ALL ? `All Leagues ${SEASON.replace('-', '/')} · ${what.startsWith('the') ? 'by points per game · ' : ''}<b>${what}</b>` : `${LEAGUE_NAME[LG]} ${SEASON.replace('-', '/')} · <b>${what}</b>`
     $('lgs').querySelectorAll<HTMLElement>('.lgb[data-lg]').forEach(b => b.classList.remove('cur'))
     return
   }
@@ -446,4 +498,4 @@ function matchTip(t: Dict, gid: string, after?: string) {
 }
 initLinks(film)
 initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!, el.dataset.after))
-initFilm({ count: P.length + (ALL ? 3 : 1), key: KEY, onPaint, jumpHTML, self: 'teams.html' })
+initFilm({ count: P.length + (ALL ? 5 : 3), key: KEY, onPaint, jumpHTML, self: 'teams.html' })
