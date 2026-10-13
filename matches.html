@@ -46,6 +46,7 @@
     .pitch svg.mk{position:absolute;inset:14px;width:calc(100% - 28px);height:calc(100% - 28px);z-index:1;pointer-events:none}
     /* each half: the club's name as big as fits left of the goal, formation + table move right of it, its crest as a watermark */
     .tlab{position:absolute;left:24px;right:24px;z-index:3;display:flex;justify-content:space-between;gap:104px;color:#fff;text-transform:uppercase;text-shadow:0 1px 3px rgba(0,0,0,.4);pointer-events:none}
+    .tlab[style*="--tk"]{color:var(--tk);text-shadow:0 1px 2px rgba(255,255,255,.35)}
     .tlab.t{top:18px;align-items:flex-start}.tlab.b{bottom:18px;align-items:flex-end}
     .tlab .tn{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;font-size:46px;font-weight:900;line-height:.95;letter-spacing:-.01em}
     .tlab .tx{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px;font-size:11px;font-weight:800;letter-spacing:.1em;opacity:.9;white-space:nowrap}

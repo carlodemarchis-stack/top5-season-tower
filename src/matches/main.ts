@@ -48,6 +48,11 @@ const mix = (c: string, to: number, f: number) => '#' + rgb(c).map(v => Math.rou
 const awayColor = (h: string, a: string) => dist(h, a) >= 120 ? a : [mix(a, 255, .5), mix(a, 0, .45)].find(c => dist(h, c) >= 110) || '#a9b0b8'
 const lum = (h: string) => { const [r, g, b] = rgb(h); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 }
 const ink = (c: string) => lum(c) > .62 ? '#15181d' : c
+// a light half of the pitch (Dortmund yellow, a light away shade): its name, formation and table move in a deep shade
+// of the club colour instead of white, its big score filled darker
+const light = (c: string) => lum(c) > .58
+const onLight = (c: string) => light(c) ? `" style="--tk:${mix(c, 0, .65)}` : ''
+const scoreInk = (c: string) => light(c) ? mix(c, 0, .4) : c
 const rnd = (s: number) => { const x = Math.sin(s * 99.13) * 43758.5453; return x - Math.floor(x) }
 const logo = (code: string) => `logos/${LG === 'FRA' && code === 'BRE' ? 'FRA_BRE' : code}.png`
 const SHORTN: Record<string, string> = { 'Paris Saint-Germain FC': 'Paris SG', 'Bayer 04 Leverkusen': 'Leverkusen', '1. FSV Mainz 05': 'Mainz', 'Eintracht Frankfurt': 'Frankfurt' }
@@ -206,10 +211,10 @@ function card(M: Dict) {
   return `
     <div class="pan pitch">${MARKS}
       <img class="cw t" src="${logo(H.code)}" alt=""><img class="cw b" src="${logo(A.code)}" alt="">
-      <div class="tlab t"><span class="tn">${esc(H.name)}</span><span class="tx"><b>${esc(H.form)}</b>${ord(M.table.h[0])} → ${ord(M.table.h[1])}</span></div>
-      <div class="tlab b"><span class="tn">${esc(A.name)}</span><span class="tx"><b>${esc(A.form)}</b>${ord(M.table.a[0])} → ${ord(M.table.a[1])}</span></div>
-      <div class="bigsc t" style="--sc:${H.color}"><b>${M.score.h}</b></div>
-      <div class="bigsc b" style="--sc:${A.color}"><b>${M.score.a}</b></div>
+      <div class="tlab t${onLight(H.color)}"><span class="tn">${esc(H.name)}</span><span class="tx"><b>${esc(H.form)}</b>${ord(M.table.h[0])} → ${ord(M.table.h[1])}</span></div>
+      <div class="tlab b${onLight(A.color)}"><span class="tn">${esc(A.name)}</span><span class="tx"><b>${esc(A.form)}</b>${ord(M.table.a[0])} → ${ord(M.table.a[1])}</span></div>
+      <div class="bigsc t" style="--sc:${scoreInk(H.color)}"><b>${M.score.h}</b></div>
+      <div class="bigsc b" style="--sc:${scoreInk(A.color)}"><b>${M.score.a}</b></div>
       ${half(H, true)}${half(A, false)}
     </div>
     <div class="mid">${shotSvg}
@@ -251,6 +256,7 @@ function fitNames(root: ParentNode) {
 const NAME_MAX = 46, NAME_MAX2 = 36
 let refit = 0
 addEventListener('resize', () => { cancelAnimationFrame(refit); refit = requestAnimationFrame(() => fitNames(film)) })
+document.fonts?.ready.then(() => fitNames(film))   // measured before Archivo loaded, a name would be sized for the fallback font
 
 function fill(i: number) {
   const el = cardEls[i]; if (!el || !el.classList.contains('empty')) return
@@ -270,6 +276,7 @@ $('cnote').innerHTML = `${P.length} matches of ${LEAGUE_NAME[LG]} matchday ${MD}
 const kickOf = (M: Dict) => { const w = new Date(M.kick); return M.kick ? `${w.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Rome' })} ${w.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' })}` : '' }
 function onPaint(i: number) {
   for (const k of [i - 1, i, i + 1, i + 2]) fill(k)
+  requestAnimationFrame(() => fitNames(cardEls[i]))   // a card filled off screen was measured without layout (content-visibility)
   const M = P[i]
   $('ctx').innerHTML = `${LEAGUE_NAME[LG]} · MD ${MD} · <b>${esc(nameOf(M.h))} ${M.score.h}–${M.score.a} ${esc(nameOf(M.a))}</b> · ${kickOf(M)}${M.venue ? ` · ${esc(M.venue)}` : ''}${M.att ? ` · ${M.att.toLocaleString('en-GB')}` : ''}`
   const meta = (n: string, v: string) => document.querySelector(`meta[name="agwas:${n}"]`)?.setAttribute('content', v)
