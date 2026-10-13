@@ -313,7 +313,7 @@ function swingCard() {
   }
   const cols = ALL ? 4 : 2
   return `<section class="card tbl" id="t-swing"><div class="tb">
-    <div class="tb-hd"><h2>Comebacks &amp; collapses</h2><span><b class="k tl">dropped</b> points thrown away from a winning position · <b class="k ld">won</b> points won in games they trailed · ranked by the balance</span></div>
+    <div class="tb-hd"><h2>Comebacks &amp; collapses</h2><button class="qm" title="How to read this card" onclick="openMod('swmodal')">?</button><span><b class="k tl">dropped</b> points thrown away from a winning position · <b class="k ld">won</b> points won in games they trailed · ranked by the balance</span></div>
     <div class="tb-grid gs${ALL ? '' : ' nolg'}" style="--rows:${Math.ceil(rows.length / cols)};--cols:${cols}">${rows.map(row).join('')}</div></div></section>`
 }
 // push vs payoff: each club's share of the attacking push in its games (the flow's weights: a shot 1, on target 2, a
@@ -333,10 +333,12 @@ for (const t of P) for (const m of t.matches) if (m.gf != null) for (const u of 
 function payCard() {
   const lo = .1, hi = .9, at = (v: number) => (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo) * 100
   const dots = P.map(t => { const p = pushPay(t)
-    return `<img class="ppc" data-i="${t.rank - 1}" src="${logo(t.code, t.lg)}" alt="" style="left:${at(p.push)}%;bottom:${at(p.goals)}%" title="${esc(nameOf(t))} · ${pc(p.push)}% of the push · ${pc(p.goals)}% of the goals (${t.GF}–${t.GA})">` }).join('')
+    const club = TEAMS_OF[t.lg][t.code] || {}, dot = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="19" fill="${club.primary || '#555'}"/><text x="20" y="24.5" font-family="Arial" font-size="12" font-weight="900" fill="#fff" text-anchor="middle">${esc(club.abbr || t.code)}</text></svg>`)
+    // a crest that fails to load is tried once more, then drawn as a dot in the club colour with its code
+    return `<img class="ppc" data-i="${t.rank - 1}" src="${logo(t.code, t.lg)}" alt="${esc(nameOf(t))}" onerror="if(!this.dataset.r){this.dataset.r=1;this.src=this.src+'?r=1'}else{this.onerror=null;this.src='${dot}'}" style="left:${at(p.push)}%;bottom:${at(p.goals)}%" title="${esc(nameOf(t))} · ${pc(p.push)}% of the push · ${pc(p.goals)}% of the goals (${t.GF}–${t.GA})">` }).join('')
   const grid = [.25, .5, .75].map(v => `<span class="gx" style="left:${at(v)}%"><em>${pc(v)}%</em></span><span class="gy" style="bottom:${at(v)}%"><em>${pc(v)}%</em></span>`).join('')
   return `<section class="card tbl" id="t-pay"><div class="tb">
-    <div class="tb-hd"><h2>Push vs payoff</h2><span>share of the attacking push in its games (shots, shots on target, goals, corners) against share of the goals · above the line: more goals than pressure</span></div>
+    <div class="tb-hd"><h2>Push vs payoff</h2><button class="qm" title="How to read this chart" onclick="openMod('ppmodal')">?</button><span>share of the attacking push in its games (shots, shots on target, goals, corners) against share of the goals · above the line: more goals than pressure</span></div>
     <div class="pp${ALL ? '' : ' big'}"><div class="pp-plot">${grid}<i class="pp-diag"></i>
       <b class="pp-q tl">clinical</b><b class="pp-q br">wasteful</b>${dots}</div>
       <div class="pp-ax x">share of the push →</div><div class="pp-ax y">share of the goals →</div></div></div></section>`
@@ -364,6 +366,16 @@ function chartCard() {
     <div class="cc-wrap"><div class="cc-grid">${[3, 2, 1].map(v => `<span style="bottom:${(v / 3) * 100}%"><em>${v.toFixed(1)}</em></span>`).join('')}</div>${P.map(col).join('')}</div></div></section>`
 }
 film.innerHTML = P.map(card).join('') + (ALL ? tableCard() + chartCard() : '') + gameCard() + swingCard() + payCard()
+{ // the comebacks explainer's examples, from today's data
+  const S = P.map(t => ({ t, s: swings(t) }))
+  const top = (k: string) => [...S].sort((a: Dict, b: Dict) => b.s[k] - a.s[k]).slice(0, 3).map((x: Dict) => `<b>${esc(nameOf(x.t))}</b> ${k === 'won' ? '+' : '−'}${x.s[k]}`).join(', ')
+  $('swex').innerHTML = `Right now${ALL ? ' across the five leagues' : ` in ${LEAGUE_NAME[LG]}`}, the most points won from behind: ${top('won')}. The most dropped from ahead: ${top('dropped')}.`
+}
+{ // the explainer's examples, from today's data: the furthest above and below the diagonal
+  const gap = P.map(t => { const p = pushPay(t); return { t, p, d: p.goals - p.push } }).sort((a, b) => b.d - a.d)
+  const say = (x: Dict) => `<b>${esc(nameOf(x.t))}</b> (${pc(x.p.push)}% of the push, ${pc(x.p.goals)}% of the goals)`
+  $('ppex').innerHTML = `Right now${ALL ? ' across the five leagues' : ` in ${LEAGUE_NAME[LG]}`}, the most clinical: ${gap.slice(0, 3).map(say).join(', ')}. The most wasteful: ${gap.slice(-3).reverse().map(say).join(', ')}.`
+}
 film.addEventListener('click', e => { const c = (e.target as HTMLElement).closest<HTMLElement>('.cc'); if (c) (window as any).go(+c.dataset.i!) })
 film.addEventListener('click', e => { const r = (e.target as HTMLElement).closest<HTMLElement>('.tr, .gsr, .ppc'); if (r) (window as any).go(+r.dataset.i!) })
 const lgUrl = (lg: string) => { const q = new URLSearchParams(location.search); q.set('lg', lg); return location.pathname + '?' + q.toString() }

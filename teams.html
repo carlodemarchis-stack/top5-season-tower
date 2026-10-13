@@ -122,6 +122,8 @@
     .swb i{display:block;height:100%}.swb .sl i{background:#b3323a;border-radius:3px 0 0 3px}.swb .sr i{background:#177a41;border-radius:0 3px 3px 0}
     .swb em{font-style:normal;font-size:.8em;font-weight:800;font-variant-numeric:tabular-nums}.swb .sl em{color:#b3323a}.swb .sr em{color:#177a41}
     /* push vs payoff: crests on a square-ish plot, the diagonal = goals in line with pressure */
+    .tb-hd .qm{align-self:center;width:24px;height:24px;border-radius:50%;border:1.5px solid #15181d;background:#fff;color:#15181d;font-size:13px;font-weight:900;line-height:1;cursor:pointer;flex:none}
+    .tb-hd .qm:hover{background:#15181d;color:#fff}
     .pp{position:relative;flex:1 1 auto;min-height:0;padding:0 0 26px 34px}
     .pp-plot{position:relative;height:100%;max-width:calc((100vh - 230px) * 1.6);margin:0 auto;border-left:1.5px solid #15181d;border-bottom:1.5px solid #15181d}
     .pp-plot .gx,.pp-plot .gy{position:absolute;pointer-events:none}.pp-plot .gx{top:0;bottom:0;border-left:1px dashed #dfe2e6}.pp-plot .gy{left:0;right:0;border-top:1px dashed #dfe2e6}
@@ -262,6 +264,36 @@
     </ul>
     <p><kbd>←</kbd> <kbd>→</kbd> previous / next · <kbd>space</kbd> play / pause · <kbd>Home</kbd> <kbd>End</kbd> first / last · <kbd>g</kbd> or <kbd>/</kbd> find a club · <kbd>f</kbd> fullscreen · <kbd>h</kbd> this help · <kbd>Esc</kbd> close</p>
     <p class="agwas-rel">Release notes <a class="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>
+  </div></div>
+ <div class="mod" id="swmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>How to read Comebacks &amp; collapses</h3>
+    <p>Each row is a club and two numbers counted over all its league games this season, following the score minute by minute. It asks: <b>what happens to this club once a game turns?</b></p>
+    <ul>
+      <li><b>Green, to the right — points won from losing positions.</b> The points the club took in games where it was behind at some moment. Down 0–1 and won 2–1: <b>+3</b>. Down 0–1 and drew 1–1: <b>+1</b>. Down and lost: nothing.</li>
+      <li><b>Red, to the left — points dropped from winning positions.</b> The points it let go in games where it was ahead at some moment. Up 1–0 and drew: <b>−2</b>. Up 1–0 and lost: <b>−3</b>. Up and won: nothing.</li>
+      <li>One game can count on both sides: ahead 1–0, behind 1–2, then 2–2 at the end is <b>+1</b> won and <b>−2</b> dropped.</li>
+      <li><b>The ranking</b> is the balance — won minus dropped — then the most points won.</li>
+      <li><b>Lots of green</b>: a club that doesn't give up — late goals, strong benches, comebacks. <b>Lots of red</b>: leads that don't hold — a defence that tires, a habit of sitting back.</li>
+      <li><b>An empty row</b> means neither happened: every lead held and no point was ever won after going behind (or it never led and never trailed).</li>
+    </ul>
+    <p id="swex"></p>
+    <p><b>Keep in mind</b>: a handful of games so far, so one wild match moves a club a long way. Goals are taken in the order of their minute; a stoppage-time goal counts at 45' or 90'.</p>
+    <p>Hover a row for its numbers; click it to open the club's card.</p>
+  </div></div>
+  <div class="mod" id="ppmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>How to read Push vs payoff</h3>
+    <p>Each crest is a club, placed by two numbers measured over all its league games this season. It asks one question: <b>does a club score as much as its pressure suggests?</b></p>
+    <ul>
+      <li><b>Across — share of the push.</b> In every game both sides' attacking actions are counted with the same weights as the flow chart on the match cards: a shot <b>1</b>, a shot on target <b>2</b>, a goal <b>3</b>, a corner <b>0.5</b>. A club's share is its total divided by both sides' totals over the season. 50% means as much pressure as its opponents; 70% means it produced 70% of all the attacking in its games.</li>
+      <li><b>Up — share of the goals.</b> Goals scored divided by goals scored + conceded. 50% is a goal difference of zero; 80% means four goals scored for every one conceded.</li>
+      <li><b>The diagonal</b> is where the two shares are equal: goals exactly in line with pressure.</li>
+      <li><b>Above the line — clinical.</b> More goals than its pressure would suggest: sharp finishing, a good keeper, a team built to counter-attack — or some luck.</li>
+      <li><b>Below the line — wasteful.</b> It pushes more than it scores: lots of pressure that doesn't turn into goals, or goals conceded from the few chances it allows.</li>
+      <li><b>Top right</b>: dominant in both. <b>Bottom left</b>: overrun in both.</li>
+    </ul>
+    <p id="ppex"></p>
+    <p><b>Keep in mind</b>: it is early in the season (each club has played only a handful of games), and pressure is not chance quality — a shot from 30 metres counts the same as one from the six-yard box (there is no expected-goals model here). Own goals count in the goal share but not in the push. The figures come from the match statistics of every game.</p>
+    <p>Hover a crest for its numbers; click it to open the club's card.</p>
   </div></div>
 
   <div class="mod" id="cmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
