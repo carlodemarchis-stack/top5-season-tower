@@ -366,6 +366,10 @@ function chartCard() {
     <div class="cc-wrap"><div class="cc-grid">${[3, 2, 1].map(v => `<span style="bottom:${(v / 3) * 100}%"><em>${v.toFixed(1)}</em></span>`).join('')}</div>${P.map(col).join('')}</div></div></section>`
 }
 film.innerHTML = P.map(card).join('') + (ALL ? tableCard() + chartCard() : '') + gameCard() + swingCard() + payCard()
+// the stats cards after the clubs, in film order (the jump list and the top-bar button point at them)
+const STATS = [...(ALL ? ['The table', 'The chart'] : []), 'Game state', 'Comebacks & collapses', 'Push vs payoff']
+const STATS_SUB: Record<string, string> = { 'The table': 'all clubs by points per game', 'The chart': 'points per game as columns', 'Game state': 'minutes leading · level · trailing',
+  'Comebacks & collapses': 'points won from behind · dropped from ahead', 'Push vs payoff': 'share of the pressure vs share of the goals' }
 { // the comebacks explainer's examples, from today's data
   const S = P.map(t => ({ t, s: swings(t) }))
   const top = (k: string) => [...S].sort((a: Dict, b: Dict) => b.s[k] - a.s[k]).slice(0, 3).map((x: Dict) => `<b>${esc(nameOf(x.t))}</b> ${k === 'won' ? '+' : '−'}${x.s[k]}`).join(', ')
@@ -380,13 +384,15 @@ film.addEventListener('click', e => { const c = (e.target as HTMLElement).closes
 film.addEventListener('click', e => { const r = (e.target as HTMLElement).closest<HTMLElement>('.tr, .gsr, .ppc'); if (r) (window as any).go(+r.dataset.i!) })
 const lgUrl = (lg: string) => { const q = new URLSearchParams(location.search); q.set('lg', lg); return location.pathname + '?' + q.toString() }
 $('lgs').innerHTML = `<a class="lgb all${ALL ? ' on' : ''}" href="${lgUrl('ALL')}" title="All five leagues in one film, ranked by points per game"><b>All Leagues</b></a>` + LG_ORDER.map(lg => `<a class="lgb${lg === LG ? ' on' : ''}${has(lg) ? '' : ' soon'}" data-lg="${lg}" href="${lgUrl(lg)}" title="${LEAGUE_NAME[lg]}${has(lg) ? ' team cards' : ' — coming soon'}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"></a>`).join('')
+  + `<a class="lgb all stats" id="statsb" href="#" title="The stats cards: ${STATS.join(', ')}" onclick="go(${P.length});return false"><b>Stats</b></a>`
 $('cnote').innerHTML = `${ALL ? `All ${P.length} clubs of the five leagues, ranked by points per game (then fewer defeats, goal difference, goals scored), so leagues with fewer games compare fairly. It says nothing about how strong each league is` : `${P.length} clubs of ${LEAGUE_NAME[LG]}, in table order`}. Season ${SEASON.replace('-', '/')}, updated ${new Date(UPDATED).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
 
 const KEY = 'top5.teams.card.' + LG + (SEASON === '2026-27' ? '' : '.' + SEASON)
 function onPaint(i: number) {
   const t = P[i]
+  $('statsb').classList.toggle('on', !t)
   if (!t) {   // All Leagues: the table card, the column chart; then (every film) the game-state card
-    const what = [...(ALL ? ['the table', 'the chart'] : []), 'game state', 'comebacks & collapses', 'push vs payoff'][i - P.length]
+    const what = STATS[i - P.length].toLowerCase()
     $('ctx').innerHTML = ALL ? `All Leagues ${SEASON.replace('-', '/')} · ${what.startsWith('the') ? 'by points per game · ' : ''}<b>${what}</b>` : `${LEAGUE_NAME[LG]} ${SEASON.replace('-', '/')} · <b>${what}</b>`
     $('lgs').querySelectorAll<HTMLElement>('.lgb[data-lg]').forEach(b => b.classList.remove('cur'))
     return
@@ -405,8 +411,11 @@ const INDEX = P.map((t, i) => ({ i, label: nameOf(t), sub: ALL ? `${LEAGUE_NAME[
 function jumpHTML(q: string) {
   const qq = q.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
   const hits = /^\d+$/.test(qq) ? INDEX.filter(x => x.i === +qq - 1) : INDEX.filter(x => qq.split(/\s+/).every(w => x.key.includes(w)))
-  return hits.length ? `<div class="jsec"><div class="jsechd">${ALL ? 'All Leagues' : `<img src="leagues/${LG}.png" alt="">${LEAGUE_NAME[LG]}`}<span>${hits.length}</span></div><div class="jgrid">${hits.map(x =>
-    `<div class="jrow" data-i="${x.i}"><span class="jn">${x.i + 1}</span><span class="jl">${esc(x.label)}<span class="jt">${esc(x.sub)}</span></span></div>`).join('')}</div></div>` : '<p>No club matches.</p>'
+  const sts = STATS.map((s, k) => ({ i: P.length + k, label: s, sub: STATS_SUB[s] })).filter(x => !qq || /^\d+$/.test(qq) ? x.i === +qq - 1 || !qq : qq.split(/\s+/).every(w => `stats ${x.label} ${x.sub}`.toLowerCase().includes(w)))
+  const statsSec = sts.length ? `<div class="jsec"><div class="jsechd">Stats<span>${sts.length}</span></div><div class="jgrid">${sts.map(x =>
+    `<div class="jrow" data-i="${x.i}"><span class="jn">${x.i + 1}</span><span class="jl">${esc(x.label)}<span class="jt">${esc(x.sub)}</span></span></div>`).join('')}</div></div>` : ''
+  return statsSec + (hits.length ? `<div class="jsec"><div class="jsechd">${ALL ? 'All Leagues' : `<img src="leagues/${LG}.png" alt="">${LEAGUE_NAME[LG]}`}<span>${hits.length}</span></div><div class="jgrid">${hits.map(x =>
+    `<div class="jrow" data-i="${x.i}"><span class="jn">${x.i + 1}</span><span class="jl">${esc(x.label)}<span class="jt">${esc(x.sub)}</span></span></div>`).join('')}</div></div>` : statsSec ? '' : '<p>No club matches.</p>')
 }
 
 // Season | Squad tab: one choice for every card, remembered
