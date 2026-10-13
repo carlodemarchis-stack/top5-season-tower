@@ -66,7 +66,7 @@ function card(t: Dict) {
     <div class="pan">
       <img class="wm team" src="${logo(t.code, t.lg)}" alt="" onerror="this.remove()">
       <div class="rk">#${ALL ? t.rank : t.pos ?? '–'}</div>
-      <div class="wdl"><span><b>${t.W}</b>–<b>${t.D}</b>–<b>${t.L}</b></span><span class="wl">W – D – L</span></div>
+      <div class="wdl"><span><b>${t.W}</b>–<b>${t.D}</b>–<b>${t.L}</b></span><span class="wl">W – D – L</span>${(g => g.n ? `<span class="gs1" title="Minutes leading / level / trailing"><i style="width:${g.lead * 100}%"></i><i style="width:${g.level * 100}%;opacity:.4"></i><i style="width:${g.trail * 100}%;opacity:.14"></i></span><span class="wl">led ${pc(g.lead)}% · level ${pc(g.level)}% · behind ${pc(g.trail)}%</span>` : '')(gameState(t))}</div>
       <div class="gbig${ALL ? ' ppg' : ''}">${ALL ? `<b>${ppg}</b><span>points per game</span>` : `<b>${t.pts}</b><span>point${t.pts === 1 ? '' : 's'}</span>`}</div>
       ${group}
     </div>
@@ -258,6 +258,37 @@ function ppgColor(v: number) {
   const i = v <= 1.5 ? 0 : 1, [a, ca] = stops[i], [b, cb] = stops[i + 1], f = Math.max(0, Math.min(1, (v - a) / (b - a)))
   return `rgb(${ca.map((x, k) => Math.round(x + (cb[k] - x) * f)).join(',')})`
 }
+// game state: the share of a club's minutes spent leading / level / trailing, 90' a game (a stoppage-time goal counts
+// at 45' or 90', so stoppage time itself is not counted)
+const clock90 = (s: string) => { const m = String(s).match(/(\d+)'/); return Math.min(90, m ? +m[1] : 0) }
+function gameState(t: Dict) {
+  let lead = 0, level = 0, trail = 0, n = 0
+  for (const m of t.matches) {
+    if (m.gf == null) continue; n++
+    const ev = [...(m.for || []).map((g: Dict) => [clock90(g.min), 1]), ...(m.against || []).map((g: Dict) => [clock90(g.min), -1])].sort((a, b) => a[0] - b[0])
+    let d = 0, last = 0
+    const run = (to: number) => { const s = to - last; if (d > 0) lead += s; else if (d < 0) trail += s; else level += s; last = to }
+    for (const [mm, s] of ev) { run(mm); d += s }
+    run(90)
+  }
+  const tot = n * 90 || 1
+  return { n, lead: lead / tot, level: level / tot, trail: trail / tot }
+}
+const pc = (v: number) => Math.round(v * 100)
+// the closing card: every club ranked by the share of minutes it has led (then the least trailing)
+function gameCard() {
+  const MINLAB = ALL ? 18 : 10   // a share is written in its segment only when it fits (the 4-column bars are narrow)
+  const rows = P.map(t => ({ t, g: gameState(t) })).filter(x => x.g.n).sort((a, b) => b.g.lead - a.g.lead || a.g.trail - b.g.trail)
+  const row = ({ t, g }: Dict, i: number) => {
+    const c = TEAMS_OF[t.lg][t.code]?.primary || '#555', ink = lum(c) > 0.55 ? '#15181d' : c
+    return `<a class="gsr" data-i="${t.rank - 1}" title="${esc(nameOf(t))} · led ${pc(g.lead)}% · level ${pc(g.level)}% · trailed ${pc(g.trail)}% of ${g.n * 90}′"><span class="tr-rk">${i + 1}</span>${ALL ? `<img class="tr-lg" src="leagues/${t.lg}.png" alt="${LEAGUE_NAME[t.lg]}">` : ''}<span class="tr-nm" style="color:${ink}">${esc(SHORT[`${t.lg}:${t.code}`] || nameOf(t))}</span>
+      <span class="gsb"><i class="ld" style="width:${g.lead * 100}%">${pc(g.lead) >= MINLAB ? pc(g.lead) + '%' : ''}</i><i class="lv" style="width:${g.level * 100}%"></i><i class="tl" style="width:${g.trail * 100}%">${pc(g.trail) >= MINLAB ? pc(g.trail) + '%' : ''}</i></span></a>`
+  }
+  const cols = ALL ? 4 : 2
+  return `<section class="card tbl" id="t-game"><div class="tb">
+    <div class="tb-hd"><h2>Game state</h2><span>the share of its minutes each club has spent <b class="k ld">leading</b> <b class="k lv">level</b> <b class="k tl">trailing</b> · 90′ a game, stoppage time not counted</span></div>
+    <div class="tb-grid gs${ALL ? '' : ' nolg'}" style="--rows:${Math.ceil(rows.length / cols)};--cols:${cols}">${rows.map(row).join('')}</div></div></section>`
+}
 function tableCard() {
   const row = (t: Dict) => {
     const c = TEAMS_OF[t.lg][t.code]?.primary || '#555', ink = lum(c) > 0.55 ? '#15181d' : c
@@ -280,9 +311,9 @@ function chartCard() {
     <div class="tb-hd"><h2>Points per game</h2><span>all ${P.length} clubs · codes coloured by their place in their own league: top four, 5th, 6th, bottom three</span></div>
     <div class="cc-wrap"><div class="cc-grid">${[3, 2, 1].map(v => `<span style="bottom:${(v / 3) * 100}%"><em>${v.toFixed(1)}</em></span>`).join('')}</div>${P.map(col).join('')}</div></div></section>`
 }
-film.innerHTML = P.map(card).join('') + (ALL ? tableCard() + chartCard() : '')
+film.innerHTML = P.map(card).join('') + (ALL ? tableCard() + chartCard() : '') + gameCard()
 film.addEventListener('click', e => { const c = (e.target as HTMLElement).closest<HTMLElement>('.cc'); if (c) (window as any).go(+c.dataset.i!) })
-film.addEventListener('click', e => { const r = (e.target as HTMLElement).closest<HTMLElement>('.tr'); if (r) (window as any).go(+r.dataset.i!) })
+film.addEventListener('click', e => { const r = (e.target as HTMLElement).closest<HTMLElement>('.tr, .gsr'); if (r) (window as any).go(+r.dataset.i!) })
 const lgUrl = (lg: string) => { const q = new URLSearchParams(location.search); q.set('lg', lg); return location.pathname + '?' + q.toString() }
 $('lgs').innerHTML = `<a class="lgb all${ALL ? ' on' : ''}" href="${lgUrl('ALL')}" title="All five leagues in one film, ranked by points per game"><b>All Leagues</b></a>` + LG_ORDER.map(lg => `<a class="lgb${lg === LG ? ' on' : ''}${has(lg) ? '' : ' soon'}" data-lg="${lg}" href="${lgUrl(lg)}" title="${LEAGUE_NAME[lg]}${has(lg) ? ' team cards' : ' — coming soon'}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"></a>`).join('')
 $('cnote').innerHTML = `${ALL ? `All ${P.length} clubs of the five leagues, ranked by points per game (then fewer defeats, goal difference, goals scored), so leagues with fewer games compare fairly. It says nothing about how strong each league is` : `${P.length} clubs of ${LEAGUE_NAME[LG]}, in table order`}. Season ${SEASON.replace('-', '/')}, updated ${new Date(UPDATED).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
@@ -290,8 +321,9 @@ $('cnote').innerHTML = `${ALL ? `All ${P.length} clubs of the five leagues, rank
 const KEY = 'top5.teams.card.' + LG + (SEASON === '2026-27' ? '' : '.' + SEASON)
 function onPaint(i: number) {
   const t = P[i]
-  if (!t) {   // the table card, then the column chart
-    $('ctx').innerHTML = `All Leagues ${SEASON.replace('-', '/')} · by points per game · <b>${i === P.length ? 'the table' : 'the chart'}</b>`
+  if (!t) {   // All Leagues: the table card, the column chart; then (every film) the game-state card
+    const what = (ALL ? ['the table', 'the chart', 'game state'] : ['game state'])[i - P.length]
+    $('ctx').innerHTML = ALL ? `All Leagues ${SEASON.replace('-', '/')} · ${what === 'game state' ? '' : 'by points per game · '}<b>${what}</b>` : `${LEAGUE_NAME[LG]} ${SEASON.replace('-', '/')} · <b>${what}</b>`
     $('lgs').querySelectorAll<HTMLElement>('.lgb[data-lg]').forEach(b => b.classList.remove('cur'))
     return
   }
@@ -414,4 +446,4 @@ function matchTip(t: Dict, gid: string, after?: string) {
 }
 initLinks(film)
 initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!, el.dataset.after))
-initFilm({ count: P.length + (ALL ? 2 : 0), key: KEY, onPaint, jumpHTML, self: 'teams.html' })
+initFilm({ count: P.length + (ALL ? 3 : 1), key: KEY, onPaint, jumpHTML, self: 'teams.html' })

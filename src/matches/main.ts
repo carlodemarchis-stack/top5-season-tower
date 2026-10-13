@@ -151,6 +151,12 @@ function card(M: Dict) {
     // a thin line in the club colour ties the ball to the name
     const stem = `<i class="gs" data-k="g${g.i}" style="left:${X(g.m)}%;${g.s === 'h' ? 'bottom' : 'top'}:50%;height:calc(${4 + barH(g.s, g.m)}% + ${3 + lv * 24}px);background:${c}"></i>`
     return `${stem}<i class="gm"${gk(g.i)} style="left:${X(g.m)}%;--gc:${c}"></i><div class="gl"${gk(g.i)} style="left:${X(g.m)}%;${g.s === 'h' ? 'bottom' : 'top'}:${at};--lc:${ink(c)}">${esc(g.who)}<small>${esc(g.lab)}</small></div>` }).join('')
+  // the flow in three numbers: minutes each side led and level (90', stoppage time not counted), under the chart
+  const gsm = { h: 0, lv: 0, a: 0 }
+  { let d = 0, last = 0; const run = (to: number) => { const s = to - last; if (d > 0) gsm.h += s; else if (d < 0) gsm.a += s; else gsm.lv += s; last = to }
+    for (const g of [...M.goals].map((g: Dict) => [Math.min(90, clk(g.min)[0]), g.s]).sort((x, y) => x[0] - y[0])) { run(g[0]); d += g[1] === 'h' ? 1 : -1 }
+    run(90) }
+  const gsum = `<div class="gsum"><span class="mb"><i style="width:${gsm.h / .9}%;background:${H.color}"></i><i style="width:${gsm.lv / .9}%;background:#c9ced4"></i><i style="width:${gsm.a / .9}%;background:${A.color}"></i></span><b style="color:${ink(H.color)}">${esc(H.name)}</b> ahead ${gsm.h}′ · level ${gsm.lv}′ · <b style="color:${ink(A.color)}">${esc(A.name)}</b> ahead ${gsm.a}′</div>`
   // a minute tick under an away goal's label steps aside (the label carries its own minute)
   const ticks = [0, 15, 30, 45, 60, 75, 90].filter(v => !goalsT.some((g: Dict) => g.s === 'a' && Math.abs(X(g.m) - X(v)) < 7)).map(v => `<span class="tk" style="left:${X(v)}%">${v}'</span>`).join('')
 
@@ -219,6 +225,7 @@ function card(M: Dict) {
     </div>
     <div class="mid">${shotSvg}
       <div class="dir t" style="color:${ink(H.color)}">↑ Shots<span>${cnt('h')} · ${cnt('h', 'on') + cnt('h', 'goal')} on target</span></div>
+      ${gsum}
       <div class="dir b" style="color:${ink(A.color)}">↓ Shots<span>${cnt('a')} · ${cnt('a', 'on') + cnt('a', 'goal')} on target</span></div>
       <div class="flk"><i class="ln" style="background:linear-gradient(90deg,${H.color} 0 40%,#c9ced4 40% 60%,${A.color} 60%)"></i>line: who was leading<i class="br"><b style="background:${H.color}"></b><b style="background:${A.color}"></b></i>bars: attacking push, every 5′</div>
       <div class="flow"><span class="lbl">THE FLOW</span>${flowSvg}${flowGoals}${ticks}</div>

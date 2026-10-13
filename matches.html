@@ -79,6 +79,9 @@
     .mid .dir.t{top:calc(38.5% - 66px)}.mid .dir.b{top:calc(61.5% + 70px)}
     /* the flow's key, on the right of the row above it */
     .mid .flk{position:absolute;right:24px;top:calc(38.5% - 66px);z-index:2;display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;color:#6b717a;white-space:nowrap}
+    .mid .gsum{position:absolute;right:24px;top:calc(61.5% + 70px);z-index:2;display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:#6b717a;white-space:nowrap}
+    .mid .gsum b{font-weight:800}
+    .mid .gsum .mb{display:flex;width:44px;height:5px;border-radius:1px;overflow:hidden;margin-right:4px}.mid .gsum .mb i{display:block;height:100%}
     .mid .flk .ln{width:22px;height:4px;border-radius:1px}
     .mid .flk .br{display:inline-flex;flex-direction:column;gap:1px;margin-left:8px}.mid .flk .br b{display:block;width:5px;height:7px}.mid .flk .br b:last-child{height:5px}
     .mid .dir span{font-weight:600;letter-spacing:0;text-transform:none;color:#6b717a;margin-left:6px}
@@ -140,6 +143,7 @@
       .bigsc b{font-size:clamp(80px,24vw,120px)}
       .tlab{left:16px;right:16px;gap:80px}
       .mid .flk{left:24px;right:auto;top:calc(38.5% - 48px);font-size:9.5px}
+      .mid .gsum{left:24px;right:auto;top:calc(61.5% + 88px);font-size:9.5px}
       .card.m3 .pl{transform:translate(-50%,calc(var(--fs) / -2)) scale(.78);transform-origin:50% 0}
     }
   </style>

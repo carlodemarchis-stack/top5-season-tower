@@ -105,7 +105,18 @@
     .tr-ppg{font-weight:900;font-variant-numeric:tabular-nums}
     .tr-nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .tr-sub{font-size:.82em;color:#9aa0a8;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+    /* the game-state card: one stacked bar per club, leading / level / trailing */
+    .tb-grid.gs{grid-template-columns:repeat(var(--cols),minmax(0,1fr))}
+    .gsr{display:grid;grid-template-columns:2.1em 18px minmax(0,1fr) minmax(0,1.35fr);align-items:center;gap:7px;padding:0 6px;border-bottom:1px solid var(--line);font-size:clamp(11px,1.6vh,14px);color:#15181d;text-decoration:none;cursor:pointer;min-height:0}
+    .gs.nolg .gsr{grid-template-columns:2.1em minmax(0,.8fr) minmax(0,2fr)}
+    .gsr:hover{background:#fff}
+    .gsb{display:flex;height:min(72%,24px);min-height:12px;border-radius:3px;overflow:hidden;background:#eef0f2}
+    .gsb i{display:flex;align-items:center;font-style:normal;font-size:.74em;font-weight:800;color:#fff;padding:0 4px;overflow:hidden;white-space:nowrap;font-variant-numeric:tabular-nums;box-sizing:border-box}
+    .gsb .ld{background:#177a41}.gsb .lv{background:#d5d9de;padding:0}.gsb .tl{background:#b3323a;justify-content:flex-end}
+    .tb-hd .k{display:inline-block;padding:1px 6px;border-radius:4px;color:#fff;font-weight:800}.tb-hd .k.ld{background:#177a41}.tb-hd .k.lv{background:#d5d9de;color:#15181d}.tb-hd .k.tl{background:#b3323a}
+    .card .pan .wdl .gs1{display:flex;width:calc(var(--rk) * 2.6);height:6px;margin-top:10px;border-radius:2px;overflow:hidden}.card .pan .wdl .gs1 i{background:currentColor}
     @media (max-width: 760px){
+      .tb-grid.gs{grid-template-columns:1fr}
       .tb{overflow-y:auto}
       .tb-grid{flex:none;grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row}
       .tr{padding:7px 4px;font-size:13px}
