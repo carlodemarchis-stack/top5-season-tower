@@ -1,4 +1,4 @@
-// Match-card film: one card per league match, one film per matchday (?lg=ITA&md=6), in kick-off order.
+// Match-card film: one card per league match, one film per matchday (?lg=ITA&md=6), latest kick-off first.
 // Every column is split at the halfway line — the home team on top, the away team below:
 //   left   both XIs on one pitch, every goal / assist / card / substitution on the player, the score big
 //   middle every attempt (home at the top goal, away at the bottom one) and the flow of the match across halfway
@@ -26,7 +26,7 @@ const [{ MATCHES }, { TEAMS }] = await Promise.all([
   FILES[`../data/matches-${LG}-${SEASON}-md${String(MD).padStart(2, '0')}.js`](),
   import(`../data/schedule-${LG}-${SEASON}.js`),
 ]) as Dict[]
-const P: Dict[] = MATCHES
+const P: Dict[] = [...MATCHES].sort((a: Dict, b: Dict) => String(b.kick || '').localeCompare(String(a.kick || '')))   // latest first (same kick-off: file order)
 // ?m=<fixture id> (a game box on the scorer / team / keeper cards): open on that match, then drop it from the URL
 if (QS.has('m')) {
   const at = P.findIndex(x => String(x.id) === QS.get('m')), q = new URLSearchParams(location.search); q.delete('m')
@@ -278,7 +278,7 @@ const url = (o: Dict) => { const q = new URLSearchParams(location.search); for (
 $('lgs').innerHTML = LG_ORDER.map(lg => `<a class="lgb${lg === LG ? ' on' : ''}${has(lg) ? '' : ' soon'}" href="${url({ lg, md: null })}" title="${LEAGUE_NAME[lg]}${has(lg) ? ' match cards' : ' — coming soon'}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"></a>`).join('')
 const mi = MDS.indexOf(MD)
 $('mdsw').innerHTML = `<a class="${mi > 0 ? '' : 'off'}" href="${url({ md: MDS[mi - 1] })}" title="Previous matchday">‹</a><b>MD ${MD}</b><a class="${mi < MDS.length - 1 ? '' : 'off'}" href="${url({ md: MDS[mi + 1] })}" title="Next matchday">›</a>`
-$('cnote').innerHTML = `${P.length} matches of ${LEAGUE_NAME[LG]} matchday ${MD}, in kick-off order. Season ${SEASON.replace('-', '/')}.`
+$('cnote').innerHTML = `${P.length} matches of ${LEAGUE_NAME[LG]} matchday ${MD}, latest kick-off first. Season ${SEASON.replace('-', '/')}.`
 
 const kickOf = (M: Dict) => { const w = new Date(M.kick); return M.kick ? `${w.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Rome' })} ${w.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' })}` : '' }
 function onPaint(i: number) {
