@@ -140,7 +140,7 @@ const BYID: Record<string, Dict> = Object.fromEntries(SCORERS.players.map((p: Di
 const listOf = (k: string): Dict[] => SCORERS.lists ? SCORERS.lists[k].map(([id, rank]: [string, number]) => ({ ...BYID[id], rank })) : SCORERS.players
 const P: Dict[] = listOf(LIST)
 const listName = (k: string) => k === 'ALL' ? 'Top 50 scorers' : `${LEAGUE_NAME[k]} top scorers`
-const listUrl = (k: string) => { const q = new URLSearchParams(location.search); k === 'ALL' ? q.delete('lg') : q.set('lg', k); const qs = q.toString(); return location.pathname + (qs ? '?' + qs : '') }
+const listUrl = (k: string) => { const q = new URLSearchParams(location.search); k === 'ALL' ? q.delete('lg') : q.set('lg', k); const qs = q.toString(); return location.pathname + (qs ? '?' + qs : '') + '#1' }   // a top-bar switch starts at card 1
 const LG_IG: Record<string, string> = { ITA: 'seriea', ENG: 'premierleague', ESP: 'laliga', FRA: 'ligue1', GER: 'bundesliga' }
 const $ = (id: string) => document.getElementById(id)!
 const film = $('film')

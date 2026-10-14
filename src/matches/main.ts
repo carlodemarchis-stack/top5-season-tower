@@ -274,7 +274,7 @@ function fill(i: number) {
 }
 
 // top bar: leagues (only those with match cards), the matchday switch
-const url = (o: Dict) => { const q = new URLSearchParams(location.search); for (const [k, v] of Object.entries(o)) v == null ? q.delete(k) : q.set(k, String(v)); return location.pathname + '?' + q.toString() }
+const url = (o: Dict) => { const q = new URLSearchParams(location.search); for (const [k, v] of Object.entries(o)) v == null ? q.delete(k) : q.set(k, String(v)); return location.pathname + '?' + q.toString() + '#1' }   // league / matchday switches start at card 1
 $('lgs').innerHTML = LG_ORDER.map(lg => `<a class="lgb${lg === LG ? ' on' : ''}${has(lg) ? '' : ' soon'}" href="${url({ lg, md: null })}" title="${LEAGUE_NAME[lg]}${has(lg) ? ' match cards' : ' — coming soon'}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"></a>`).join('')
 const mi = MDS.indexOf(MD)
 $('mdsw').innerHTML = `<a class="${mi > 0 ? '' : 'off'}" href="${url({ md: MDS[mi - 1] })}" title="Previous matchday">‹</a><b>MD ${MD}</b><a class="${mi < MDS.length - 1 ? '' : 'off'}" href="${url({ md: MDS[mi + 1] })}" title="Next matchday">›</a>`

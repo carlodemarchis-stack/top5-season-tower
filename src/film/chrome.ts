@@ -105,6 +105,7 @@ export function initFilm(o: Opts) {
   else { try { const s = localStorage.getItem(o.key); if (s != null) i = +s } catch { } }
   go(i, false)
   addEventListener('resize', () => go(cur, false))
+  addEventListener('hashchange', () => { const n = +location.hash.slice(1); if (n >= 1 && n - 1 !== cur) go(n - 1, false) })
   return { go, step, openMod, closeMods }
 }
 
