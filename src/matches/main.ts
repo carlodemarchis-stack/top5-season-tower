@@ -1,4 +1,5 @@
 // Match-card film: one card per league match, one film per matchday (?lg=ITA&md=6), latest kick-off first.
+// ?lg=ALL: no matchday — every match of the five leagues from the last 7 days (counted back from the latest match).
 // Every column is split at the halfway line — the home team on top, the away team below:
 //   left   both XIs on one pitch, every goal / assist / card / substitution on the player, the score big
 //   middle every attempt (home at the top goal, away at the bottom one) and the flow of the match across halfway
@@ -18,14 +19,28 @@ const FILES = import.meta.glob('../data/matches-*-*-md*.js')
 const mdsOf = (lg: string) => Object.keys(FILES).map(f => f.match(new RegExp(`matches-${lg}-${SEASON}-md(\\d+)\\.js$`))).filter(Boolean).map(m => +m![1]).sort((a, b) => a - b)
 const has = (lg: string) => mdsOf(lg).length > 0
 let LAST = ''; try { LAST = localStorage.getItem('top5.matches.lg') || '' } catch { }
-const LG = [QS.get('lg') || '', LAST].find(l => LG_ORDER.includes(l) && has(l)) || LG_ORDER.find(has) || 'ITA'
+const LG = [QS.get('lg') || '', LAST].find(l => (l === 'ALL' || LG_ORDER.includes(l)) && (l === 'ALL' || has(l))) || LG_ORDER.find(has) || 'ITA'
+const ALL = LG === 'ALL'
 try { localStorage.setItem('top5.matches.lg', LG) } catch { }
-const MDS = mdsOf(LG)
-const MD = MDS.includes(+(QS.get('md') || 0)) ? +QS.get('md')! : MDS[MDS.length - 1]
-const [{ MATCHES }, { TEAMS }] = await Promise.all([
-  FILES[`../data/matches-${LG}-${SEASON}-md${String(MD).padStart(2, '0')}.js`](),
-  import(`../data/schedule-${LG}-${SEASON}.js`),
-]) as Dict[]
+const MDS = ALL ? [] : mdsOf(LG)
+const MD = ALL ? 0 : MDS.includes(+(QS.get('md') || 0)) ? +QS.get('md')! : MDS[MDS.length - 1]
+const WINDOW_DAYS = 7
+const mdFile = (lg: string, md: number) => FILES[`../data/matches-${lg}-${SEASON}-md${String(md).padStart(2, '0')}.js`]
+// every match carries its league (club names, colours, crests come from that league's schedule)
+const TEAMS_OF: Record<string, Dict> = {}
+let MATCHES: Dict[] = []
+for (const lg of ALL ? LG_ORDER.filter(has) : [LG]) {
+  // one league: its matchday · all leagues: the last three matchdays of each (a midweek round + its weekends), then the window
+  const mds = ALL ? mdsOf(lg).slice(-3) : [MD]
+  const [sch, ...files] = await Promise.all([import(`../data/schedule-${lg}-${SEASON}.js`), ...mds.map(md => mdFile(lg, md)())]) as Dict[]
+  TEAMS_OF[lg] = sch.TEAMS
+  for (const f of files) for (const m of f.MATCHES) MATCHES.push({ ...m, lg })
+}
+if (ALL) {
+  const newest = Math.max(...MATCHES.map(m => +new Date(m.kick || 0)))
+  MATCHES = MATCHES.filter(m => m.kick && newest - +new Date(m.kick) <= WINDOW_DAYS * 864e5)
+}
+const TEAM = (M: Dict, code: string) => TEAMS_OF[M.lg]?.[code] || {}
 const P: Dict[] = [...MATCHES].sort((a: Dict, b: Dict) => String(b.kick || '').localeCompare(String(a.kick || '')))   // latest first (same kick-off: file order)
 // ?m=<fixture id> (a game box on the scorer / team / keeper cards): open on that match, then drop it from the URL
 if (QS.has('m')) {
@@ -54,9 +69,9 @@ const light = (c: string) => lum(c) > .58
 const onLight = (c: string) => light(c) ? `" style="--tk:${mix(c, 0, .65)}` : ''
 const scoreInk = (c: string) => light(c) ? mix(c, 0, .4) : c
 const rnd = (s: number) => { const x = Math.sin(s * 99.13) * 43758.5453; return x - Math.floor(x) }
-const logo = (code: string) => `logos/${LG === 'FRA' && code === 'BRE' ? 'FRA_BRE' : code}.png`
+const logo = (code: string, lg: string) => `logos/${lg === 'FRA' && code === 'BRE' ? 'FRA_BRE' : code}.png`
 const SHORTN: Record<string, string> = { 'Paris Saint-Germain FC': 'Paris SG', 'Bayer 04 Leverkusen': 'Leverkusen', '1. FSV Mainz 05': 'Mainz', 'Eintracht Frankfurt': 'Frankfurt' }
-const nameOf = (code: string) => { const n = TEAMS[code]?.name || code; return SHORTN[n] || n.replace(/^(FC|CF|AS|AC|SSC|RC|RCD)\s+/, '').replace(/\s+(FC|CF)$/, '') }
+const nameOf = (M: Dict, code: string) => { const n = TEAM(M, code).name || code; return SHORTN[n] || n.replace(/^(FC|CF|AS|AC|SSC|RC|RCD)\s+/, '').replace(/\s+(FC|CF)$/, '') }
 
 // formation slot (ESPN / Opta formationPlace) → rows from the back, each left → right as the team faces the opponent
 const LAYOUT: Record<string, number[][]> = {
@@ -82,8 +97,8 @@ function rowsOf(t: Dict): Dict[][] {
 
 // ---------- one card ----------
 function card(M: Dict) {
-  const H = { code: M.h, name: nameOf(M.h), color: TEAMS[M.h]?.primary || '#555', ...M.home }
-  const A = { code: M.a, name: nameOf(M.a), color: TEAMS[M.a]?.primary || '#555', ...M.away }
+  const H = { code: M.h, name: nameOf(M, M.h), color: TEAM(M, M.h).primary || '#555', ...M.home }
+  const A = { code: M.a, name: nameOf(M, M.a), color: TEAM(M, M.a).primary || '#555', ...M.away }
   A.color = awayColor(H.color, A.color)
   const byId: Dict = {}
   for (const t of [H, A]) for (const p of t.players) { p.team = t; byId[p.id] = p }
@@ -216,7 +231,7 @@ function card(M: Dict) {
 
   return `
     <div class="pan pitch">${MARKS}
-      <img class="cw t" src="${logo(H.code)}" alt=""><img class="cw b" src="${logo(A.code)}" alt="">
+      <img class="cw t" src="${logo(H.code, M.lg)}" alt=""><img class="cw b" src="${logo(A.code, M.lg)}" alt="">
       <div class="tlab t${onLight(H.color)}"><span class="tn">${esc(H.name)}</span><span class="tx"><b>${esc(H.form)}</b>${ord(M.table.h[0])} → ${ord(M.table.h[1])}</span></div>
       <div class="tlab b${onLight(A.color)}"><span class="tn">${esc(A.name)}</span><span class="tx"><b>${esc(A.form)}</b>${ord(M.table.a[0])} → ${ord(M.table.a[1])}</span></div>
       <div class="bigsc t" style="--sc:${scoreInk(H.color)}"><b>${M.score.h}</b></div>
@@ -240,7 +255,7 @@ function card(M: Dict) {
 // ---------- the film: empty cards for every match, filled around the one on screen ----------
 const $ = (id: string) => document.getElementById(id)!
 const film = $('film')
-film.innerHTML = P.map((M, i) => `<section class="card m3 empty" id="m-${i}" data-i="${i}" style="--c:${TEAMS[M.h]?.primary || '#555'};--ch:${TEAMS[M.h]?.primary || '#555'};--ca:${TEAMS[M.a]?.primary || '#555'}"></section>`).join('')
+film.innerHTML = P.map((M, i) => `<section class="card m3 empty" id="m-${i}" data-i="${i}" style="--c:${TEAM(M, M.h).primary || '#555'};--ch:${TEAM(M, M.h).primary || '#555'};--ca:${TEAM(M, M.a).primary || '#555'}"></section>`).join('')
 const cardEls = [...film.children] as HTMLElement[]
 // the club names on the pitch: as big as fits their side of the goal — one line, or two when that's clearly bigger
 // ("Borussia / Dortmund"); each layout is measured in one pass over all names
@@ -269,36 +284,39 @@ function fill(i: number) {
   const el = cardEls[i]; if (!el || !el.classList.contains('empty')) return
   el.innerHTML = card(P[i]); el.classList.remove('empty')
   fitNames(el)
-  const A = TEAMS[P[i].a]?.primary || '#555', H = TEAMS[P[i].h]?.primary || '#555'
+  const A = TEAM(P[i], P[i].a).primary || '#555', H = TEAM(P[i], P[i].h).primary || '#555'
   el.style.setProperty('--ca', awayColor(H, A))
 }
 
 // top bar: leagues (only those with match cards), the matchday switch
 const url = (o: Dict) => { const q = new URLSearchParams(location.search); for (const [k, v] of Object.entries(o)) v == null ? q.delete(k) : q.set(k, String(v)); return location.pathname + '?' + q.toString() + '#1' }   // league / matchday switches start at card 1
-$('lgs').innerHTML = LG_ORDER.map(lg => `<a class="lgb${lg === LG ? ' on' : ''}${has(lg) ? '' : ' soon'}" href="${url({ lg, md: null })}" title="${LEAGUE_NAME[lg]}${has(lg) ? ' match cards' : ' — coming soon'}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"></a>`).join('')
+$('lgs').innerHTML = `<a class="lgb all${ALL ? ' on' : ''}" href="${url({ lg: 'ALL', md: null })}" title="Every match of the five leagues from the last ${WINDOW_DAYS} days, latest first"><b>All Leagues</b></a>` + LG_ORDER.map(lg => `<a class="lgb${lg === LG ? ' on' : ''}${has(lg) ? '' : ' soon'}" data-lg="${lg}" href="${url({ lg, md: null })}" title="${LEAGUE_NAME[lg]}${has(lg) ? ' match cards' : ' — coming soon'}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"></a>`).join('')
 const mi = MDS.indexOf(MD)
-$('mdsw').innerHTML = `<a class="${mi > 0 ? '' : 'off'}" href="${url({ md: MDS[mi - 1] })}" title="Previous matchday">‹</a><b>MD ${MD}</b><a class="${mi < MDS.length - 1 ? '' : 'off'}" href="${url({ md: MDS[mi + 1] })}" title="Next matchday">›</a>`
-$('cnote').innerHTML = `${P.length} matches of ${LEAGUE_NAME[LG]} matchday ${MD}, latest kick-off first. Season ${SEASON.replace('-', '/')}.`
-
+$('mdsw').innerHTML = ALL ? '' : `<a class="${mi > 0 ? '' : 'off'}" href="${url({ md: MDS[mi - 1] })}" title="Previous matchday">‹</a><b>MD ${MD}</b><a class="${mi < MDS.length - 1 ? '' : 'off'}" href="${url({ md: MDS[mi + 1] })}" title="Next matchday">›</a>`
 const kickOf = (M: Dict) => { const w = new Date(M.kick); return M.kick ? `${w.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Rome' })} ${w.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' })}` : '' }
+const span = P.length ? `${kickOf(P[P.length - 1]).split(' ').slice(0, 3).join(' ')} – ${kickOf(P[0]).split(' ').slice(0, 3).join(' ')}` : ''
+$('cnote').innerHTML = ALL ? `${P.length} matches of the five leagues from the last ${WINDOW_DAYS} days (${span}), latest kick-off first. Season ${SEASON.replace('-', '/')}.`
+  : `${P.length} matches of ${LEAGUE_NAME[LG]} matchday ${MD}, latest kick-off first. Season ${SEASON.replace('-', '/')}.`
+
 function onPaint(i: number) {
   for (const k of [i - 1, i, i + 1, i + 2]) fill(k)
   requestAnimationFrame(() => fitNames(cardEls[i]))   // a card filled off screen was measured without layout (content-visibility)
   const M = P[i]
-  $('ctx').innerHTML = `${LEAGUE_NAME[LG]} · MD ${MD} · <b>${esc(nameOf(M.h))} ${M.score.h}–${M.score.a} ${esc(nameOf(M.a))}</b> · ${kickOf(M)}${M.venue ? ` · ${esc(M.venue)}` : ''}${M.att ? ` · ${M.att.toLocaleString('en-GB')}` : ''}`
+  $('ctx').innerHTML = `${ALL ? `<img class="ctxlg" src="leagues/${M.lg}.png" alt="">` : ''}${LEAGUE_NAME[M.lg]} · MD ${M.md} · <b>${esc(nameOf(M, M.h))} ${M.score.h}–${M.score.a} ${esc(nameOf(M, M.a))}</b> · ${kickOf(M)}${M.venue ? ` · ${esc(M.venue)}` : ''}${M.att ? ` · ${M.att.toLocaleString('en-GB')}` : ''}`
   const meta = (n: string, v: string) => document.querySelector(`meta[name="agwas:${n}"]`)?.setAttribute('content', v)
-  meta('mentions', LG_IG[LG]); meta('title', `${nameOf(M.h)} ${M.score.h}–${M.score.a} ${nameOf(M.a)} · ${LEAGUE_NAME[LG]} MD ${MD}`)
+  meta('mentions', LG_IG[M.lg]); meta('title', `${nameOf(M, M.h)} ${M.score.h}–${M.score.a} ${nameOf(M, M.a)} · ${LEAGUE_NAME[M.lg]} MD ${M.md}`)
+  if (ALL) $('lgs').querySelectorAll<HTMLElement>('.lgb[data-lg]').forEach(b => b.classList.toggle('cur', b.dataset.lg === M.lg))   // mark this match's league
 }
 
 // search: a club or a scorer; a number jumps to that card
-const INDEX = P.map((M, i) => ({ i, label: `${nameOf(M.h)} ${M.score.h}–${M.score.a} ${nameOf(M.a)}`, sub: kickOf(M),
-  key: [nameOf(M.h), nameOf(M.a), M.h, M.a, ...M.goals.map((g: Dict) => g.by)].join(' ').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() }))
+const INDEX = P.map((M, i) => ({ i, label: `${nameOf(M, M.h)} ${M.score.h}–${M.score.a} ${nameOf(M, M.a)}`, sub: (ALL ? LEAGUE_NAME[M.lg] + ' · ' : '') + kickOf(M),
+  key: [nameOf(M, M.h), nameOf(M, M.a), M.h, M.a, LEAGUE_NAME[M.lg], ...M.goals.map((g: Dict) => g.by)].join(' ').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() }))
 function jumpHTML(q: string) {
   const qq = q.trim().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   const hits = /^\d+$/.test(qq) ? INDEX.filter(x => x.i === +qq - 1) : INDEX.filter(x => qq.split(/\s+/).every(w => x.key.includes(w)))
-  return hits.length ? `<div class="jsec"><div class="jsechd"><img src="leagues/${LG}.png" alt="">${LEAGUE_NAME[LG]} · MD ${MD}<span>${hits.length}</span></div><div class="jgrid">${hits.map(x =>
+  return hits.length ? `<div class="jsec"><div class="jsechd">${ALL ? `All Leagues · last ${WINDOW_DAYS} days` : `<img src="leagues/${LG}.png" alt="">${LEAGUE_NAME[LG]} · MD ${MD}`}<span>${hits.length}</span></div><div class="jgrid">${hits.map(x =>
     `<div class="jrow" data-i="${x.i}"><span class="jn">${x.i + 1}</span><span class="jl">${esc(x.label)}<span class="jt">${esc(x.sub)}</span></span></div>`).join('')}</div></div>` : '<p>No match found.</p>'
 }
 
 initHighlight(film, '[data-h]', k => `[data-k~="${k}"]`, el => el.dataset.h!)
-initFilm({ count: P.length, key: `top5.matches.card.${LG}.md${MD}${SEASON === '2026-27' ? '' : '.' + SEASON}`, onPaint, jumpHTML, self: 'matches.html' })
+initFilm({ count: P.length, key: `top5.matches.card.${LG}${ALL ? '' : '.md' + MD}${SEASON === '2026-27' ? '' : '.' + SEASON}`, onPaint, jumpHTML, self: 'matches.html' })
