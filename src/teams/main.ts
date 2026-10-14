@@ -157,9 +157,13 @@ function posLine(t: Dict, club: Dict) {
   // the latest position written beside the last dot (on its left once the line nears the end of the season)
   const [lmd, lp] = pts[pts.length - 1] || [], right = lmd && x(lmd) > 88
   const tag = lmd ? `<span class="plast" style="top:${y(lp)}%;${right ? `right:${100 - x(lmd)}%;margin-right:12px` : `left:${x(lmd)}%;margin-left:12px`}">${ord(lp)}</span>` : ''
-  return `<div class="pline"><div class="plot">
+  // a position scale on the left: 1st, 5th, 10th, 15th and last, each with a faint guide across
+  const ticks = [...new Set([1, 5, 10, 15, N_OF[t.lg]])].filter(p => p <= N_OF[t.lg])
+  const yax = ticks.map(p => `<span class="yt" style="top:${y(p)}%">${ord(p)}</span>`).join('')
+  return `<div class="pline"><div class="plot">${yax}
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
       <rect class="zone" x="0" y="0" width="100" height="${y(4.5)}" fill="#177a41"/><rect class="zone" x="0" y="${y(N_OF[t.lg] - 2.5)}" width="100" height="${100 - y(N_OF[t.lg] - 2.5)}" fill="#b3323a"/>
+      ${ticks.map(p => `<line x1="0" x2="100" y1="${y(p)}" y2="${y(p)}" stroke="#d5d9de" stroke-width="1" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>`).join('')}
       ${pts.length > 1 ? `<polyline points="${poly}" fill="none" stroke="#8a9099" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>` : ''}
     </svg>${dots}${tag}</div>
     <div class="ax2"><span>MD 1</span><span>1st top · ${N_OF[t.lg]}th bottom</span><span>MD ${N}</span></div></div>`

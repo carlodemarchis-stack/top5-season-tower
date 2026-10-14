@@ -50,7 +50,9 @@
     .c2.tm .bx .vl{background:rgba(255,255,255,.55)}
     /* the position chart takes all the height its row has (min 42px) */
     .pline{max-width:1040px;position:relative;flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
-    .pline .plot{position:relative;flex:1 1 auto;min-height:42px;margin:6px 0}
+    .pline .plot{position:relative;flex:1 1 auto;min-height:42px;margin:6px 0 6px 34px}
+    .pline .ax2{margin-left:34px}
+    .pline .yt{position:absolute;left:-34px;width:28px;transform:translateY(-50%);text-align:right;font-size:9.5px;font-weight:700;color:#9aa0a8;line-height:1;font-variant-numeric:tabular-nums}
     .duo>.s2:first-child{display:flex;flex-direction:column;min-height:0}
     /* position chart + scorers side by side (stacked on narrow cards) */
     .duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;max-width:1040px;align-items:stretch}
