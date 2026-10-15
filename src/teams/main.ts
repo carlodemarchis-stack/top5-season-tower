@@ -246,6 +246,11 @@ const P: Dict[] = ALL
   ? Object.values(CARDS_OF).flatMap(c => c.teams).sort((a, b) => ppgOf(b) - ppgOf(a) || a.L - b.L || (b.GF - b.GA) - (a.GF - a.GA) || b.GF - a.GF)
   : CARDS_OF[LG].teams
 P.forEach((t, i) => t.rank = i + 1)
+// ?t=<club code> (the club's name on a match card): open on that club, then drop it from the URL
+if (QS.has('t')) {
+  const at = P.findIndex(t => t.code === QS.get('t') && (!QS.get('tl') || t.lg === QS.get('tl'))), q = new URLSearchParams(location.search); q.delete('t'); q.delete('tl')
+  history.replaceState(null, '', location.pathname + '?' + q.toString() + (at >= 0 ? '#' + (at + 1) : location.hash))
+}
 const UPDATED = Math.max(...Object.values(CARDS_OF).map(c => +new Date(c.updated)))
 const nameOf = (t: Dict) => TEAMS_OF[t.lg][t.code]?.name || t.code
 const $ = (id: string) => document.getElementById(id)!

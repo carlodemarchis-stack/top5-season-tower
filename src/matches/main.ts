@@ -232,8 +232,8 @@ function card(M: Dict) {
   return `
     <div class="pan pitch">${MARKS}
       <img class="cw t" src="${logo(H.code, M.lg)}" alt=""><img class="cw b" src="${logo(A.code, M.lg)}" alt="">
-      <div class="tlab t${onLight(H.color)}"><span class="tn">${esc(H.name)}</span><span class="tx"><b>${esc(H.form)}</b>${ord(M.table.h[0])} → ${ord(M.table.h[1])}</span></div>
-      <div class="tlab b${onLight(A.color)}"><span class="tn">${esc(A.name)}</span><span class="tx"><b>${esc(A.form)}</b>${ord(M.table.a[0])} → ${ord(M.table.a[1])}</span></div>
+      <div class="tlab t${onLight(H.color)}"><a class="tn" href="teams.html?lg=${M.lg}&t=${H.code}" title="${esc(H.name)} · team card">${esc(H.name)}</a><span class="tx"><b>${esc(H.form)}</b>${ord(M.table.h[0])} → ${ord(M.table.h[1])}</span></div>
+      <div class="tlab b${onLight(A.color)}"><a class="tn" href="teams.html?lg=${M.lg}&t=${A.code}" title="${esc(A.name)} · team card">${esc(A.name)}</a><span class="tx"><b>${esc(A.form)}</b>${ord(M.table.a[0])} → ${ord(M.table.a[1])}</span></div>
       <div class="bigsc t" style="--sc:${scoreInk(H.color)}"><b>${M.score.h}</b></div>
       <div class="bigsc b" style="--sc:${scoreInk(A.color)}"><b>${M.score.a}</b></div>
       ${half(H, true)}${half(A, false)}
