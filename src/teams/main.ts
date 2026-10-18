@@ -24,9 +24,6 @@ await Promise.all(LOAD.map(async lg => {
   TEAMCARDS.teams.forEach((t: Dict) => t.lg = lg)
   TEAMS_OF[lg] = TEAMS; N_OF[lg] = TEAMCARDS.teams.length; CARDS_OF[lg] = TEAMCARDS
 }))
-// players with a card in their league's scorers film: league → espnId → its card number there (squad tiles link to it)
-const SCORER_CARD: Record<string, Record<string, number>> = await import(`../data/scorers-TOP5-${SEASON}.js`)
-  .then((m: Dict) => Object.fromEntries(LOAD.map(lg => [lg, Object.fromEntries((m.SCORERS.lists?.[lg] || []).map(([id]: [string], i: number) => [id, i + 1]))]))).catch(() => ({}))
 const ppgOf = (t: Dict) => t.played ? t.pts / t.played : -1
 // the league photo shoots frame differently (LaLiga / Ligue 1 waist-up, the rest chest-up)
 const PHOTO_H: Record<string, string> = { ESP: '82%', FRA: '80%', ITA: '76%', ENG: '74%', GER: '74%' }
@@ -211,12 +208,11 @@ function squadGrid(t: Dict) {
       ? [[p.age ?? '–', 'age'], [`${p.min}'`, 'minutes'], [p.SV ?? 0, 'saves'], [p.GA ?? 0, 'goals conceded']]
       : [[p.age ?? '–', 'age'], [`${p.min}'`, 'minutes'], [p.G, 'goals'], [p.A, 'assists']]
     const tip = `${p.name}${p.jersey ? ` · #${p.jersey}` : ''}${p.age ? ` · ${p.age}` : ''}${p.nat ? ` · ${p.nat}` : ''} — ${p.apps ? `${p.apps} games (${p.starts} starts), ${p.min}'` : 'no league minutes yet'}${p.YC ? ` · ${p.YC} yellow` : ''}${p.RC ? ` · ${p.RC} red` : ''}${p.inj ? ` · ${p.inj}` : ''}`
-    const sc = SCORER_CARD[t.lg]?.[p.espnId]
-    const open = sc ? `<a class="pm${p.apps ? '' : ' unused'} has-card" href="scorers.html?lg=${t.lg}#${sc}" title="${esc(tip)} — open his scorer card">` : `<div class="pm${p.apps ? '' : ' unused'}" title="${esc(tip)}">`
+    const open = `<a class="pm${p.apps ? '' : ' unused'} has-card" href="player.html?lg=${t.lg}&team=${t.code}&p=${p.espnId}" title="${esc(tip)} — open his card">`
     return `${open}
       <span class="pmshot">${tag}<i class="pmfb">${esc(ini(p.name))}</i>${p.thumb ? `<img src="${p.thumb}" alt="" loading="lazy">` : ''}${p.jersey ? `<b class="pmwm">${esc(p.jersey)}</b>` : ''}${p.inj ? '<i class="inj" title="injured">+</i>' : ''}
         <span class="pmpills">${pills.map(([v, k]) => `<b title="${k}">${v}</b>`).join('')}</span></span>
-      <span class="pmname"><span data-f="${esc(p.name)}" data-s="${esc(initialName(p.name))}">${esc(p.name)}</span>${p.RC ? '<i class="rc"></i>' : p.YC ? '<i class="yc"></i>' : ''}${sc ? '<i class="sclink" title="has a scorer card"></i>' : ''}</span>${sc ? '</a>' : '</div>'}`
+      <span class="pmname"><span data-f="${esc(p.name)}" data-s="${esc(initialName(p.name))}">${esc(p.name)}</span>${p.RC ? '<i class="rc"></i>' : p.YC ? '<i class="yc"></i>' : ''}</span></a>`
   }
   // Minutes / Age: one run in that order
   if (SORT.k !== 'role') {

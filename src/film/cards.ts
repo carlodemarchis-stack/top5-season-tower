@@ -1,0 +1,250 @@
+// The player cards, shared by three films: the scorer card (scorers.html), the goalkeeper card (keepers.html) and the
+// squad film (player.html), which uses the scorer card for outfield players and the keeper card for keepers — one look
+// for every player. Page context (club schedules, season, Serie A marks) comes in as `ctx`; `opt` adapts the panel and
+// the numbers to the film.
+type Dict = Record<string, any>
+export type Ctx = { TEAMS: Record<string, Dict>; SEASON: string; VOTES: Dict }
+export type CardOpt = {
+  badge?: string                         // the panel's corner (default: #rank)
+  big?: [number | string, string]        // the panel's big number and its word (default: goals / saves)
+  nums?: string                          // the numbers row (default: the film's own)
+  photoFallback?: string                 // a second photo to try (the squad thumbnail) before the initials
+  noGoals?: string                       // outfield, no goal yet: what the goal section says
+}
+
+export const LEAGUE_NAME: Record<string, string> = { ITA: 'Serie A', ENG: 'Premier League', ESP: 'LaLiga', FRA: 'Ligue 1', GER: 'Bundesliga' }
+// the league photo shoots frame differently (LaLiga / Ligue 1 waist-up, the rest chest-up): scale so heads read the same size
+export const PHOTO_H: Record<string, string> = { ESP: '90%', FRA: '88%', ITA: '82%', ENG: '80%', GER: '80%' }
+// same six result shades as the towers / barcode — white scores on every shade (one look across the app)
+export const RES6: Record<string, [string, string]> = {
+  bigW: ['#177a41', '#fff'], W1: ['#3a9e62', '#fff'], D: ['#EAB308', '#fff'],
+  nil: ['#9aa0a8', '#fff'], L1: ['#dc5c5e', '#fff'], bigL: ['#b3323a', '#fff'],
+}
+export const res6 = (gf: number, ga: number) => { const d = gf - ga; return d >= 2 ? 'bigW' : d === 1 ? 'W1' : d === 0 ? (gf === 0 ? 'nil' : 'D') : d === -1 ? 'L1' : 'bigL' }
+export const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
+export const ord = (n: number) => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th')
+export const logo = (lg: string, code: string) => `logos/${lg === 'FRA' && code === 'BRE' ? 'FRA_BRE' : code}.png`
+export const minOf = (c: string) => { const m = String(c).match(/(\d+)'(?:\+(\d+))?/) || []; return +(m[1] || 0) + Math.min(+(m[2] || 0), 6) * .5 }
+const rnd = (s: number) => { const x = Math.sin(s * 99.13) * 43758.5453; return x - Math.floor(x) }
+export function lum(hex: string) {
+  const n = parseInt(hex.replace('#', ''), 16), c = [n >> 16, (n >> 8) & 255, n & 255].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 })
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+}
+const POS: Record<string, string> = { F: 'Forward', M: 'Midfielder', D: 'Defender', G: 'Goalkeeper' }
+const initials = (n: string) => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('')
+const matchHref = (ctx: Ctx, lg: string, md: number, id: string) => ctx.SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
+// the panel photo: the portrait, then (squad film) the thumbnail, then the initials
+function photo(src: string | null, name: string, fb?: string) {
+  if (!src) return `<div class="ini">${esc(initials(name))}</div>`
+  const toIni = `this.outerHTML='<div class=&quot;ini&quot;>${esc(initials(name)).replace(/'/g, '')}</div>'`
+  return `<img class="ph" src="${src}" alt="${esc(name)}" onerror="${fb ? `this.onerror=function(){${toIni}};this.src='${fb}'` : toIni}">`
+}
+
+// Serie A: each game's Fantacalcio mark (Redazione) under its box — scripts/update-votes.mjs; other leagues have none
+export function voteHTML(ctx: Ctx, lg: string, id: string, md: number) {
+  if (lg !== 'ITA') return ''
+  const v = ctx.VOTES[String(id)]?.[md]
+  return v == null ? '<div class="vt">&nbsp;</div>' : `<div class="vt${v >= 7 ? ' hi' : v < 6 ? ' lo' : ''}" title="Fantacalcio mark (Redazione)">${Number.isInteger(v) ? v : v.toFixed(1)}</div>`
+}
+// a player's average Serie A mark (null when unrated)
+export function avgVote(ctx: Ctx, id: string) {
+  const v = Object.values(ctx.VOTES[String(id)] || {}) as number[]
+  return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 100) / 100 : null
+}
+
+// ================= the scorer card (outfield players) =================
+export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
+  const club = ctx.TEAMS[p.lg][p.team] || {}
+  const c = club.primary || '#555'
+  const light = lum(c) > 0.55
+  const ink = light ? '#15181d' : '#fff'
+  const c2 = light ? '#15181d' : c                     // the big goals number takes the club colour unless it is too pale to read
+  const hlInk = lum(c) > 0.183 ? '#15181d' : '#fff'     // text on the club-colour highlight: white only where it reaches 4.5:1
+  const t = p.teamLine
+  const goals = p.matches.flatMap((m: Dict) => m.goals.map((g: Dict) => ({ ...g, m })))
+    .map((g: Dict) => `<span class="g" data-mid="${g.m.id}"><b>${esc(g.min)}</b> ${g.m.ha === 'H' ? 'vs' : 'at'} ${esc(g.m.opp)}${g.kind === 'pen' ? '<em>PEN</em>' : g.kind === 'head' ? '<em>HEAD</em>' : g.kind === 'fk' ? '<em>FK</em>' : ''}${g.ast ? ` · ast ${esc(g.ast)}` : ''}</span>`).join('')
+  const minPerGoal = p.G ? Math.round(p.min / p.G) : null
+  const age = p.age != null ? `${p.age}` : ''
+  const [bigN, bigW] = opt.big || [p.G, `goal${p.G === 1 ? '' : 's'}`]
+  return `<section class="card" id="p-${p.espnId}" style="--c:${c};--c2:${c2};--ink:${ink};--hlink:${hlInk};--ph:${PHOTO_H[p.lg]}">
+    <div class="pan">
+      <img class="wm" src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">
+      <div class="rk">${opt.badge ?? `#${p.rank}`}</div>
+      <div class="gbig"><b>${bigN}</b><span>${bigW}</span></div>
+      ${photo(p.photo, p.name, opt.photoFallback)}
+    </div>
+    <div class="body">
+      <div>
+        <h1 style="--len:${[...p.name].length};--word:${Math.max(...p.name.split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(p.name)}</h1>
+        <div class="meta" style="margin-top:8px">${[POS[p.pos] || p.posName, age && `<b>${age}</b> yrs`, esc(p.nat), p.jersey && `#${esc(p.jersey)}`, p.heightCm && `${p.heightCm} cm`].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="club"><img src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">${esc(club.name || p.team)}
+        <span class="tl"><b>${t.pos ? ord(t.pos) : '–'}</b> · <b>${t.pts}</b> pts · ${t.W}-${t.D}-${t.L} · GD ${t.GF - t.GA >= 0 ? '+' : ''}${t.GF - t.GA}</span></div>
+      <div class="nums">${opt.nums ?? `
+        <div class="n big"><b>${p.G}</b><span>Goals${p.pens ? ` · ${p.pens} pen${p.pens > 1 ? 's' : ''}` : ''}</span></div>
+        <div class="n"><b>${p.A}</b><span>Assists</span></div>
+        <div class="n"><b>${p.apps}</b><span>Games${p.starts < p.apps ? ` · ${p.starts} starts` : ''}</span></div>
+        <div class="n"><b>${p.min}'</b><span>Minutes</span></div>
+        <div class="n"><b>${minPerGoal ?? '–'}'</b><span>Per goal</span></div>
+        <div class="n"><b>${p.sog}/${p.shots}</b><span>On target / shots</span></div>`}
+      </div>
+      ${strip2(ctx, p, club, !goals && opt.noGoals != null)}
+      ${goals || opt.noGoals == null ? `<div class="glist">
+        <div class="sec">The goals</div>
+        <div class="goals">${goals}</div>
+      </div>` : `<div class="glist"><div class="sec">The goals</div><div class="goals"><span style="color:#9aa0a8;font-size:12px">${opt.noGoals}</span></div></div>`}
+    </div>
+  </section>`
+}
+
+// the season in two rows — matchdays 1–19 over 20–38, unplayed fixtures included — plus the goals on a 0–90' line
+const kindName = (k: string) => k === 'pen' ? 'penalty' : k === 'head' ? 'header' : k === 'fk' ? 'free kick' : 'goal'
+function strip2(ctx: Ctx, p: Dict, club: Dict, noLine = false) {
+  const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w)
+  const byId: Record<string, Dict> = Object.fromEntries(p.matches.map((m: Dict) => [m.id, m]))
+  const half = Math.ceil(all.length / 2)
+  const maxMarks = Math.max(1, ...p.matches.map((m: Dict) => m.goals.length + m.A))
+  const cell = (g: Dict) => {
+    const m = byId[g.id]
+    const at = g.ha === 'A' ? '@' : ''
+    if (!m) return `<div class="c2 up" data-gid="${g.id}"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, p.lg, '', 0)}</div>`
+    const [bg, fg] = RES6[res6(m.gf, m.ga)]
+    const marks = [...m.goals.map((x: Dict) => `<i class="gl${x.kind === 'pen' ? ' pen' : ''}"></i>`), ...Array.from({ length: m.A }, () => '<i class="as"></i>')].reverse().join('')
+    // the box reads bottom-up as the 90': the unplayed share is veiled — at the top for a starter (he played the start),
+    // at the bottom for a sub (he played the end), so the darker part sits where his minutes were
+    const veil = m.role ? Math.round((1 - Math.min(m.min, 90) / 90) * 100) : 100
+    const ink = !m.role || m.min < 45 ? '#15181d' : fg
+    return `<div class="c2${m.role ? (m.role === 'B' ? ' sub' : '') : ' dnp'}" data-mid="${g.id}" data-gid="${g.id}"${matchHref(ctx, p.lg, g.w, g.id)}>
+      <div class="mk">${marks}</div>
+      <div class="bx" style="background:${bg};color:${ink}"><span class="vl" style="height:${veil}%"></span><b>${m.gf}-${m.ga}</b></div>
+      <div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, p.lg, p.espnId, g.w)}</div>`
+  }
+  const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:${maxMarks}">${gs.map(cell).join('')}</div></div>`
+  return `<div class="s2">
+    ${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}
+  </div>${noLine ? '' : `
+  <div class="s2">
+    <div class="sec">When he scores${goalLegend(p)}</div>${goalLine(p)}
+  </div>`}`
+}
+// "45'+2'" → base 45, extra 2
+const parseMin = (min: string) => { const mm = String(min).match(/(\d+)'?(?:\s*\+\s*(\d+))?/) || []; return { base: +(mm[1] || 0), extra: +(mm[2] || 0) } }
+// sits on the "When he scores" title line: the half split, goals off the bench, and the marker key
+function goalLegend(p: Dict) {
+  const all = p.matches.flatMap((m: Dict) => m.goals.map((g: Dict) => ({ g, m })))
+  const h1 = all.filter((x: Dict) => parseMin(x.g.min).base <= 45).length
+  const bench = all.filter((x: Dict) => x.m.role === 'B').length
+  return `<span class="gsum">1st half <b>${h1}</b> · 2nd half <b>${all.length - h1}</b> · off the bench <b>${bench}</b><span class="key"><i class="gd"></i>goal<i class="gd pen"></i>penalty<i class="gd head"></i>header<i class="gd fk"></i>free kick</span></span>`
+}
+function goalLine(p: Dict) {
+  const pts: Dict[] = p.matches.flatMap((m: Dict) => m.goals.map((g: Dict) => {
+    const { base, extra } = parseMin(g.min)
+    return { x: Math.min(base, 90) + Math.min(extra, 6) * 0.45, base, g, m }
+  }))
+  // stack goals that would overlap (within ~2.2 minutes) upwards
+  pts.sort((a, b) => a.x - b.x)
+  const lanes: number[] = []
+  for (const q of pts) { let l = 0; while (lanes[l] != null && q.x - lanes[l] < 2.2) l++; lanes[l] = q.x; q.lane = l }
+  const dots = pts.map(q => `<i class="gd${q.g.kind === 'pen' ? ' pen' : q.g.kind === 'head' ? ' head' : q.g.kind === 'fk' ? ' fk' : ''}" style="left:${(q.x / 93) * 100}%;bottom:${4 + q.lane * 11}px" data-mid="${q.m.id}" title="${esc(q.g.min)} ${kindName(q.g.kind)} · MD${q.m.w} ${q.m.ha === 'H' ? 'vs' : 'at'} ${esc(q.m.opp)}${q.g.ast ? ` · ast ${esc(q.g.ast)}` : ''}"></i>`).join('')
+  const lanesN = Math.max(1, ...pts.map(q => q.lane + 1))
+  const ticks = [0, 15, 30, 45, 60, 75, 90].map(t => `<span style="left:${(t / 93) * 100}%">${t}'</span>`).join('')
+  return `<div class="gline" style="--h:${8 + lanesN * 11}px"><div class="ax">${dots}<em class="ht"></em></div><div class="tk">${ticks}</div></div>`
+}
+
+// the match card on hover / tap of a season box: the game, and his part in it
+const KIND: Record<string, string> = { pen: 'pen', head: 'header', fk: 'free kick' }
+export function matchTip(ctx: Ctx, p: Dict, gid: string) {
+  const club = ctx.TEAMS[p.lg][p.team] || {}, g = (club.games || []).find((x: Dict) => x.id === gid), m = p.matches.find((x: Dict) => x.id === gid)
+  if (!g) return ''
+  const opp = ctx.TEAMS[p.lg][g.opp] || {}, when = g.et ? new Date(g.et.replace(' ', 'T')) : null
+  const hh = g.et ? g.et.slice(11, 16) : '', tbc = !hh || +hh.slice(0, 2) < 6   // CET, as in the tower; a small-hours time = not fixed yet
+  const date = when ? when.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + (m || tbc ? '' : ` · ${hh} CET`) : ''
+  const side = (code: string, name: string) => `<span class="mt-team"><img src="${logo(p.lg, code)}" alt="">${esc(name)}</span>`
+  const us: [string, string] = [p.team, club.name || p.team], them: [string, string] = [g.opp, opp.name || g.oppFull || g.opp]
+  const [home, away] = g.ha === 'H' ? [us, them] : [them, us]
+  const head = `<div class="mt-top">MD ${g.w}${date ? ` · ${date}` : ''} · ${g.ha === 'H' ? 'home' : 'away'}</div>`
+  if (!m) return `${head}<div class="mt-score">${side(...home)}<b class="mt-vs">vs</b>${side(...away)}</div><div class="mt-foot">to play</div>`
+  const [bg, fg] = RES6[res6(m.gf, m.ga)], hs = g.ha === 'H' ? `${m.gf}–${m.ga}` : `${m.ga}–${m.gf}`
+  const nm = p.name, stat = (n: number | undefined, w: string) => n == null ? '' : `<span><b>${n}</b> ${w}</span>`
+  const part = !m.role ? `<div class="mt-foot">${esc(nm)} did not play</div>`
+    : `<div class="mt-me"><b>${esc(nm)}</b> · ${m.role === 'B' ? 'off the bench' : 'started'} · <b>${m.min}′</b></div>
+      ${m.goals.length ? `<div class="mt-goals">${m.goals.map((x: Dict) => `<div class="mt-g"><span class="mt-min">${esc(x.min)}</span><span>goal${x.kind ? ` <em>${KIND[x.kind] || x.kind}</em>` : ''}${x.ast ? ` <i>· ${esc(x.ast)}</i>` : ''}</span></div>`).join('')}</div>` : ''}
+      <div class="mt-stats">${stat(m.G, `goal${m.G === 1 ? '' : 's'}`)}${stat(m.A, `assist${m.A === 1 ? '' : 's'}`)}${stat(m.SH, 'shots')}${stat(m.SOG, 'on target')}${m.YC || m.RC ? `<span><b>${m.YC || m.RC}</b><i class="${m.RC ? 'rc' : 'yc'}"></i></span>` : ''}</div>`
+  return `${head}<div class="mt-score">${side(...home)}<b class="mt-res" style="background:${bg};color:${fg}">${hs}</b>${side(...away)}</div>${part}`
+}
+
+// ================= the goalkeeper card =================
+// the season goal: every shot on target he faced (the shooter's view), six zones
+const PL: Record<string, number[]> = { bl: [.17, .74], br: [.83, .74], tl: [.17, .27], tr: [.83, .27], c: [.5, .52], tc: [.5, .25], bc: [.5, .76], pl: [0, .5], pr: [1, .5], bar: [.5, 0] }
+// goals are red — unless the club's own colour is a red too, then black, so a save and a goal never look alike
+const rgb = (h: string) => { const n = parseInt(h.replace('#', ''), 16); return [n >> 16, (n >> 8) & 255, n & 255] }
+const goalInk = (c: string) => Math.hypot(...rgb(c).map((v, k) => v - rgb('#b3323a')[k])) < 130 ? '#15181d' : '#b3323a'
+const zoneOf = (p: string) => p === 'tl' || p === 'tr' || p === 'bl' || p === 'br' || p === 'tc' ? p : 'bc'
+function bigGoal(k: Dict, c: string) {
+  const W = 300, H = 100, ox = 30, oy = 22, shots = k.shots.filter((s: string[]) => PL[s[0]])
+  const Z: Dict = {}; for (const [p, r] of shots) { const z = zoneOf(p); (Z[z] ||= { sv: 0, g: 0 })[r === 'g' ? 'g' : 'sv']++ }
+  const ZX: Record<string, number> = { tl: 0, tc: 1, tr: 2, bl: 0, bc: 1, br: 2 }
+  const zones = Object.entries(ZX).map(([z, i]) => { const v = Z[z] || { sv: 0, g: 0 }, n = v.sv + v.g, top = z[0] === 't'
+    return n ? `<text x="${ox + (i + .5) * W / 3}" y="${top ? oy - 8 : oy + H + 15}" text-anchor="middle" font-size="9.5" font-weight="800" fill="#15181d" opacity=".8">${v.sv}/${n} saved</text>` : '' }).join('')
+  const pts = shots.map(([p, r]: string[], i: number) => { const [px, py] = PL[p], x = ox + px * W + (rnd(i + 3) - .5) * 26, y = oy + py * H + (rnd(i + 9) - .5) * 18
+    return r === 'g' ? `<circle cx="${x}" cy="${y}" r="6" fill="${goalInk(c)}" stroke="#fff" stroke-width="2"/>` : `<circle cx="${x}" cy="${y}" r="5" fill="#fff" stroke="${c}" stroke-width="2.4"/>` }).join('')
+  return `<svg viewBox="0 0 360 148" preserveAspectRatio="xMidYMid meet"><defs><pattern id="nt${k.key}" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" fill="none" stroke="#dfe3e6" stroke-width=".8"/></pattern></defs>
+    <rect x="${ox}" y="${oy}" width="${W}" height="${H}" fill="url(#nt${k.key})"/>
+    <g stroke="#e3e6ea" stroke-width="1" stroke-dasharray="3 3"><line x1="${ox + W / 3}" x2="${ox + W / 3}" y1="${oy}" y2="${oy + H}"/><line x1="${ox + 2 * W / 3}" x2="${ox + 2 * W / 3}" y1="${oy}" y2="${oy + H}"/><line x1="${ox}" x2="${ox + W}" y1="${oy + H / 2}" y2="${oy + H / 2}"/></g>
+    <path d="M${ox} ${oy + H}V${oy}H${ox + W}V${oy + H}" fill="none" stroke="#15181d" stroke-width="5" stroke-linejoin="round"/>
+    <line x1="6" x2="354" y1="${oy + H}" y2="${oy + H}" stroke="#c9ced4" stroke-width="1.5"/>${zones}${pts}</svg>`
+}
+// the season in two rows: one box per fixture of his club — result colour, his saves, goals against above
+function strip(ctx: Ctx, k: Dict, club: Dict) {
+  const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w), byId: Dict = Object.fromEntries(k.games.map((g: Dict) => [g.id, g])), half = Math.ceil(all.length / 2)
+  const maxMarks = Math.max(1, ...k.games.map((g: Dict) => g.conc))
+  const cell = (g: Dict) => { const m = byId[g.id], at = g.ha === 'A' ? '@' : ''
+    const miss = !m && (k.missed || []).find((x: any[]) => x[0] === g.id)
+    if (miss) { const [bg] = RES6[res6(miss[1], miss[2])]
+      return `<div class="c2 dnp"${matchHref(ctx, k.lg, g.w, g.id)} title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} ${miss[1]}-${miss[2]} · he didn't start"><div class="mk"></div><div class="bx" style="background:${bg};color:#15181d"><span class="vl" style="height:100%"></span><b>–</b></div><div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, k.lg, '', 0)}</div>` }
+    if (!m) return `<div class="c2 up"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, k.lg, '', 0)}</div>`
+    const [bg, fg] = RES6[res6(m.gf, m.ga)]
+    return `<div class="c2" data-mid="${m.id}"${matchHref(ctx, k.lg, g.w, m.id)} title="MD${m.md} · ${m.ha === 'H' ? 'vs' : 'at'} ${esc(m.opp)} ${m.gf}-${m.ga} · ${m.sv} saves · ${m.conc} conceded${m.min < 90 ? ` · ${m.min}'` : ''}">
+      <div class="mk">${Array.from({ length: m.conc }, () => '<i class="ga"></i>').join('')}</div>
+      <div class="bx" style="background:${bg};color:${fg}"><b>${m.sv}</b></div><div class="op">${at}${esc(m.opp)}</div>${voteHTML(ctx, k.lg, k.id, m.md)}</div>` }
+  const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:${maxMarks}">${gs.map(cell).join('')}</div></div>`
+  return `<div class="s2">${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}</div>`
+}
+export function keeperCard(ctx: Ctx, k: Dict, opt: CardOpt = {}) {
+  const club = ctx.TEAMS[k.lg][k.team] || {}, c = club.primary || '#555', light = lum(c) > .55
+  const hlInk = lum(c) > 0.183 ? '#15181d' : '#fff'
+  const mid = (md: number) => k.games.find((g: Dict) => g.md === md)?.id
+  const conceded = [...k.conceded].sort((a, b) => a[3] - b[3] || minOf(a[0]) - minOf(b[0])).map(([min, by, kind, md, opp]: any[]) =>
+    `<div class="cg" data-mid="${mid(md)}"><b>${esc(min)}</b>${esc(by)}${kind === 'pen' ? ' <em>PEN</em>' : kind === 'og' ? ' <em>OG</em>' : kind === 'head' ? ' <em>HEAD</em>' : kind === 'fk' ? ' <em>FK</em>' : ''}<small>MD${md} · ${esc(opp)}</small></div>`).join('')
+  const [bigN, bigW] = opt.big || [k.SV, `save${k.SV === 1 ? '' : 's'}`]
+  return `<section class="card" id="k-${k.key}" style="--c:${c};--c2:${light ? '#15181d' : c};--ink:${light ? '#15181d' : '#fff'};--hlink:${hlInk};--ph:${PHOTO_H[k.lg]}">
+    <div class="pan">
+      <img class="wm" src="${logo(k.lg, k.team)}" alt="" onerror="this.remove()">
+      <div class="rk">${opt.badge ?? `#${k.rank}`}</div>
+      <div class="gbig"><b>${bigN}</b><span>${bigW}</span></div>
+      ${photo(k.photo, k.name, opt.photoFallback)}
+    </div>
+    <div class="body">
+      <div>
+        <h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(k.name)}</h1>
+        <div class="meta" style="margin-top:8px">${['Goalkeeper', k.age != null && `<b>${k.age}</b> yrs`, esc(k.nat), k.n && `#${esc(k.n)}`].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="club"><img src="${logo(k.lg, k.team)}" alt="" onerror="this.remove()">${esc(club.name || k.team)}
+        <span class="tl">${LEAGUE_NAME[k.lg]}${k.tpos ? ` · <b>${ord(k.tpos)}</b>` : ''}</span></div>
+      <div class="nums">${opt.nums ?? `
+        <div class="n big"><b>${k.SV}</b><span>Saves${k.PS ? ` · ${k.PS} pen${k.PS > 1 ? 's' : ''}` : ''}</span></div>
+        <div class="n"><b>${k.GA}</b><span>Conceded</span></div>
+        <div class="n"><b>${k.PCT ?? '–'}%</b><span>Save %</span></div>
+        <div class="n"><b>${k.CS}</b><span>Clean sheets</span></div>
+        <div class="n"><b>${k.GP}</b><span>Games</span></div>
+        <div class="n"><b>${k.PF ? `${k.PS}/${k.PF}` : '–'}</b><span>Pens saved</span></div>`}
+      </div>
+      ${strip(ctx, k, club)}
+      <div class="gwrap">
+        <div><div class="sec">Every shot on target he faced</div><div class="gf">${bigGoal(k, c)}</div>
+          <div class="gleg"><span><i style="background:#fff;border:2.4px solid ${c}"></i>saved</span><span><i style="background:${goalInk(c)}"></i>goal</span><span style="color:#9aa0a8">· the shooter's view · each zone: saved / faced</span></div></div>
+        <div><div class="sec">The goals against him · ${k.GA}</div><div class="clist">${conceded || '<span style="color:#9aa0a8;font-size:12px">none</span>'}</div></div>
+      </div>
+    </div>
+  </section>`
+}

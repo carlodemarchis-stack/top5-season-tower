@@ -6,5 +6,5 @@ export default defineConfig({
     plugins: [react()],
     base: './',
     // five pages: the Season Tower app and the scorer, team, match and goalkeeper card films
-    build: { target: 'es2022', rollupOptions: { input: { main: 'index.html', scorers: 'scorers.html', teams: 'teams.html', matches: 'matches.html', keepers: 'keepers.html' } } },
+    build: { target: 'es2022', rollupOptions: { input: { main: 'index.html', scorers: 'scorers.html', teams: 'teams.html', matches: 'matches.html', keepers: 'keepers.html', player: 'player.html' } } },
 });
