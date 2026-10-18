@@ -85,7 +85,7 @@ const mark = (id: string) => { const v = avgVote(CTX, id); return v == null ? nu
 const fb = (sq: Dict) => sq.thumb || undefined
 function card(x: Dict) {
   const { sq, d } = x, badge = TAG[sq.pos] || '', vm = LG === 'ITA' ? mark(sq.espnId) : null
-  const shirt: [string, string] = [sq.jersey || '–', 'shirt']   // the panel's big number: his shirt number
+  const shirt: [string, string] = [sq.jersey || '–', '']   // the panel's big number: his shirt number (no word under it)
   if (x.kind === 'gk') {
     const nums = `
       <div class="n big"><b>${d.SV}</b><span>Saves${d.PS ? ` · ${d.PS} pen${d.PS > 1 ? 's' : ''}` : ''}</span></div>
