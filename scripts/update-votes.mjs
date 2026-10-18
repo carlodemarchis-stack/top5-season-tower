@@ -7,7 +7,7 @@
  *   node scripts/update-votes.mjs --dry-run
  *
  * Each match day page (/voti-fantacalcio-serie-a/<season>/<md>) has one table per club with three marks per player;
- * we keep one — the first, "Redazione Fantacalcio" ("s.v." = not rated → skipped). Players are matched to the club's
+ * (and one for the coach) — we keep one, the first, "Redazione Fantacalcio" ("s.v." = not rated → skipped). Players are matched to the club's
  * squad + everyone who appeared for it in our match reports (squad lists lag summer transfers), by name; a Fantacalcio
  * player id, once matched, is remembered in scripts/votes-ids-ITA.json. Unmatched names are reported.
  */
@@ -41,6 +41,7 @@ const playedMd = new Set(); for (const t of Object.values(TEAMS)) for (const g o
 const mds = [...playedMd].sort((a, b) => a - b)
 const prev = fs.existsSync(OUT) ? readJS(OUT, 'VOTES') : null
 const v = prev?.v ? structuredClone(prev.v) : {}
+const c = prev?.c ? structuredClone(prev.c) : {}   // the coach's mark: club code → matchday → mark (who was on the bench: coaches-ITA)
 const have = new Set(Object.values(v).flatMap(o => Object.keys(o).map(Number)))
 const todo = FULL ? mds : mds.filter(md => md >= mds[mds.length - 1] - 1 || !have.has(md))
 const ids = fs.existsSync(IDS) ? JSON.parse(fs.readFileSync(IDS, 'utf8')) : {}
@@ -83,15 +84,20 @@ for (const md of todo) {
       if (!espnId) { unmatched.add(`${code} ${name}`); continue }
       ;(v[espnId] ||= {})[md] = vote; n++
     }
+    // the coach's row (role "all", no player link): one mark per club and match day
+    for (const part of block.split('class="role" data-value="all"').slice(1)) {
+      const row = part.split('</tr>')[0], grade = (row.match(/class="player-grade[^"]*" data-value="([^"]*)"/) || [])[1]
+      if (grade && /^\d+(,\d+)?$/.test(grade)) { (c[code] ||= {})[md] = +grade.replace(',', '.'); n++ }
+    }
   }
   console.log(`MD${md}: ${n} marks`)
   await new Promise(r => setTimeout(r, 400))   // polite
 }
 
-const data = { season: SEASON, source: 'Fantacalcio · Redazione', v }
+const data = { season: SEASON, source: 'Fantacalcio · Redazione', v, c }
 if (unmatched.size) console.log(`\n${unmatched.size} not matched:\n  ` + [...unmatched].join('\n  '))
-if (prev && JSON.stringify(prev.v) === JSON.stringify(v)) { console.log('\nvotes unchanged — nothing written'); process.exit(0) }
+if (prev && JSON.stringify(prev.v) === JSON.stringify(v) && JSON.stringify(prev.c || {}) === JSON.stringify(c)) { console.log('\nvotes unchanged — nothing written'); process.exit(0) }
 if (DRY) { console.log('\n(dry run) nothing written'); process.exit(0) }
 fs.writeFileSync(IDS, JSON.stringify(ids, null, 1) + '\n')
-fs.writeFileSync(OUT, `// Serie A player marks per match day (Fantacalcio · Redazione), keyed espnId → matchday → mark. Auto-updated by scripts/update-votes.mjs.\nexport const VOTES = ${JSON.stringify({ ...data, updated: new Date().toISOString() })}\n`)
+fs.writeFileSync(OUT, `// Serie A player marks per match day (Fantacalcio · Redazione), keyed espnId → matchday → mark (v), coaches club → matchday → mark (c). Auto-updated by scripts/update-votes.mjs.\nexport const VOTES = ${JSON.stringify({ ...data, updated: new Date().toISOString() })}\n`)
 console.log(`\nwrote ${path.basename(OUT)} · ${Object.keys(v).length} players`)

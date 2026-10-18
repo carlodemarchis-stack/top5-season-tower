@@ -124,7 +124,7 @@ if (HEAD) P.push({ kind: 'coach', sq: { name: HEAD.name, pos: 'C', nat: HEAD.nat
 const mark = (id: string) => { const v = avgVote(CTX, id); return v == null ? null : v.toFixed(2) }
 const fb = (sq: Dict) => sq.thumb || undefined
 function card(x: Dict) {
-  if (x.kind === 'coach') return coachCard(CTX, COACHES!, LG, CODE, played, teamLine, games)
+  if (x.kind === 'coach') return coachCard(CTX, COACHES!, LG, CODE, played, teamLine, games, (votes as Dict | null)?.VOTES?.c?.[CODE])
   const { sq, d } = x, badge = TAG[sq.pos] || '', vm = LG === 'ITA' ? mark(sq.espnId) : null
   const shirt: [string, string] = [sq.jersey || '–', '']   // the panel's big number: his shirt number (no word under it)
   if (x.kind === 'gk') {
