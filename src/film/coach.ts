@@ -50,9 +50,41 @@ export function coachChip(C: Dict | null, lg: string, code: string, played: Dict
     ${before.length ? `<span class="cb">before: ${before.map(s => `${esc(surname(C!.coaches[s.id]))} ${span(s)}`).join(', ')}</span>` : ''}</div>`
 }
 
+// his substitutions, from the match records of the games he was on the bench for: a summary, the players he sends on
+// most, and each recent game's changes (minute, who came on for whom; ● a goal / ○ an assist by the sub)
+const short = (n: string) => /\s/.test(n) ? n.replace(/^\S+\s+/, '') : n
+const minute = (m: string) => parseInt(m, 10) || 0
+function subsHTML(C: Dict, code: string, id: string, recs: Dict[]) {
+  const mine = recs.filter(M => coachOf(C, code, M.h === code ? M.a : M.h, M.h === code ? 'H' : 'A') === id).sort((a, b) => b.md - a.md)
+  if (!mine.length) return ''
+  const used: Record<string, { name: string; n: number }> = {}
+  let total = 0, firsts: number[] = [], ht = 0, G = 0, A = 0
+  const games = mine.map(M => {
+    const me = M.h === code ? 'h' : 'a', T = me === 'h' ? M.home : M.away, ha = me === 'h' ? 'H' : 'A'
+    const P: Record<string, Dict> = Object.fromEntries(T.players.map((p: Dict) => [String(p.id), p]))
+    const subs = M.subs.filter((x: Dict) => P[String(x.on)]).sort((a: Dict, b: Dict) => minute(a.min) - minute(b.min))
+    if (subs.length) firsts.push(minute(subs[0].min))
+    const rows = subs.map((x: Dict) => {
+      const on = P[String(x.on)], off = P[String(x.off)], g = M.goals.filter((q: Dict) => String(q.byId) === String(x.on) && q.s === me && q.kind !== 'og').length
+      const a = on.ev.filter((e: string[]) => e[0] === 'ast').length
+      total++; if (minute(x.min) <= 46) ht++; G += g; A += a
+      ;(used[on.id] ||= { name: on.name, n: 0 }).n++
+      return `<div class="sr"><b>${esc(x.min)}</b><span class="on">${esc(short(on.name))}${'<i class="gl"></i>'.repeat(g)}${'<i class="as"></i>'.repeat(a)}</span><span class="off">for ${esc(short(off?.name || '?'))}</span></div>`
+    }).join('')
+    return `<div class="sg" data-mid="${M.id}"><div class="sh">MD ${M.md} · ${ha === 'H' ? 'vs' : 'at'} ${esc(M[me === 'h' ? 'a' : 'h'])} <b>${M.score[me]}-${M.score[me === 'h' ? 'a' : 'h']}</b></div>${rows || '<div class="sr none">no changes</div>'}</div>`
+  })
+  const avgFirst = firsts.length ? Math.round(firsts.reduce((a, b) => a + b, 0) / firsts.length) : null
+  const top = Object.values(used).sort((a, b) => b.n - a.n).slice(0, 6)
+  return `<div class="subs"><div class="sec">His substitutions<span class="gsum">${[`<b>${total}</b> changes in ${mine.length} game${mine.length === 1 ? '' : 's'}`, avgFirst != null && `first change at <b>${avgFirst}'</b> on average`,
+      ht && `<b>${ht}</b> at half-time`, `subs scored <b>${G}</b>, assisted <b>${A}</b>`].filter(Boolean).map(c => `<span class="nw">${c}</span>`).join(' · ')}</span></div>
+    ${top.length ? `<div class="sub-top"><span class="lb">Most used off the bench</span>${top.map(x => `<span class="g">${esc(x.name)} <b>×${x.n}</b></span>`).join('')}</div>` : ''}
+    <div class="sgs">${games.slice(0, 8).join('')}</div></div>`
+}
+
 // ================= the coach card (closes the squad film) =================
 // games = the club's played match records ({ id, md, opp, ha, gf, ga }); club = its schedule entry (every fixture)
-export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Dict[], teamLine: Dict) {
+// recs = the club's full match records (src/data/matches-*): his substitutions come from them
+export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Dict[], teamLine: Dict, recs: Dict[] = []) {
   const S = stints(C, code, games), cur = S[S.length - 1], k = C.coaches[cur.id]
   const club = ctx.TEAMS[lg][code] || {}
   const c = club.primary || '#555', light = lum(c) > 0.55, ink = light ? '#15181d' : '#fff', c2 = light ? '#15181d' : c, hlInk = lum(c) > 0.183 ? '#15181d' : '#fff'
@@ -93,6 +125,7 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
       ${S.length > 1 ? `<div class="avail">Greyed: games under ${S.length > 2 ? 'the coaches' : 'the coach'} before him, tagged under the box</div>` : ''}
       <div class="s2">${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}</div>
       ${list}
+      ${subsHTML(C, code, cur.id, recs)}
     </div>
   </section>`
 }
