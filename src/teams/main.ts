@@ -2,7 +2,7 @@
 // or all five leagues in one film ranked by points per game (?lg=ALL), so leagues of 18 and 20 clubs compare fairly.
 // Data: src/data/teams-<LG>-<season>.js (built + verified by scripts/update-teams.mjs); club colours/names from the schedule.
 import '../film/film.css'
-import { initFilm, initHighlight, initTip, initLinks } from '../film/chrome'
+import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -533,4 +533,5 @@ function matchTip(t: Dict, gid: string, after?: string) {
 }
 initLinks(film)
 initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!, el.dataset.after))
+initNav('teams', LG, SEASON)
 initFilm({ count: P.length + (ALL ? 5 : 3), key: KEY, onPaint, jumpHTML, self: 'teams.html' })

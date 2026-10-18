@@ -1,7 +1,7 @@
 // Top-scorers card film: one full-screen card per player (top 50 by goals across the top 5 leagues, ties included).
 // Data: src/data/scorers-TOP5-<season>.js (built + verified by scripts/update-scorers.mjs); club colours/names from the schedules.
 import '../film/film.css'
-import { initFilm, initHighlight, initTip, initLinks } from '../film/chrome'
+import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
 type Dict = Record<string, any>
 // ?season=2025-26 loads a past season (data from `update-scorers.mjs --season`)
 const QS = new URLSearchParams(location.search)
@@ -212,4 +212,5 @@ function matchTip(p: Dict, gid: string) {
   return `${head}<div class="mt-score">${side(...home)}<b class="mt-res" style="background:${bg};color:${fg}">${hs}</b>${side(...away)}</div>${part}`
 }
 initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!))
+initNav('scorers', LIST, SEASON)
 initFilm({ count: P.length, key: 'top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON) + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'scorers.html' })

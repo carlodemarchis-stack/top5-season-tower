@@ -6,7 +6,7 @@
 //   right  where each side's attempts went on goal, the scorers, and the numbers mirrored at the centre line
 // Data: src/data/matches-<LG>-<season>-md<NN>.js (scripts/update-matches.mjs); club names / colours from the schedule.
 import '../film/film.css'
-import { initFilm, initHighlight } from '../film/chrome'
+import { initFilm, initHighlight, initNav } from '../film/chrome'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -319,4 +319,5 @@ function jumpHTML(q: string) {
 }
 
 initHighlight(film, '[data-h]', k => `[data-k~="${k}"]`, el => el.dataset.h!)
+initNav('matches', LG, SEASON)
 initFilm({ count: P.length, key: `top5.matches.card.${LG}${ALL ? '' : '.md' + MD}${SEASON === '2026-27' ? '' : '.' + SEASON}`, onPaint, jumpHTML, self: 'matches.html' })
