@@ -72,7 +72,7 @@ kbd{font:inherit;font-size:11px;background:var(--pan);border:1px solid var(--lin
 /* left: club-colour panel with the photo */
 .pan{position:relative;overflow:hidden;background:var(--c);color:var(--ink)}
 .pan::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(0,0,0,.28));pointer-events:none}
-.pan .wm{position:absolute;right:-12%;top:6%;width:78%;opacity:.16;filter:grayscale(1) brightness(3)}
+.pan .wm{position:absolute;left:-12%;top:6%;width:78%;opacity:.16;filter:grayscale(1) brightness(3)}
 /* panel: full-size photo, small rank top-left, the goal count big top-right BEHIND the player */
 .pan{--rk:clamp(34px,4.2vw,60px)}
 .pan .rk{position:absolute;left:22px;top:16px;z-index:2;font-weight:900;font-size:var(--rk);line-height:.9;letter-spacing:-.04em}
@@ -236,3 +236,9 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 .pan .bio span{display:block;font-size:9px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.62)}
 .pan .bio b{display:block;margin-top:3px;font-size:clamp(14px,1.5vw,21px);font-weight:900;letter-spacing:-.01em;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}
 @media (max-width: 760px){ .pan .bio{border-radius:10px} .pan .bio b{font-size:13px} .pan .bio span{font-size:8px;letter-spacing:.14em} }
+/* squad cards: a game out of the matchday squad is hatched (red-tinted the game after a red card); the bench is plain pale */
+.c2.out .bx .vl{background:repeating-linear-gradient(135deg,rgba(255,255,255,.92) 0 3px,rgba(255,255,255,.5) 3px 6px)!important}
+.c2.out.sus .bx .vl{background:repeating-linear-gradient(135deg,rgba(255,255,255,.92) 0 3px,rgba(217,45,32,.35) 3px 6px)!important}
+.avail{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#6b717a;margin:-4px 0 2px}
+.avail i{display:inline-block;width:16px;height:12px;border-radius:2px;background:repeating-linear-gradient(135deg,#d9dde2 0 3px,#f4f5f6 3px 6px);border:1px solid #c9ced4}
+.avail b{color:#15181d}

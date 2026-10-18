@@ -86,7 +86,7 @@ const clubs = await pool(espnTeams, 4, async (team) => {
     const o = onPitch.get(a.id) || { apps: 0, starts: 0, min: 0 }
     const inj = a.injuries?.[0]
     return { espnId: a.id, name: a.displayName, jersey: a.jersey || null, pos: a.position?.abbreviation || '?', age: a.age ?? null,
-      nat: a.citizenshipCountry?.abbreviation || null, inj: inj ? (inj.status || inj.type?.description || 'injured') : null,
+      nat: a.citizenshipCountry?.abbreviation || null, natName: a.citizenship || null, heightCm: a.height ? Math.round(a.height * 2.54) : null, inj: inj ? (inj.status || inj.type?.description || 'injured') : null,
       apps: o.apps, starts: o.starts, min: o.min, G: st.G || 0, A: st.A || 0, YC: st.YC || 0, RC: st.RC || 0,
       ...(a.position?.abbreviation === 'G' ? { SV: st.SV || 0, GA: st.GA || 0 } : {}) }
   })

@@ -85,6 +85,8 @@ async function build({ ev, g, hc, ac }) {
       ph: fs.existsSync(path.join(ROOT, 'public', 'squad', `${p.athlete.id}.webp`)) ? 1 : 0,
       ev: (p.plays || []).map(x => [x.didScore ? 'goal' : x.didAssist ? 'ast' : x.redCard ? 'rc' : x.yellowCard ? 'yc' : x.substitution ? 'sub' : '', x.clock?.displayValue || '']).filter(e => e[0]),
     })),
+    // the unused substitutes [id, name]: with them the squad cards can tell "on the bench" from "not in the matchday squad"
+    bench: r.roster.filter(p => !p.starter && !p.subbedIn).map(p => [p.athlete.id, p.athlete.displayName]),
   })
   const rosters = Object.fromEntries(d.rosters.map(r => [r.homeAway, team(r)]))
   // goals: the key events credit each goal to the team it counts for (own goals included)

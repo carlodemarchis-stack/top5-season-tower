@@ -31,33 +31,58 @@ const games = MATCHES.filter(M => M.h === CODE || M.a === CODE).sort((a, b) => a
 const teamLine = { pos: team.pos, pts: team.pts, W: team.W, D: team.D, L: team.L, GF: team.GF, GA: team.GA }
 const side = (M: Dict) => M.h === CODE ? 'h' : 'a'
 
+// a game he didn't play, as far as the match report knows: 'U' on the bench (not used), 'X' not in the matchday squad,
+// '' unknown (a report saved before the bench was kept)
+const benchState = (T: Dict, id: string) => !Array.isArray(T.bench) ? '' : T.bench.some((b: string[]) => String(b[0]) === String(id)) ? 'U' : 'X'
+// only what the reports can tell: 'X' counts from his first matchday squad on (before it he may not have been at the
+// club yet), and an 'X' right after his red card is the ban ('XR'); no other reason is ever guessed
+function settle(list: Dict[], key: string, rc: (x: Dict) => boolean) {
+  const first = list.findIndex(x => x[key] && x[key] !== 'X')
+  list.forEach((x, i) => {
+    if (x[key] !== 'X') return
+    if (first < 0 || i < first) x[key] = ''
+    else if (i > 0 && rc(list[i - 1])) x[key] = 'XR'
+  })
+}
+// the line over the strip: a run of games out of the matchday squad, said as a fact
+function availNote(states: string[], mds: number[]) {
+  const known = states.map((s, i) => ({ s, md: mds[i] })).filter(x => x.s)
+  let run = 0; for (let i = known.length - 1; i >= 0 && (known[i].s === 'X' || known[i].s === 'XR'); i--) run++
+  const last5 = known.slice(-5), n5 = last5.filter(x => x.s === 'X' || x.s === 'XR').length
+  const startRed = run && known[known.length - run].s === 'XR'
+  if (run >= 2 || (run === 1 && startRed)) return `<i></i>Not in the matchday squad ${run === 1 ? 'for the last game' : `for the last <b>${run}</b> games`} (since MD ${known[known.length - run].md})${startRed ? ' — the first right after his red card' : ''}`
+  if (n5 >= 2) return `<i></i>Not in the matchday squad in <b>${n5}</b> of the last ${last5.length} games`
+  return ''
+}
+
 function outfield(sq: Dict) {
   const matches = games.map(M => {
     const me = side(M), op = me === 'h' ? 'a' : 'h', T = me === 'h' ? M.home : M.away
     const base = { id: M.id, w: M.md, ha: me === 'h' ? 'H' : 'A', opp: M[op], gf: M.score[me], ga: M.score[op] }
     const pl = T.players.find((x: Dict) => String(x.id) === String(sq.espnId))
     const on = pl && !pl.st ? M.subs.find((s: Dict) => String(s.on) === String(pl.id)) : null
-    if (!pl || (!pl.st && !on)) return { ...base, role: '', min: 0, goals: [], G: 0, A: 0 }
+    if (!pl || (!pl.st && !on)) return { ...base, role: benchState(T, sq.espnId), min: 0, goals: [], G: 0, A: 0 }
     const off = M.subs.find((s: Dict) => String(s.off) === String(pl.id)), red = pl.ev.find((e: string[]) => e[0] === 'rc')
     const start = pl.st ? 0 : clock(on.min), end = Math.min(90, off ? clock(off.min) : red ? clock(red[1]) : 90)
     const goals = M.goals.filter((g: Dict) => String(g.byId) === String(pl.id) && g.s === me && g.kind !== 'og').map((g: Dict) => ({ min: g.min, kind: g.kind, ast: g.ast }))
     const n = (k: string) => pl.ev.filter((e: string[]) => e[0] === k).length
     return { ...base, role: pl.st ? 'S' : 'B', min: Math.max(1, Math.round(end - start)), goals, G: goals.length, A: n('ast'), YC: n('yc'), RC: n('rc') }
   })
-  const played = matches.filter(m => m.role), sum = (k: string) => played.reduce((a, m: Dict) => a + (m[k] || 0), 0)
-  return { ...sq, lg: LG, team: CODE, teamLine, matches, photo: `players/${sq.espnId}.webp`,
+  settle(matches, 'role', (m: Dict) => !!m.RC)
+  const played = matches.filter(m => m.role === 'S' || m.role === 'B'), sum = (k: string) => played.reduce((a, m: Dict) => a + (m[k] || 0), 0)
+  return { ...sq, nat: sq.natName || sq.nat, lg: LG, team: CODE, teamLine, matches, photo: `players/${sq.espnId}.webp`, note: availNote(matches.map(m => m.role === 'S' || m.role === 'B' ? 'P' : m.role), matches.map(m => m.w)),
     G: sum('G'), A: sum('A'), YC: sum('YC'), RC: sum('RC'), min: sum('min'), apps: played.length, starts: played.filter(m => m.role === 'S').length,
     pens: played.reduce((a, m: Dict) => a + m.goals.filter((g: Dict) => g.kind === 'pen').length, 0) }
 }
 
 // a keeper's season, as scripts/update-keepers.mjs builds it: each game he started, every shot on target he faced
 function keeper(sq: Dict) {
-  const k: Dict = { key: `${sq.espnId}-${CODE}`, id: sq.espnId, name: sq.name, n: sq.jersey, lg: LG, team: CODE, age: sq.age, nat: sq.nat, tpos: team.pos,
+  const k: Dict = { key: `${sq.espnId}-${CODE}`, id: sq.espnId, name: sq.name, n: sq.jersey, lg: LG, team: CODE, age: sq.age, nat: sq.natName || sq.nat, heightCm: sq.heightCm, tpos: team.pos,
     photo: `players/${sq.espnId}.webp`, games: [], shots: [], conceded: [], missed: [] }
   for (const M of games) {
     const me = side(M), op = me === 'h' ? 'a' : 'h', T = me === 'h' ? M.home : M.away
     const pl = T.players.find((x: Dict) => String(x.id) === String(sq.espnId))
-    if (!pl || !pl.st) { k.missed.push([M.id, M.score[me], M.score[op]]); continue }
+    if (!pl || !pl.st) { k.missed.push([M.id, M.score[me], M.score[op], pl ? 'P' : benchState(T, sq.espnId), M.md]); continue }
     const off = pl.ev.find((e: string[]) => e[0] === 'sub'), until = off ? clock(off[1]) : 999
     const inTime = (x: Dict) => x.min + Math.min(x.ex || 0, 6) * .5 <= until
     const faced = M.shots.filter((x: Dict) => x.s === op && (x.k === 'on' || x.k === 'goal') && inTime(x))
@@ -70,6 +95,11 @@ function keeper(sq: Dict) {
     k.shots.push(...faced.filter((x: Dict) => x.p).map((x: Dict) => [x.p, x.k === 'goal' ? 'g' : 's']))
     k.conceded.push(...conc.map((g: Dict) => [g.min, g.by, g.kind, M.md, M[op]]))
   }
+  // the same rules as outfield players, over every club game in order (a start counts as being in the squad)
+  const seq: Dict[] = games.map(M => { const g = k.games.find((x: Dict) => x.id === M.id), m = k.missed.find((x: any[]) => x[0] === M.id); return { id: M.id, md: M.md, st: g ? 'P' : m ? m[3] : '', rc: g?.rc } })
+  settle(seq, 'st', (x: Dict) => !!x.rc)
+  for (const x of seq) { const m = k.missed.find((y: any[]) => y[0] === x.id); if (m) m[3] = x.st === 'P' ? '' : x.st }
+  k.note = availNote(seq.map(x => x.st), seq.map(x => x.md))
   const sum = (f: string) => k.games.reduce((a: number, g: Dict) => a + g[f], 0)
   Object.assign(k, { SV: sum('sv'), GA: sum('conc'), MIN: sum('min'), GP: k.games.length, CS: k.games.filter((g: Dict) => g.conc === 0 && g.min >= 89).length, PF: sum('pf'), PS: sum('ps') })
   k.PCT = k.SV + k.GA ? Math.round(1000 * k.SV / (k.SV + k.GA)) / 10 : null
@@ -95,7 +125,7 @@ function card(x: Dict) {
       <div class="n"><b>${d.CS}</b><span>Clean sheets</span></div>
       <div class="n"><b>${d.MIN}'</b><span>Minutes${d.GP ? ` · ${d.GP} start${d.GP === 1 ? '' : 's'}` : ''}</span></div>
       ${vm ? `<div class="n"><b>${vm}</b><span>Avg mark</span></div>` : `<div class="n"><b>${d.PF ? `${d.PS}/${d.PF}` : '–'}</b><span>Pens saved</span></div>`}`
-    return keeperCard(CTX, d, { badge, nums, photoFallback: fb(sq), big: shirt, noClub: true })
+    return keeperCard(CTX, d, { badge, nums, photoFallback: fb(sq), big: shirt, noClub: true, note: d.note })
   }
   // the highlighted number: goals for a scorer, minutes for everyone else
   const goalsN = `<b>${d.G}</b><span>Goals${d.pens ? ` · ${d.pens} pen${d.pens > 1 ? 's' : ''}` : ''}</span>`, minsN = `<b>${d.min}'</b><span>Minutes</span>`
@@ -106,7 +136,7 @@ function card(x: Dict) {
     <div class="n"><b>${d.apps}</b><span>Games${d.starts < d.apps ? ` · ${d.starts} starts` : ''}</span></div>
     <div class="n"><b>${d.YC}${d.RC ? `<i class="rcard">/${d.RC}</i>` : ''}</b><span>${d.RC ? 'Yellow / red' : 'Yellow cards'}</span></div>
     <div class="n"><b>${vm ?? (d.G ? Math.round(d.min / d.G) + "'" : '–')}</b><span>${vm ? 'Avg mark' : 'Per goal'}</span></div>`
-  return scorerCard(CTX, d, { badge, big: shirt, nums, photoFallback: fb(sq), noGoals: d.apps ? 'No goals yet' : 'No league minutes yet', noClub: true })
+  return scorerCard(CTX, d, { badge, big: shirt, nums, photoFallback: fb(sq), noGoals: d.apps ? 'No goals yet' : 'No league minutes yet', noClub: true, note: d.note })
 }
 
 const $ = (id: string) => document.getElementById(id)!

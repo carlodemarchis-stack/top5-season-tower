@@ -12,7 +12,11 @@ export type CardOpt = {
   noGoals?: string                       // outfield, no goal yet: what the goal section says
   noClub?: boolean                       // no club line under the name (the squad film is one club, named in its top bar)
   href?: string                          // the player's card in his squad film: the name and the photo open it
+  note?: string                          // a line over the season strip (the squad film: a run of games out of the matchday squad)
 }
+// a game he didn't play, when the match report says why it can (squad film): on the bench and not used, or not in the
+// matchday squad at all — never a guessed reason; 'XR' = not in the squad right after a red card (the ban)
+const OUT_TITLE: Record<string, string> = { U: 'on the bench, not used', X: 'not in the matchday squad', XR: 'not in the matchday squad — the game after his red card' }
 
 export const LEAGUE_NAME: Record<string, string> = { ITA: 'Serie A', ENG: 'Premier League', ESP: 'LaLiga', FRA: 'Ligue 1', GER: 'Bundesliga' }
 // the league photo shoots frame differently (LaLiga / Ligue 1 waist-up, the rest chest-up): scale so heads read the same size
@@ -98,6 +102,7 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
         <div class="n"><b>${minPerGoal ?? '–'}'</b><span>Per goal</span></div>
         <div class="n"><b>${p.sog}/${p.shots}</b><span>On target / shots</span></div>`}
       </div>
+      ${opt.note ? `<div class="avail">${opt.note}</div>` : ''}
       ${strip2(ctx, p, club, !goals && opt.noGoals != null)}
       ${goals || opt.noGoals == null ? `<div class="glist">
         <div class="sec">The goals</div>
@@ -122,9 +127,10 @@ function strip2(ctx: Ctx, p: Dict, club: Dict, noLine = false) {
     const marks = [...m.goals.map((x: Dict) => `<i class="gl${x.kind === 'pen' ? ' pen' : ''}"></i>`), ...Array.from({ length: m.A }, () => '<i class="as"></i>')].reverse().join('')
     // the box reads bottom-up as the 90': the unplayed share is veiled — at the top for a starter (he played the start),
     // at the bottom for a sub (he played the end), so the darker part sits where his minutes were
-    const veil = m.role ? Math.round((1 - Math.min(m.min, 90) / 90) * 100) : 100
-    const ink = !m.role || m.min < 45 ? '#15181d' : fg
-    return `<div class="c2${m.role ? (m.role === 'B' ? ' sub' : '') : ' dnp'}" data-mid="${g.id}" data-gid="${g.id}"${matchHref(ctx, p.lg, g.w, g.id)}>
+    const played = m.role === 'S' || m.role === 'B', out = m.role === 'X' || m.role === 'XR'
+    const veil = played ? Math.round((1 - Math.min(m.min, 90) / 90) * 100) : 100
+    const ink = !played || m.min < 45 ? '#15181d' : fg
+    return `<div class="c2${played ? (m.role === 'B' ? ' sub' : '') : ' dnp'}${out ? ' out' : ''}${m.role === 'XR' ? ' sus' : ''}" data-mid="${g.id}" data-gid="${g.id}"${matchHref(ctx, p.lg, g.w, g.id)}${OUT_TITLE[m.role] ? ` title="MD${g.w}: ${OUT_TITLE[m.role]}"` : ''}>
       <div class="mk">${marks}</div>
       <div class="bx" style="background:${bg};color:${ink}"><span class="vl" style="height:${veil}%"></span><b>${m.gf}-${m.ga}</b>${cardsHTML(m.YC, m.RC)}</div>
       <div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, p.lg, p.espnId, g.w)}</div>`
@@ -176,7 +182,7 @@ export function matchTip(ctx: Ctx, p: Dict, gid: string) {
   if (!m) return `${head}<div class="mt-score">${side(...home)}<b class="mt-vs">vs</b>${side(...away)}</div><div class="mt-foot">to play</div>`
   const [bg, fg] = RES6[res6(m.gf, m.ga)], hs = g.ha === 'H' ? `${m.gf}–${m.ga}` : `${m.ga}–${m.gf}`
   const nm = p.name, stat = (n: number | undefined, w: string) => n == null ? '' : `<span><b>${n}</b> ${w}</span>`
-  const part = !m.role ? `<div class="mt-foot">${esc(nm)} did not play</div>`
+  const part = !(m.role === 'S' || m.role === 'B') ? `<div class="mt-foot">${esc(nm)} ${OUT_TITLE[m.role] ? OUT_TITLE[m.role].replace(/^not/, 'was not').replace(/^on the bench/, 'was on the bench') : 'did not play'}</div>`
     : `<div class="mt-me"><b>${esc(nm)}</b> · ${m.role === 'B' ? 'off the bench' : 'started'} · <b>${m.min}′</b></div>
       ${m.goals.length ? `<div class="mt-goals">${m.goals.map((x: Dict) => `<div class="mt-g"><span class="mt-min">${esc(x.min)}</span><span>goal${x.kind ? ` <em>${KIND[x.kind] || x.kind}</em>` : ''}${x.ast ? ` <i>· ${esc(x.ast)}</i>` : ''}</span></div>`).join('')}</div>` : ''}
       <div class="mt-stats">${stat(m.G, `goal${m.G === 1 ? '' : 's'}`)}${stat(m.A, `assist${m.A === 1 ? '' : 's'}`)}${stat(m.SH, 'shots')}${stat(m.SOG, 'on target')}${m.YC || m.RC ? `<span><b>${m.YC || m.RC}</b><i class="${m.RC ? 'rc' : 'yc'}"></i></span>` : ''}</div>`
@@ -210,8 +216,8 @@ function strip(ctx: Ctx, k: Dict, club: Dict) {
   const maxMarks = Math.max(1, ...k.games.map((g: Dict) => g.conc))
   const cell = (g: Dict) => { const m = byId[g.id], at = g.ha === 'A' ? '@' : ''
     const miss = !m && (k.missed || []).find((x: any[]) => x[0] === g.id)
-    if (miss) { const [bg] = RES6[res6(miss[1], miss[2])]
-      return `<div class="c2 dnp"${matchHref(ctx, k.lg, g.w, g.id)} title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} ${miss[1]}-${miss[2]} · he didn't start"><div class="mk"></div><div class="bx" style="background:${bg};color:#15181d"><span class="vl" style="height:100%"></span><b>–</b></div><div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, k.lg, '', 0)}</div>` }
+    if (miss) { const [bg] = RES6[res6(miss[1], miss[2])], st = miss[3], out = st === 'X' || st === 'XR'
+      return `<div class="c2 dnp${out ? ' out' : ''}${st === 'XR' ? ' sus' : ''}"${matchHref(ctx, k.lg, g.w, g.id)} title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} ${miss[1]}-${miss[2]} · ${OUT_TITLE[st] || "he didn't start"}"><div class="mk"></div><div class="bx" style="background:${bg};color:#15181d"><span class="vl" style="height:100%"></span><b>–</b></div><div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, k.lg, '', 0)}</div>` }
     if (!m) return `<div class="c2 up"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, k.lg, '', 0)}</div>`
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
     return `<div class="c2" data-mid="${m.id}"${matchHref(ctx, k.lg, g.w, m.id)} title="MD${m.md} · ${m.ha === 'H' ? 'vs' : 'at'} ${esc(m.opp)} ${m.gf}-${m.ga} · ${m.sv} saves · ${m.conc} conceded${m.min < 90 ? ` · ${m.min}'` : ''}">
@@ -233,7 +239,7 @@ export function keeperCard(ctx: Ctx, k: Dict, opt: CardOpt = {}) {
       <div class="rk">${opt.badge ?? `#${k.rank}`}</div>
       <div class="gbig"><b>${bigN}</b><span>${bigW}</span></div>
       ${photo(k.photo, k.name, opt.photoFallback, opt.href)}
-      ${bio([['Role', 'Goalkeeper'], ['Age', k.age], ['Nation', k.nat]])}
+      ${bio([['Role', 'Goalkeeper'], ['Age', k.age], ['Nation', k.nat], ['Height', k.heightCm ? `${k.heightCm} cm` : null]])}
     </div>
     <div class="body">
       <div>
@@ -249,6 +255,7 @@ export function keeperCard(ctx: Ctx, k: Dict, opt: CardOpt = {}) {
         <div class="n"><b>${k.GP}</b><span>Games</span></div>
         <div class="n"><b>${k.PF ? `${k.PS}/${k.PF}` : '–'}</b><span>Pens saved</span></div>`}
       </div>
+      ${opt.note ? `<div class="avail">${opt.note}</div>` : ''}
       ${strip(ctx, k, club)}
       <div class="gwrap">
         <div><div class="sec">Every shot on target he faced</div><div class="gf">${bigGoal(k, c)}</div>
