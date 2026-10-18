@@ -44,16 +44,19 @@ function settle(list: Dict[], key: string, rc: (x: Dict) => boolean) {
     else if (i > 0 && rc(list[i - 1])) x[key] = 'XR'
   })
 }
-// the line over the strip: a run of games out of the matchday squad, said as a fact
-function availNote(states: string[], mds: number[]) {
-  const known = states.map((s, i) => ({ s, md: mds[i] })).filter(x => x.s)
+// the line over the strip: a run of games out of the matchday squad, said as a fact; a run that opens right after a red
+// card names the ban (where[i] = "at Como" for game i)
+function availNote(states: string[], mds: number[], where: string[]) {
+  const known = states.map((s, i) => ({ s, md: mds[i], i })).filter(x => x.s)
   let run = 0; for (let i = known.length - 1; i >= 0 && (known[i].s === 'X' || known[i].s === 'XR'); i--) run++
   const last5 = known.slice(-5), n5 = last5.filter(x => x.s === 'X' || x.s === 'XR').length
-  const startRed = run && known[known.length - run].s === 'XR'
-  if (run >= 2 || (run === 1 && startRed)) return `<i></i>Not in the matchday squad ${run === 1 ? 'for the last game' : `for the last <b>${run}</b> games`} (since MD ${known[known.length - run].md})${startRed ? ' — the first right after his red card' : ''}`
+  const first = known[known.length - run], ban = run && first.s === 'XR' ? `sent off ${where[first.i - 1]} in MD ${mds[first.i - 1]}` : ''
+  if (run === 1 && ban) return `<i class="sus"></i>Suspended for MD ${first.md}: ${ban}`
+  if (run >= 2) return `<i></i>Not in the matchday squad for the last <b>${run}</b> games (since MD ${first.md})${ban ? `, the first a ban: ${ban}` : ''}`
   if (n5 >= 2) return `<i></i>Not in the matchday squad in <b>${n5}</b> of the last ${last5.length} games`
   return ''
 }
+const WHERE = games.map(M => M.h === CODE ? `vs ${T1[M.a]?.name || M.a}` : `at ${T1[M.h]?.name || M.h}`)
 
 function outfield(sq: Dict) {
   const matches = games.map(M => {
@@ -70,7 +73,7 @@ function outfield(sq: Dict) {
   })
   settle(matches, 'role', (m: Dict) => !!m.RC)
   const played = matches.filter(m => m.role === 'S' || m.role === 'B'), sum = (k: string) => played.reduce((a, m: Dict) => a + (m[k] || 0), 0)
-  return { ...sq, nat: sq.natName || sq.nat, lg: LG, team: CODE, teamLine, matches, photo: `players/${sq.espnId}.webp`, note: availNote(matches.map(m => m.role === 'S' || m.role === 'B' ? 'P' : m.role), matches.map(m => m.w)),
+  return { ...sq, nat: sq.natName || sq.nat, lg: LG, team: CODE, teamLine, matches, photo: `players/${sq.espnId}.webp`, note: availNote(matches.map(m => m.role === 'S' || m.role === 'B' ? 'P' : m.role), matches.map(m => m.w), WHERE),
     G: sum('G'), A: sum('A'), YC: sum('YC'), RC: sum('RC'), min: sum('min'), apps: played.length, starts: played.filter(m => m.role === 'S').length,
     pens: played.reduce((a, m: Dict) => a + m.goals.filter((g: Dict) => g.kind === 'pen').length, 0) }
 }
@@ -99,7 +102,7 @@ function keeper(sq: Dict) {
   const seq: Dict[] = games.map(M => { const g = k.games.find((x: Dict) => x.id === M.id), m = k.missed.find((x: any[]) => x[0] === M.id); return { id: M.id, md: M.md, st: g ? 'P' : m ? m[3] : '', rc: g?.rc } })
   settle(seq, 'st', (x: Dict) => !!x.rc)
   for (const x of seq) { const m = k.missed.find((y: any[]) => y[0] === x.id); if (m) m[3] = x.st === 'P' ? '' : x.st }
-  k.note = availNote(seq.map(x => x.st), seq.map(x => x.md))
+  k.note = availNote(seq.map(x => x.st), seq.map(x => x.md), WHERE)
   const sum = (f: string) => k.games.reduce((a: number, g: Dict) => a + g[f], 0)
   Object.assign(k, { SV: sum('sv'), GA: sum('conc'), MIN: sum('min'), GP: k.games.length, CS: k.games.filter((g: Dict) => g.conc === 0 && g.min >= 89).length, PF: sum('pf'), PS: sum('ps') })
   k.PCT = k.SV + k.GA ? Math.round(1000 * k.SV / (k.SV + k.GA)) / 10 : null

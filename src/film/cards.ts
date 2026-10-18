@@ -15,8 +15,8 @@ export type CardOpt = {
   note?: string                          // a line over the season strip (the squad film: a run of games out of the matchday squad)
 }
 // a game he didn't play, when the match report says why it can (squad film): on the bench and not used, or not in the
-// matchday squad at all — never a guessed reason; 'XR' = not in the squad right after a red card (the ban)
-const OUT_TITLE: Record<string, string> = { U: 'on the bench, not used', X: 'not in the matchday squad', XR: 'not in the matchday squad — the game after his red card' }
+// matchday squad at all — never a guessed reason; 'XR' = not in the squad right after a red card: the ban, the one reason we can know
+const OUT_TITLE: Record<string, string> = { U: 'on the bench, not used', X: 'not in the matchday squad', XR: 'suspended — sent off the game before' }
 
 export const LEAGUE_NAME: Record<string, string> = { ITA: 'Serie A', ENG: 'Premier League', ESP: 'LaLiga', FRA: 'Ligue 1', GER: 'Bundesliga' }
 // the league photo shoots frame differently (LaLiga / Ligue 1 waist-up, the rest chest-up): scale so heads read the same size
@@ -182,7 +182,7 @@ export function matchTip(ctx: Ctx, p: Dict, gid: string) {
   if (!m) return `${head}<div class="mt-score">${side(...home)}<b class="mt-vs">vs</b>${side(...away)}</div><div class="mt-foot">to play</div>`
   const [bg, fg] = RES6[res6(m.gf, m.ga)], hs = g.ha === 'H' ? `${m.gf}–${m.ga}` : `${m.ga}–${m.gf}`
   const nm = p.name, stat = (n: number | undefined, w: string) => n == null ? '' : `<span><b>${n}</b> ${w}</span>`
-  const part = !(m.role === 'S' || m.role === 'B') ? `<div class="mt-foot">${esc(nm)} ${OUT_TITLE[m.role] ? OUT_TITLE[m.role].replace(/^not/, 'was not').replace(/^on the bench/, 'was on the bench') : 'did not play'}</div>`
+  const part = !(m.role === 'S' || m.role === 'B') ? `<div class="mt-foot">${esc(nm)} ${OUT_TITLE[m.role] ? OUT_TITLE[m.role].replace(/^not/, 'was not').replace(/^on the bench/, 'was on the bench').replace(/^suspended/, 'was suspended') : 'did not play'}</div>`
     : `<div class="mt-me"><b>${esc(nm)}</b> · ${m.role === 'B' ? 'off the bench' : 'started'} · <b>${m.min}′</b></div>
       ${m.goals.length ? `<div class="mt-goals">${m.goals.map((x: Dict) => `<div class="mt-g"><span class="mt-min">${esc(x.min)}</span><span>goal${x.kind ? ` <em>${KIND[x.kind] || x.kind}</em>` : ''}${x.ast ? ` <i>· ${esc(x.ast)}</i>` : ''}</span></div>`).join('')}</div>` : ''}
       <div class="mt-stats">${stat(m.G, `goal${m.G === 1 ? '' : 's'}`)}${stat(m.A, `assist${m.A === 1 ? '' : 's'}`)}${stat(m.SH, 'shots')}${stat(m.SOG, 'on target')}${m.YC || m.RC ? `<span><b>${m.YC || m.RC}</b><i class="${m.RC ? 'rc' : 'yc'}"></i></span>` : ''}</div>`
