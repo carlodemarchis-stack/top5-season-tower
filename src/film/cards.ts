@@ -30,6 +30,8 @@ export const res6 = (gf: number, ga: number) => { const d = gf - ga; return d >=
 export const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
 export const ord = (n: number) => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th')
 export const logo = (lg: string, code: string) => `logos/${lg === 'FRA' && code === 'BRE' ? 'FRA_BRE' : code}.png`
+// a two-number figure (games / started, yellow / red …): the second number smaller, after the slash
+export const n2 = (v: unknown, cls = '') => `<i class="n2${cls ? ' ' + cls : ''}">/${v}</i>`
 export const minOf = (c: string) => { const m = String(c).match(/(\d+)'(?:\+(\d+))?/) || []; return +(m[1] || 0) + Math.min(+(m[2] || 0), 6) * .5 }
 const rnd = (s: number) => { const x = Math.sin(s * 99.13) * 43758.5453; return x - Math.floor(x) }
 export function lum(hex: string) {
@@ -101,10 +103,10 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
       <div class="nums">${opt.nums ?? `
         <div class="n big"><b>${p.G}</b><span>Goals${p.pens ? ` · ${p.pens} pen${p.pens > 1 ? 's' : ''}` : ''}</span></div>
         <div class="n"><b>${p.A}</b><span>Assists</span></div>
-        <div class="n"><b>${p.apps}</b><span>Games${p.starts < p.apps ? ` · ${p.starts} starts` : ''}</span></div>
+        <div class="n"><b>${p.apps}${n2(p.starts)}</b><span>Games / started</span></div>
         <div class="n"><b>${p.min}'</b><span>Minutes</span></div>
         <div class="n"><b>${minPerGoal ?? '–'}'</b><span>Per goal</span></div>
-        <div class="n"><b>${p.sog}/${p.shots}</b><span>On target / shots</span></div>`}
+        <div class="n"><b>${p.sog}${n2(p.shots)}</b><span>On target / shots</span></div>`}
       </div>
       ${opt.note ? `<div class="avail">${opt.note}</div>` : ''}
       ${strip2(ctx, p, club, !goals && opt.noGoals != null)}
@@ -257,8 +259,8 @@ export function keeperCard(ctx: Ctx, k: Dict, opt: CardOpt = {}) {
         <div class="n"><b>${k.GA}</b><span>Conceded</span></div>
         <div class="n"><b>${k.PCT ?? '–'}%</b><span>Save %</span></div>
         <div class="n"><b>${k.CS}</b><span>Clean sheets</span></div>
-        <div class="n"><b>${k.GP}</b><span>Games</span></div>
-        <div class="n"><b>${k.PF ? `${k.PS}/${k.PF}` : '–'}</b><span>Pens saved</span></div>`}
+        <div class="n"><b>${k.APPS ?? k.GP}${n2(k.GP)}</b><span>Games / started</span></div>
+        <div class="n"><b>${k.PF ? `${k.PS}${n2(k.PF)}` : '–'}</b><span>Pens saved</span></div>`}
       </div>
       ${opt.note ? `<div class="avail">${opt.note}</div>` : ''}
       ${strip(ctx, k, club)}

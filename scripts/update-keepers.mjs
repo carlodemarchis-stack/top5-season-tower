@@ -28,7 +28,7 @@ const clock = (s) => { const m = String(s || '').match(/(\d+)'(?:\+(\d+))?/) || 
 const readJS = (f, name) => { const m = fs.readFileSync(f, 'utf8').match(new RegExp(`export const ${name} = ([\\[{][\\s\\S]*[\\]}])`)); return m ? JSON.parse(m[1]) : null }
 const warns = []
 
-const K = new Map(), squads = {}, tables = {}, clubGames = {}   // clubGames: every played game of a club → [id, gf, ga]
+const K = new Map(), squads = {}, tables = {}, clubGames = {}, subOn = {}   // subOn: games a keeper came on from the bench, per key   // clubGames: every played game of a club → [id, gf, ga]
 for (const lg of Object.keys(LEAGUES)) {
   const tf = path.join(DATA, `teams-${lg}-${SEASON}.js`)
   for (const t of fs.existsSync(tf) ? readJS(tf, 'TEAMCARDS').teams : []) for (const p of t.squad || []) squads[p.espnId] = { ...p, team: t.code }
@@ -38,6 +38,7 @@ for (const lg of Object.keys(LEAGUES)) {
   for (const f of files) for (const m of readJS(path.join(DATA, f), 'MATCHES')) for (const [me, op] of [['h', 'a'], ['a', 'h']]) {
     const t = me === 'h' ? m.home : m.away, code = m[me], opp = m[op]
     ;(clubGames[`${lg}-${code}`] ||= []).push([m.id, m.score[me], m.score[op]])
+    for (const p of t.players) if (!p.st && p.pos === 'G') subOn[`${p.id}-${code}`] = (subOn[`${p.id}-${code}`] || 0) + 1
     const gk = t.players.find(p => p.st && p.pos === 'G'); if (!gk) { warns.push(`${m.id} ${code}: no starting keeper in the line-up`); continue }
     const off = gk.ev.find(e => e[0] === 'sub'), until = off ? clock(off[1]) : 999
     const on = (x) => x.min + Math.min(x.ex || 0, 6) * .5 <= until
@@ -63,7 +64,7 @@ const keepers = [...K.values()].map(k => {
   k.games.sort((a, b) => a.md - b.md)
   const pos = tables[k.lg].indexOf(k.team) + 1 || null, mine = new Set(k.games.map(g => g.id))
   k.missed = (clubGames[`${k.lg}-${k.team}`] || []).filter(g => !mine.has(g[0]))   // his club's games he didn't start
-  return { ...k, age: sq.age ?? null, nat: sq.nat || null, SV, GA, MIN: sum('min'), GP: k.games.length, CS: k.games.filter(g => g.conc === 0 && g.min >= 89).length,
+  return { ...k, age: sq.age ?? null, nat: sq.nat || null, SV, GA, MIN: sum('min'), GP: k.games.length, APPS: k.games.length + (subOn[k.key] || 0), CS: k.games.filter(g => g.conc === 0 && g.min >= 89).length,
     PF: sum('pf'), PS: sum('ps'), PCT: SV + GA ? Math.round(1000 * SV / (SV + GA)) / 10 : null, tpos: pos }
 })
 const order = (a, b) => b.SV - a.SV || a.GA - b.GA || b.GP - a.GP

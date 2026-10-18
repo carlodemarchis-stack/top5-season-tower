@@ -4,7 +4,7 @@
 // Fantacalcio mark under each game. ?p=<espnId> opens on that player (the Squad tab's tiles link here).
 import '../film/film.css'
 import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
-import { scorerCard, keeperCard, matchTip, avgVote, esc, ord, logo, LEAGUE_NAME, type Ctx } from '../film/cards'
+import { scorerCard, keeperCard, matchTip, avgVote, esc, ord, logo, n2, LEAGUE_NAME, type Ctx } from '../film/cards'
 import { loadCoaches, coachCard, stints } from '../film/coach'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
@@ -108,7 +108,7 @@ function keeper(sq: Dict) {
   for (const x of seq) { const m = k.missed.find((y: any[]) => y[0] === x.id); if (m) m[3] = x.st === 'P' ? '' : x.st }
   k.note = availNote(seq.map(x => x.st), seq.map(x => x.md), WHERE)
   const sum = (f: string) => k.games.reduce((a: number, g: Dict) => a + g[f], 0)
-  Object.assign(k, { SV: sum('sv'), GA: sum('conc'), MIN: sum('min'), GP: k.games.length, CS: k.games.filter((g: Dict) => g.conc === 0 && g.min >= 89).length, PF: sum('pf'), PS: sum('ps') })
+  Object.assign(k, { SV: sum('sv'), GA: sum('conc'), MIN: sum('min'), GP: k.games.length, APPS: k.games.length + k.missed.filter((x: any[]) => games.some(M => M.id === x[0] && (side(M) === 'h' ? M.home : M.away).players.some((p: Dict) => String(p.id) === String(sq.espnId)))).length, CS: k.games.filter((g: Dict) => g.conc === 0 && g.min >= 89).length, PF: sum('pf'), PS: sum('ps') })
   k.PCT = k.SV + k.GA ? Math.round(1000 * k.SV / (k.SV + k.GA)) / 10 : null
   return k
 }
@@ -135,8 +135,9 @@ function card(x: Dict) {
       <div class="n"><b>${d.GA}</b><span>Conceded</span></div>
       <div class="n"><b>${d.PCT ?? '–'}${d.PCT == null ? '' : '%'}</b><span>Save %</span></div>
       <div class="n"><b>${d.CS}</b><span>Clean sheets</span></div>
-      <div class="n"><b>${d.MIN}'</b><span>Minutes${d.GP ? ` · ${d.GP} start${d.GP === 1 ? '' : 's'}` : ''}</span></div>
-      ${vm ? `<div class="n"><b>${vm}</b><span>Avg mark</span></div>` : `<div class="n"><b>${d.PF ? `${d.PS}/${d.PF}` : '–'}</b><span>Pens saved</span></div>`}`
+      <div class="n"><b>${d.MIN}'</b><span>Minutes</span></div>
+      <div class="n"><b>${d.APPS}${n2(d.GP)}</b><span>Games / started</span></div>
+      ${vm ? `<div class="n"><b>${vm}</b><span>Avg mark</span></div>` : `<div class="n"><b>${d.PF ? `${d.PS}${n2(d.PF)}` : '–'}</b><span>Pens saved</span></div>`}`
     return keeperCard(CTX, d, { badge, nums, photoFallback: fb(sq), big: shirt, noClub: true, note: d.note })
   }
   // the highlighted number: goals for a scorer, assists for a provider with no goal, minutes for everyone else
@@ -145,8 +146,8 @@ function card(x: Dict) {
   const nums = `
     ${d.G || !d.A ? `<div class="n big">${d.G ? goalsN : minsN}</div><div class="n">${d.G ? minsN : goalsN}</div>${astN}`
       : `<div class="n big"><b>${d.A}</b><span>Assists</span></div><div class="n">${minsN}</div><div class="n">${goalsN}</div>`}
-    <div class="n"><b>${d.apps}</b><span>Games${d.starts < d.apps ? ` · ${d.starts} starts` : ''}</span></div>
-    <div class="n"><b>${d.YC}${d.RC ? `<i class="rcard">/${d.RC}</i>` : ''}</b><span>${d.RC ? 'Yellow / red' : 'Yellow cards'}</span></div>
+    <div class="n"><b>${d.apps}${n2(d.starts)}</b><span>Games / started</span></div>
+    <div class="n"><b>${d.YC}${d.RC ? n2(d.RC, 'r') : ''}</b><span>${d.RC ? 'Yellow / red' : 'Yellow cards'}</span></div>
     <div class="n"><b>${vm ?? (d.G ? Math.round(d.min / d.G) + "'" : '–')}</b><span>${vm ? 'Avg mark' : 'Per goal'}</span></div>`
   return scorerCard(CTX, d, { badge, big: shirt, nums, photoFallback: fb(sq), noGoals: d.apps ? 'No goals yet' : 'No league minutes yet', noClub: true, note: d.note })
 }
