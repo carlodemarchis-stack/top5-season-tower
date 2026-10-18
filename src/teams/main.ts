@@ -295,7 +295,7 @@ function gameCard() {
   const rows = P.map(t => ({ t, g: gameState(t) })).filter(x => x.g.n).sort((a, b) => b.g.lead - a.g.lead || a.g.trail - b.g.trail)
   const row = ({ t, g }: Dict, i: number) => {
     const c = TEAMS_OF[t.lg][t.code]?.primary || '#555', ink = lum(c) > 0.55 ? '#15181d' : c
-    return `<a class="gsr" data-i="${t.rank - 1}" title="${esc(nameOf(t))} · led ${pc(g.lead)}% · level ${pc(g.level)}% · trailed ${pc(g.trail)}% of ${g.n * 90}′"><span class="tr-rk">${i + 1}</span>${ALL ? `<img class="tr-lg" src="leagues/${t.lg}.png" alt="${LEAGUE_NAME[t.lg]}">` : ''}<span class="tr-nm" style="color:${ink}">${esc(SHORT[`${t.lg}:${t.code}`] || nameOf(t))}</span>
+    return `<a class="gsr" data-i="${t.rank - 1}" title="${esc(nameOf(t))} · led ${pc(g.lead)}% · level ${pc(g.level)}% · trailed ${pc(g.trail)}% of ${g.n * 90}′"><span class="tr-rk">${i + 1}</span>${ALL ? `<img class="tr-lg" src="leagues/${t.lg}.png" alt="${LEAGUE_NAME[t.lg]}">` : ''}<img class="tr-cr" src="${logo(t.code, t.lg)}" alt="" onerror="this.style.visibility='hidden'"><span class="tr-nm" style="color:${ink}">${esc(SHORT[`${t.lg}:${t.code}`] || nameOf(t))}</span>
       <span class="gsb"><i class="ld" style="width:${g.lead * 100}%">${pc(g.lead) >= MINLAB ? pc(g.lead) + '%' : ''}</i><i class="lv" style="width:${g.level * 100}%"></i><i class="tl" style="width:${g.trail * 100}%">${pc(g.trail) >= MINLAB ? pc(g.trail) + '%' : ''}</i></span></a>`
   }
   const cols = ALL ? 4 : 2
@@ -322,7 +322,7 @@ function swingCard() {
   const max = Math.max(1, ...rows.map(r => Math.max(r.s.won, r.s.dropped)))
   const row = ({ t, s }: Dict, i: number) => {
     const c = TEAMS_OF[t.lg][t.code]?.primary || '#555', ink = lum(c) > 0.55 ? '#15181d' : c
-    return `<a class="gsr sw" data-i="${t.rank - 1}" title="${esc(nameOf(t))} · ${s.won} pts won from losing positions · ${s.dropped} dropped from winning positions"><span class="tr-rk">${i + 1}</span>${ALL ? `<img class="tr-lg" src="leagues/${t.lg}.png" alt="${LEAGUE_NAME[t.lg]}">` : ''}<span class="tr-nm" style="color:${ink}">${esc(SHORT[`${t.lg}:${t.code}`] || nameOf(t))}</span>
+    return `<a class="gsr sw" data-i="${t.rank - 1}" title="${esc(nameOf(t))} · ${s.won} pts won from losing positions · ${s.dropped} dropped from winning positions"><span class="tr-rk">${i + 1}</span>${ALL ? `<img class="tr-lg" src="leagues/${t.lg}.png" alt="${LEAGUE_NAME[t.lg]}">` : ''}<img class="tr-cr" src="${logo(t.code, t.lg)}" alt="" onerror="this.style.visibility='hidden'"><span class="tr-nm" style="color:${ink}">${esc(SHORT[`${t.lg}:${t.code}`] || nameOf(t))}</span>
       <span class="swb"><span class="sl"><em>${s.dropped ? '−' + s.dropped : ''}</em><i style="width:${(s.dropped / max) * 100}%"></i></span><span class="sr"><i style="width:${(s.won / max) * 100}%"></i><em>${s.won ? '+' + s.won : ''}</em></span></span></a>`
   }
   const cols = ALL ? 4 : 2

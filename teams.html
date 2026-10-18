@@ -112,16 +112,17 @@
     .tr-sub{font-size:.82em;color:#9aa0a8;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
     /* the game-state card: one stacked bar per club, leading / level / trailing */
     .tb-grid.gs{grid-template-columns:repeat(var(--cols),minmax(0,1fr))}
-    .gsr{display:grid;grid-template-columns:2.1em 18px minmax(0,1fr) minmax(0,1.35fr);align-items:center;gap:7px;padding:0 6px;border-bottom:1px solid var(--line);font-size:clamp(11px,1.6vh,14px);color:#15181d;text-decoration:none;cursor:pointer;min-height:0}
-    .gs.nolg .gsr{grid-template-columns:2.1em minmax(0,.8fr) minmax(0,2fr)}
+    .gsr{display:grid;grid-template-columns:2.1em 18px 20px minmax(0,1fr) minmax(0,1.35fr);align-items:center;gap:7px;padding:0 6px;border-bottom:1px solid var(--line);font-size:clamp(11px,1.6vh,14px);color:#15181d;text-decoration:none;cursor:pointer;min-height:0}
+    .gs.nolg .gsr{grid-template-columns:2.1em 26px minmax(0,.8fr) minmax(0,2fr)}
+    .gsr .tr-cr{width:100%;height:clamp(16px,2.6vh,24px);object-fit:contain}
     .gsr:hover{background:#fff}
     .gsb{display:flex;height:min(72%,24px);min-height:12px;border-radius:3px;overflow:hidden;background:#eef0f2}
     .gsb i{display:flex;align-items:center;font-style:normal;font-size:.74em;font-weight:800;color:#fff;padding:0 4px;overflow:hidden;white-space:nowrap;font-variant-numeric:tabular-nums;box-sizing:border-box}
     .gsb .ld{background:#177a41}.gsb .lv{background:#d5d9de;padding:0}.gsb .tl{background:#b3323a;justify-content:flex-end}
     .tb-hd .k{display:inline-block;padding:1px 6px;border-radius:4px;color:#fff;font-weight:800}.tb-hd .k.ld{background:#177a41}.tb-hd .k.lv{background:#d5d9de;color:#15181d}.tb-hd .k.tl{background:#b3323a}
     /* comebacks & collapses: dropped to the left of the axis, won to the right */
-    .gsr.sw{grid-template-columns:2.1em 18px minmax(0,1fr) minmax(0,1.35fr)}
-    .gs.nolg .gsr.sw{grid-template-columns:2.1em minmax(0,.8fr) minmax(0,2fr)}
+    .gsr.sw{grid-template-columns:2.1em 18px 20px minmax(0,1fr) minmax(0,1.35fr)}
+    .gs.nolg .gsr.sw{grid-template-columns:2.1em 26px minmax(0,.8fr) minmax(0,2fr)}
     .swb{display:grid;grid-template-columns:1fr 1fr;height:min(72%,22px);min-height:12px}
     .swb .sl,.swb .sr{display:flex;align-items:center;gap:4px;min-width:0}.swb .sl{justify-content:flex-end;border-right:1.5px solid #15181d}
     .swb i{display:block;height:100%}.swb .sl i{background:#b3323a;border-radius:3px 0 0 3px}.swb .sr i{background:#177a41;border-radius:0 3px 3px 0}

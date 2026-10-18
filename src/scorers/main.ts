@@ -10,6 +10,14 @@ const [{ SCORERS }, ...TL] = await Promise.all([
   import(`../data/scorers-TOP5-${SEASON}.js`),
   ...['ITA', 'ENG', 'ESP', 'FRA', 'GER'].map(lg => import(`../data/schedule-${lg}-${SEASON}.js`)),
 ]) as Dict[]
+// Serie A: each game's Fantacalcio mark (Redazione) under its box — scripts/update-votes.mjs; other leagues have none
+const VOTE_FILES = import.meta.glob('../data/votes-*.js')
+const VOTES: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as Dict | undefined)?.VOTES?.v || {}
+const voteHTML = (lg: string, id: string, md: number) => {
+  if (lg !== 'ITA') return ''
+  const v = VOTES[String(id)]?.[md]
+  return v == null ? '<div class="vt">&nbsp;</div>' : `<div class="vt${v >= 7 ? ' hi' : v < 6 ? ' lo' : ''}" title="Fantacalcio mark (Redazione)">${Number.isInteger(v) ? v : v.toFixed(1)}</div>`
+}
 const TEAMS: Record<string, Dict> = { ITA: TL[0].TEAMS, ENG: TL[1].TEAMS, ESP: TL[2].TEAMS, FRA: TL[3].TEAMS, GER: TL[4].TEAMS }
 const LEAGUE_NAME: Record<string, string> = { ITA: 'Serie A', ENG: 'Premier League', ESP: 'LaLiga', FRA: 'Ligue 1', GER: 'Bundesliga' }
 // the league photo shoots frame differently (LaLiga / Ligue 1 waist-up, the rest chest-up): scale so heads read the same size
@@ -89,7 +97,7 @@ function strip2(p: Dict, club: Dict) {
   const cell = (g: Dict) => {
     const m = byId[g.id]
     const at = g.ha === 'A' ? '@' : ''
-    if (!m) return `<div class="c2 up" data-gid="${g.id}"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
+    if (!m) return `<div class="c2 up" data-gid="${g.id}"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div>${voteHTML(p.lg, '', 0)}</div>`
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
     const marks = [...m.goals.map((x: Dict) => `<i class="gl${x.kind === 'pen' ? ' pen' : ''}"></i>`), ...Array.from({ length: m.A }, () => '<i class="as"></i>')].reverse().join('')
     // the box reads bottom-up as the 90': the unplayed share is veiled — at the top for a starter (he played the start),
@@ -99,7 +107,7 @@ function strip2(p: Dict, club: Dict) {
     return `<div class="c2${m.role ? (m.role === 'B' ? ' sub' : '') : ' dnp'}" data-mid="${g.id}" data-gid="${g.id}"${matchHref(p.lg, g.w, g.id)}>
       <div class="mk">${marks}</div>
       <div class="bx" style="background:${bg};color:${ink}"><span class="vl" style="height:${veil}%"></span><b>${m.gf}-${m.ga}</b></div>
-      <div class="op">${at}${esc(g.opp)}</div></div>`
+      <div class="op">${at}${esc(g.opp)}</div>${voteHTML(p.lg, p.espnId, g.w)}</div>`
   }
   const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:${maxMarks}">${gs.map(cell).join('')}</div></div>`
   return `<div class="s2">

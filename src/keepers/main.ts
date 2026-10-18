@@ -17,6 +17,14 @@ const [{ KEEPERS }, ...TL] = await Promise.all([
 const TEAMS: Record<string, Dict> = Object.fromEntries(LG_ORDER.map((lg, i) => [lg, TL[i].TEAMS]))
 const PHOTO_H: Record<string, string> = { ESP: '90%', FRA: '88%', ITA: '82%', ENG: '80%', GER: '80%' }
 
+// Serie A: each game's Fantacalcio mark (Redazione) under its box — scripts/update-votes.mjs; other leagues have none
+const VOTE_FILES = import.meta.glob('../data/votes-*.js')
+const VOTES: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as Dict | undefined)?.VOTES?.v || {}
+const voteHTML = (lg: string, id: string, md: number) => {
+  if (lg !== 'ITA') return ''
+  const v = VOTES[String(id)]?.[md]
+  return v == null ? '<div class="vt">&nbsp;</div>' : `<div class="vt${v >= 7 ? ' hi' : v < 6 ? ' lo' : ''}" title="Fantacalcio mark (Redazione)">${Number.isInteger(v) ? v : v.toFixed(1)}</div>`
+}
 const RES6: Record<string, [string, string]> = {
   // white scores on every shade (one look across the app)
   bigW: ['#177a41', '#fff'], W1: ['#3a9e62', '#fff'], D: ['#EAB308', '#fff'],
@@ -62,12 +70,12 @@ function strip(k: Dict, club: Dict) {
   const cell = (g: Dict) => { const m = byId[g.id], at = g.ha === 'A' ? '@' : ''
     const miss = !m && (k.missed || []).find((x: any[]) => x[0] === g.id)
     if (miss) { const [bg] = RES6[res6(miss[1], miss[2])]
-      return `<div class="c2 dnp"${matchHref(k.lg, g.w, g.id)} title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} ${miss[1]}-${miss[2]} · he didn't start"><div class="mk"></div><div class="bx" style="background:${bg};color:#15181d"><span class="vl" style="height:100%"></span><b>–</b></div><div class="op">${at}${esc(g.opp)}</div></div>` }
-    if (!m) return `<div class="c2 up"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
+      return `<div class="c2 dnp"${matchHref(k.lg, g.w, g.id)} title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} ${miss[1]}-${miss[2]} · he didn't start"><div class="mk"></div><div class="bx" style="background:${bg};color:#15181d"><span class="vl" style="height:100%"></span><b>–</b></div><div class="op">${at}${esc(g.opp)}</div>${voteHTML(k.lg, '', 0)}</div>` }
+    if (!m) return `<div class="c2 up"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div>${voteHTML(k.lg, '', 0)}</div>`
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
     return `<div class="c2" data-mid="${m.id}"${matchHref(k.lg, g.w, m.id)} title="MD${m.md} · ${m.ha === 'H' ? 'vs' : 'at'} ${esc(m.opp)} ${m.gf}-${m.ga} · ${m.sv} saves · ${m.conc} conceded${m.min < 90 ? ` · ${m.min}'` : ''}">
       <div class="mk">${Array.from({ length: m.conc }, () => '<i class="ga"></i>').join('')}</div>
-      <div class="bx" style="background:${bg};color:${fg}"><b>${m.sv}</b></div><div class="op">${at}${esc(m.opp)}</div></div>` }
+      <div class="bx" style="background:${bg};color:${fg}"><b>${m.sv}</b></div><div class="op">${at}${esc(m.opp)}</div>${voteHTML(k.lg, k.id, m.md)}</div>` }
   const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:${maxMarks}">${gs.map(cell).join('')}</div></div>`
   return `<div class="s2">${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}</div>`
 }
