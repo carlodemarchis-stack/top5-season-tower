@@ -139,12 +139,12 @@ function card(x: Dict) {
       ${vm ? `<div class="n"><b>${vm}</b><span>Avg mark</span></div>` : `<div class="n"><b>${d.PF ? `${d.PS}/${d.PF}` : '–'}</b><span>Pens saved</span></div>`}`
     return keeperCard(CTX, d, { badge, nums, photoFallback: fb(sq), big: shirt, noClub: true, note: d.note })
   }
-  // the highlighted number: goals for a scorer, minutes for everyone else
+  // the highlighted number: goals for a scorer, assists for a provider with no goal, minutes for everyone else
   const goalsN = `<b>${d.G}</b><span>Goals${d.pens ? ` · ${d.pens} pen${d.pens > 1 ? 's' : ''}` : ''}</span>`, minsN = `<b>${d.min}'</b><span>Minutes</span>`
-  const astN = `<div class="n"><b>${d.A}</b><span>Assists</span></div>`   // no goals but assists: assists come first, then goals
+  const astN = `<div class="n"><b>${d.A}</b><span>Assists</span></div>`   // no goals but assists: assists are the highlighted number, then minutes, then goals
   const nums = `
-    <div class="n big">${d.G ? goalsN : minsN}</div>
-    ${d.G || !d.A ? `<div class="n">${d.G ? minsN : goalsN}</div>${astN}` : `${astN}<div class="n">${goalsN}</div>`}
+    ${d.G || !d.A ? `<div class="n big">${d.G ? goalsN : minsN}</div><div class="n">${d.G ? minsN : goalsN}</div>${astN}`
+      : `<div class="n big"><b>${d.A}</b><span>Assists</span></div><div class="n">${minsN}</div><div class="n">${goalsN}</div>`}
     <div class="n"><b>${d.apps}</b><span>Games${d.starts < d.apps ? ` · ${d.starts} starts` : ''}</span></div>
     <div class="n"><b>${d.YC}${d.RC ? `<i class="rcard">/${d.RC}</i>` : ''}</b><span>${d.RC ? 'Yellow / red' : 'Yellow cards'}</span></div>
     <div class="n"><b>${vm ?? (d.G ? Math.round(d.min / d.G) + "'" : '–')}</b><span>${vm ? 'Avg mark' : 'Per goal'}</span></div>`
