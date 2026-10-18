@@ -39,7 +39,8 @@
   <style>
     /* ---------- team card ---------- */
     .pan .grp{position:absolute;inset:0;z-index:1;pointer-events:none}
-    .pan .grp img{position:absolute;bottom:0;max-width:none;filter:drop-shadow(0 10px 24px rgba(0,0,0,.35))}
+    .pan .grp img{position:absolute;bottom:0;max-width:none;filter:drop-shadow(0 10px 24px rgba(0,0,0,.35));pointer-events:auto;cursor:pointer}
+    .pan .grp .plab{pointer-events:auto;cursor:pointer}
     /* the club's three top scorers as one group: the leader in front, the other two behind his shoulders */
     .pan .grp .p0{left:50%;transform:translateX(-50%);height:calc(var(--ph,84%) * .9);z-index:3}
     .pan .grp .p1{left:16%;transform:translateX(-50%);height:calc(var(--ph,84%) * .74);z-index:2;filter:drop-shadow(0 10px 24px rgba(0,0,0,.35)) brightness(.82)}

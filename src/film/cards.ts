@@ -11,6 +11,7 @@ export type CardOpt = {
   photoFallback?: string                 // a second photo to try (the squad thumbnail) before the initials
   noGoals?: string                       // outfield, no goal yet: what the goal section says
   noClub?: boolean                       // no club line under the name (the squad film is one club, named in its top bar)
+  href?: string                          // the player's card in his squad film: the name and the photo open it
 }
 
 export const LEAGUE_NAME: Record<string, string> = { ITA: 'Serie A', ENG: 'Premier League', ESP: 'LaLiga', FRA: 'Ligue 1', GER: 'Bundesliga' }
@@ -35,10 +36,11 @@ const POS: Record<string, string> = { F: 'Forward', M: 'Midfielder', D: 'Defende
 const initials = (n: string) => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('')
 const matchHref = (ctx: Ctx, lg: string, md: number, id: string) => ctx.SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
 // the panel photo: the portrait, then (squad film) the thumbnail, then the initials
-function photo(src: string | null, name: string, fb?: string) {
+function photo(src: string | null, name: string, fb?: string, href?: string) {
   if (!src) return `<div class="ini">${esc(initials(name))}</div>`
+  const link = href ? ` data-href="${href}" title="${esc(name)} · his card in the squad"` : ''
   const toIni = `this.outerHTML='<div class=&quot;ini&quot;>${esc(initials(name)).replace(/'/g, '')}</div>'`
-  return `<img class="ph" src="${src}" alt="${esc(name)}" onerror="${fb ? `this.onerror=function(){${toIni}};this.src='${fb}'` : toIni}">`
+  return `<img class="ph"${link} src="${src}" alt="${esc(name)}" onerror="${fb ? `this.onerror=function(){${toIni}};this.src='${fb}'` : toIni}">`
 }
 
 // Serie A: each game's Fantacalcio mark (Redazione) under its box — scripts/update-votes.mjs; other leagues have none
@@ -72,11 +74,11 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
       <img class="wm" src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">
       <div class="rk">${opt.badge ?? `#${p.rank}`}</div>
       <div class="gbig"><b>${bigN}</b><span>${bigW}</span></div>
-      ${photo(p.photo, p.name, opt.photoFallback)}
+      ${photo(p.photo, p.name, opt.photoFallback, opt.href)}
     </div>
     <div class="body">
       <div>
-        <h1 style="--len:${[...p.name].length};--word:${Math.max(...p.name.split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(p.name)}</h1>
+        <h1 style="--len:${[...p.name].length};--word:${Math.max(...p.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(p.name)} · his card in the squad"` : ''}>${esc(p.name)}</h1>
         <div class="meta" style="margin-top:8px">${[POS[p.pos] || p.posName, age && `<b>${age}</b> yrs`, esc(p.nat), p.jersey && `#${esc(p.jersey)}`, p.heightCm && `${p.heightCm} cm`].filter(Boolean).join(' · ')}</div>
       </div>
       ${opt.noClub ? '' : `<div class="club"><img src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">${esc(club.name || p.team)}
@@ -223,11 +225,11 @@ export function keeperCard(ctx: Ctx, k: Dict, opt: CardOpt = {}) {
       <img class="wm" src="${logo(k.lg, k.team)}" alt="" onerror="this.remove()">
       <div class="rk">${opt.badge ?? `#${k.rank}`}</div>
       <div class="gbig"><b>${bigN}</b><span>${bigW}</span></div>
-      ${photo(k.photo, k.name, opt.photoFallback)}
+      ${photo(k.photo, k.name, opt.photoFallback, opt.href)}
     </div>
     <div class="body">
       <div>
-        <h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(k.name)}</h1>
+        <h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(k.name)} · his card in the squad"` : ''}>${esc(k.name)}</h1>
         <div class="meta" style="margin-top:8px">${['Goalkeeper', k.age != null && `<b>${k.age}</b> yrs`, esc(k.nat), k.n && `#${esc(k.n)}`].filter(Boolean).join(' · ')}</div>
       </div>
       ${opt.noClub ? '' : `<div class="club"><img src="${logo(k.lg, k.team)}" alt="" onerror="this.remove()">${esc(club.name || k.team)}

@@ -6,7 +6,7 @@
 //   right  where each side's attempts went on goal, the scorers, and the numbers mirrored at the centre line
 // Data: src/data/matches-<LG>-<season>-md<NN>.js (scripts/update-matches.mjs); club names / colours from the schedule.
 import '../film/film.css'
-import { initFilm, initHighlight, initNav } from '../film/chrome'
+import { initFilm, initHighlight, initNav, initLinks } from '../film/chrome'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -127,7 +127,7 @@ function card(M: Dict) {
       const on = byId[sub.on], oev = on.ev.filter((e: string[]) => e[0] !== 'sub')
       chips += `<span class="ch sub"><em>⇅</em>${esc(sub.min)} ${esc(short(on.name))}${oev.map((e: string[]) => e[0] === 'goal' ? ` <span class="sg"${gk(goalOf(on, e[1]))}><span class="gb"></span>${esc(e[1])}</span>` : e[0] === 'ast' ? ` <span class="sg"${gk(assistOf(on, e[1]))}>○${esc(e[1])}</span>` : e[0] === 'yc' || e[0] === 'rc' ? ` <span class="cd"${e[0] === 'rc' ? ' style="background:#d92d20"' : ''}></span>` : '').join('')}</span>`
     }
-    return `<div class="pl" style="left:${x}%;top:${y}%;--tc:${p.team.color};--fs:${fs}px" title="${esc(p.name)} · ${esc(p.pos)}">
+    return `<div class="pl" data-href="player.html?lg=${M.lg}&team=${p.team.code}&p=${p.id}" style="left:${x}%;top:${y}%;--tc:${p.team.color};--fs:${fs}px" title="${esc(p.name)} · ${esc(p.pos)} — his card">
       <div class="face">${p.ph ? `<img src="squad/${p.id}.webp" alt="" loading="lazy">` : `<span class="ini">${esc(ini(p.name))}</span>`}<b class="num">${esc(p.n)}</b>${cards.length ? `<i class="cd${cards.some((c: string[]) => c[0] === 'rc') ? ' r' : ''}"></i>` : ''}</div>
       <span class="nm">${esc(short(p.name))}</span>${chips ? `<div class="chips">${chips}</div>` : ''}</div>`
   }
@@ -214,7 +214,7 @@ function card(M: Dict) {
       const r = (by[g.byId || g.by] ||= { g, mins: [] as string[], is: [] as number[], asts: [] as string[], pens: 0 }); r.mins.push(g.min); r.is.push(i); if (g.ast && !r.asts.includes(short(g.ast))) r.asts.push(short(g.ast)); if (g.kind === 'pen') r.pens++ })
     const rows = Object.values(by).sort((a: Dict, b: Dict) => minOf(a.mins[0]) - minOf(b.mins[0])).map((r: Dict) => {
       const p = byId[r.g.byId], og = r.g.kind === 'og'
-      return `<span class="s" style="--tc:${og ? '#8a9099' : t.color}" data-h="p${r.g.byId}" data-k="p${r.g.byId} ${r.is.map((i: number) => 'g' + i).join(' ')}"><span class="ph">${p?.ph ? `<img src="squad/${p.id}.webp" alt="" loading="lazy">` : og ? 'OG' : esc(ini(r.g.by))}</span><span class="tx"><span>${esc(short(r.g.by))} <small>${r.mins.map(esc).join(' · ')}${r.pens ? ' (pen)' : ''}${og ? ' (og)' : ''}</small></span>${r.asts.length ? `<em>○ ${r.asts.map(esc).join(' · ')}</em>` : ''}</span></span>`
+      return `<span class="s"${p ? ` data-href="player.html?lg=${M.lg}&team=${p.team.code}&p=${p.id}"` : ''} style="--tc:${og ? '#8a9099' : t.color}" data-h="p${r.g.byId}" data-k="p${r.g.byId} ${r.is.map((i: number) => 'g' + i).join(' ')}"><span class="ph">${p?.ph ? `<img src="squad/${p.id}.webp" alt="" loading="lazy">` : og ? 'OG' : esc(ini(r.g.by))}</span><span class="tx"><span>${esc(short(r.g.by))} <small>${r.mins.map(esc).join(' · ')}${r.pens ? ' (pen)' : ''}${og ? ' (og)' : ''}</small></span>${r.asts.length ? `<em>○ ${r.asts.map(esc).join(' · ')}</em>` : ''}</span></span>`
     })
     return `<div class="scs">${rows.join('') || '<span class="none">no goals</span>'}</div>`
   }
@@ -318,6 +318,7 @@ function jumpHTML(q: string) {
     `<div class="jrow" data-i="${x.i}"><span class="jn">${x.i + 1}</span><span class="jl">${esc(x.label)}<span class="jt">${esc(x.sub)}</span></span></div>`).join('')}</div></div>` : '<p>No match found.</p>'
 }
 
+initLinks(film)
 initHighlight(film, '[data-h]', k => `[data-k~="${k}"]`, el => el.dataset.h!)
 initNav('matches', LG, SEASON)
 initFilm({ count: P.length, key: `top5.matches.card.${LG}${ALL ? '' : '.md' + MD}${SEASON === '2026-27' ? '' : '.' + SEASON}`, onPaint, jumpHTML, self: 'matches.html' })

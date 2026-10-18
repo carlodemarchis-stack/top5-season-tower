@@ -16,7 +16,7 @@ const VOTE_FILES = import.meta.glob('../data/votes-*.js')
 const VOTES: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as Dict | undefined)?.VOTES?.v || {}
 const TEAMS: Record<string, Dict> = { ITA: TL[0].TEAMS, ENG: TL[1].TEAMS, ESP: TL[2].TEAMS, FRA: TL[3].TEAMS, GER: TL[4].TEAMS }
 const CTX: Ctx = { TEAMS, SEASON, VOTES }
-const card = (p: Dict) => scorerCard(CTX, p)
+const card = (p: Dict) => scorerCard(CTX, p, { href: SEASON === '2026-27' ? `player.html?lg=${p.lg}&team=${p.team}&p=${p.espnId}` : undefined })
 
 // ---------- the standard card-film chrome: top bar (league logos), control bar, search, modals, keys, restore ----------
 const LG_ORDER = ['ITA', 'ENG', 'ESP', 'FRA', 'GER']

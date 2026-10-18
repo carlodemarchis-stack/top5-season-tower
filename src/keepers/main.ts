@@ -19,7 +19,7 @@ const TEAMS: Record<string, Dict> = Object.fromEntries(LG_ORDER.map((lg, i) => [
 const VOTE_FILES = import.meta.glob('../data/votes-*.js')
 const VOTES: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as Dict | undefined)?.VOTES?.v || {}
 const CTX: Ctx = { TEAMS, SEASON, VOTES }
-const card = (k: Dict) => keeperCard(CTX, k)
+const card = (k: Dict) => keeperCard(CTX, k, { href: SEASON === '2026-27' ? `player.html?lg=${k.lg}&team=${k.team}&p=${k.id}` : undefined })
 
 // ---------- the lists, the film ----------
 const LIST = LG_ORDER.includes(QS.get('lg') || '') ? QS.get('lg')! : 'ALL'

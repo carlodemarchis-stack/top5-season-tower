@@ -56,11 +56,11 @@ function card(t: Dict) {
   const gd = t.GF - t.GA
   const photos = (t.panel || []).slice(0, 3)   // three players with a real photo: goals, then assists, then minutes
   const group = photos.length
-    ? `<div class="grp">${photos.map((s: Dict, i: number) => `<img class="p${photos.length === 2 && i === 1 ? 2 : i}" src="${s.photo}" alt="${esc(s.name)}">`).join('')}${photos.map((s: Dict, i: number) => {
+    ? `<div class="grp">${photos.map((s: Dict, i: number) => `<img class="p${photos.length === 2 && i === 1 ? 2 : i}" src="${s.photo}" alt="${esc(s.name)}" data-href="player.html?lg=${t.lg}&team=${t.code}&p=${s.espnId}" title="${esc(s.name)} · his card">`).join('')}${photos.map((s: Dict, i: number) => {
         // a label at each player's feet: the leader's full name in the middle, the two beside him by surname
         // (first name dropped: "De Bruyne", not "Bruyne"), pinned to the panel's edges; hidden where space is short
         const side = i > 0, nm = side && /\s/.test(s.name) ? s.name.replace(/^\S+\s+/, '') : s.name
-        return `<span class="plab l${photos.length === 2 && i === 1 ? 2 : i}">${esc(nm)}</span>` }).join('')}</div>`
+        return `<span class="plab l${photos.length === 2 && i === 1 ? 2 : i}" data-href="player.html?lg=${t.lg}&team=${t.code}&p=${s.espnId}">${esc(nm)}</span>` }).join('')}</div>`
     : `<img class="bigcrest" src="${logo(t.code, t.lg)}" alt="">`
   const ppg = t.played ? (t.pts / t.played).toFixed(ALL ? 2 : 1) : '–'
   // all leagues: the rank is across the five and the big number is points per game (the sort key)
@@ -235,8 +235,9 @@ function scorerChips(t: Dict) {
   for (const m of t.matches) for (const g of m.for) if (g.kind !== 'og') (inM[slug(g.by)] ||= []).push(`m${m.id}`)
   const k = (s: Dict) => `data-h="p${slug(s.name)}" data-k="${[`p${slug(s.name)}`, ...new Set(inM[slug(s.name)] || [])].join(' ')}"`
   const thumbOf: Record<string, string> = Object.fromEntries((t.squad || []).filter((p: Dict) => p.thumb).map((p: Dict) => [p.espnId, p.thumb]))
-  const top = all.slice(0, 3).map((s: Dict) => `<span class="sc" ${k(s)}>${thumbOf[s.espnId] ? `<img src="${thumbOf[s.espnId]}" alt="">` : '<i class="nophoto"></i>'}${esc(s.name)} <b>${s.G}</b>${s.A ? ` · ${s.A} ast` : ''}</span>`).join('')
-  const rest = all.slice(3).map((s: Dict) => `<span class="sc2" ${k(s)}>${esc(s.name)} <b>${s.G}</b></span>`).join(' ')   // spaces: the line can wrap
+  const href = (s: Dict) => `data-href="player.html?lg=${t.lg}&team=${t.code}&p=${s.espnId}"`
+  const top = all.slice(0, 3).map((s: Dict) => `<span class="sc" ${k(s)} ${href(s)}>${thumbOf[s.espnId] ? `<img src="${thumbOf[s.espnId]}" alt="">` : '<i class="nophoto"></i>'}${esc(s.name)} <b>${s.G}</b>${s.A ? ` · ${s.A} ast` : ''}</span>`).join('')
+  const rest = all.slice(3).map((s: Dict) => `<span class="sc2" ${k(s)} ${href(s)}>${esc(s.name)} <b>${s.G}</b></span>`).join(' ')   // spaces: the line can wrap
   return top + (rest ? `<div class="rest">${rest}</div>` : '')
 }
 
