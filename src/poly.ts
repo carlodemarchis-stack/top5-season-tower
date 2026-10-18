@@ -34,7 +34,7 @@ export function polyChart(box: HTMLElement, data: { teams: PolyTeam[]; ms: PolyM
   const T = data.teams, N = T.length, narrow = box.clientWidth < 600
   const W = 760, H = narrow ? 660 : 640, cx = W / 2, cy = H / 2 - 2, R = narrow ? 280 : 240
   const fs = Math.max(11, Math.round(11 * W / Math.max(300, box.clientWidth)))
-  box.innerHTML = `<div class="poly-leg">${look.legend ?? `<span><i style="background:${C.w}"></i>win</span><span><i style="background:${C.d}"></i>draw</span><span><i style="background:${C.l}"></i>loss</span>`}<span><i class="dash"></i>to play</span></div><div class="poly-wrap"><div class="poly-tip" hidden></div></div>`
+  box.innerHTML = `<div class="poly-wrap"><div class="poly-tip" hidden></div></div><div class="poly-leg">${look.legend ?? `<span><i style="background:${C.w}"></i>win</span><span><i style="background:${C.d}"></i>draw</span><span><i style="background:${C.l}"></i>loss</span>`}<span><i class="dash"></i>to play</span></div>`
   const wrap = box.querySelector<HTMLElement>('.poly-wrap')!, tip = box.querySelector<HTMLElement>('.poly-tip')!
   const sv = el('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', role: 'img', 'aria-label': 'Every match of the league: each club a vertex, each match a line' }) as SVGSVGElement
   wrap.prepend(sv)

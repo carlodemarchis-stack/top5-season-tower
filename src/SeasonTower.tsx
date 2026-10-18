@@ -53,7 +53,7 @@ interface State {
   groupBy: 'table' | 'zones'
   rankBy: 'points' | 'gd'
   layout: 'towers' | 'rows' | 'barcode' | 'poly'   // vertical towers (portrait) vs horizontal rows (landscape) vs the season barcode vs everyone-vs-everyone
-  polySel: string | null     // everyone-vs-everyone: the club whose matches fill the side columns (null = the leader)
+  polySel: string | null     // everyone-vs-everyone: the club whose matches fill the side columns (null = none: every match lit)
   helpOpen: boolean
   creditsOpen: boolean
   moreOpen: boolean          // "+" — the other AGWAS sport experiences
@@ -805,7 +805,7 @@ export class SeasonTower extends React.Component<Props, State> {
   _poly: { key: string; teams: Dict[]; ms: Dict[] } | null = null
   _polyApi: PolyApi | null = null
   _polyKey = ''
-  polyCode(v: Dict) { return (v.polyTeams.some((t: Dict) => t.code === this.state.polySel) ? this.state.polySel : v.polyTeams[0]?.code) }
+  polyCode(v: Dict): string | null { return v.polyTeams.some((t: Dict) => t.code === this.state.polySel) ? this.state.polySel : null }
   drawPoly() {
     const box = this.polyRef.current, d = this._poly
     if (!box || !d) { this._polyKey = ''; return }
@@ -822,22 +822,23 @@ export class SeasonTower extends React.Component<Props, State> {
         legend: Object.values(RES6).map(([fill, , label]) => `<span><i style="background:${fill}"></i>${label}</span>`).join(''),
       })
     }
-    const code = (d.teams.some(t => t.code === this.state.polySel) ? this.state.polySel : d.teams[0]?.code)
-    this._polyApi?.focus(d.teams.findIndex(t => t.code === code))
+    const code = d.teams.some(t => t.code === this.state.polySel) ? this.state.polySel : null
+    this._polyApi?.focus(code ? d.teams.findIndex(t => t.code === code) : null)
   }
   renderPoly(v: Dict) {
     const teams = v.polyTeams as Dict[], T = v.polyT as Dict, N = this.maxW(), half = Math.floor(N / 2)
     this._poly = { key: `${this.state.league}|${this.state.season}|${v.tw}|${v.polyMs.filter((m: Dict) => m.gi != null).length}|${teams.map(t => t.code).join(',')}`, teams, ms: v.polyMs }
-    const code = this.polyCode(v), t = T[code], ix = (c: string) => teams.findIndex(x => x.code === c)
+    const code = this.polyCode(v), t = code ? T[code] : null, ix = (c: string) => teams.findIndex(x => x.code === c)
     const col = (from: number, to: number, side: string) => {
       const games = (t?.games || []).filter((g: Dict) => g.w >= from && g.w <= to).sort((a: Dict, b: Dict) => a.w - b.w)
       return (
         <div style={{ flex: '0 0 230px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px', alignSelf: 'center' }}>
           <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: '#8b909a', margin: '0 0 6px 2px' }}>{side} · MD {from}–{to}</div>
+          {!t && <div style={{ fontSize: '12px', color: '#9aa0a8', lineHeight: 1.5, padding: '10px 4px', borderTop: '1px dashed #E4E7EB' }}>Point at a club on the polygon to see its {side.toLowerCase()} here.</div>}
           {games.map((g: Dict) => {
-            const r = g.w <= v.tw ? this.getRes(code, g.id) : null, k6 = r ? res6(r.gf, r.ga) : ''
+            const r = g.w <= v.tw ? this.getRes(code!, g.id) : null, k6 = r ? res6(r.gf, r.ga) : ''
             return (
-              <div key={g.id} onMouseEnter={() => this._polyApi?.pair(ix(code), ix(g.opp))} onMouseLeave={() => this._polyApi?.focus(ix(code))} onClick={() => this.openPop(code, g.id)} title={`MD${g.w} · ${t.name} ${g.ha === 'H' ? 'v' : '@'} ${T[g.opp]?.name || g.opp}${r ? ` · ${r.gf}-${r.ga}` : ' · to play'}`}
+              <div key={g.id} onMouseEnter={() => this._polyApi?.pair(ix(code!), ix(g.opp))} onMouseLeave={() => this._polyApi?.focus(ix(code!))} onClick={() => this.openPop(code!, g.id)} title={`MD${g.w} · ${t!.name} ${g.ha === 'H' ? 'v' : '@'} ${T[g.opp]?.name || g.opp}${r ? ` · ${r.gf}-${r.ga}` : ' · to play'}`}
                 style={{ display: 'grid', gridTemplateColumns: '28px 14px 18px minmax(0,1fr) 40px', alignItems: 'center', gap: '6px', padding: '3px 6px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', background: '#fff', border: '1px solid #ECEEF1' }}>
                 <span style={{ fontSize: '10px', fontWeight: 700, color: '#9aa0a8', fontVariantNumeric: 'tabular-nums' }}>MD{g.w}</span>
                 <span style={{ fontSize: '9px', fontWeight: 800, color: '#8b909a' }}>{g.ha === 'H' ? 'H' : 'A'}</span>
@@ -853,15 +854,16 @@ export class SeasonTower extends React.Component<Props, State> {
     return (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', justifyContent: 'center', alignItems: 'flex-start', padding: '4px 4px 10px' }}>
         <style>{`.poly{flex:1 1 520px;max-width:min(760px,calc((100vh - 170px) * 1.15));min-width:300px}
-          .poly-leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:#727781;margin-bottom:4px}.poly-leg span{display:inline-flex;align-items:center;gap:5px}
+          .poly-leg{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;font-size:12px;color:#727781;margin-top:6px}.poly-leg span{display:inline-flex;align-items:center;gap:5px}
           .poly-leg i{width:10px;height:10px;border-radius:2px;display:inline-block}.poly-leg i.dash{width:14px;height:0;border-top:1.5px dashed #9aa0a8;border-radius:0}
           .poly-wrap{position:relative}.poly-wrap svg{display:block}.poly-team{cursor:pointer}.poly-team.on .ring{stroke-width:2.5}.poly-team.on text{font-weight:800}
           .poly-tip{position:absolute;pointer-events:none;background:#fff;color:#15181d;border:1px solid #E4E7EB;border-radius:6px;padding:5px 9px;font-size:12px;white-space:nowrap;z-index:5;box-shadow:0 4px 12px rgba(0,0,0,.15)}.poly-tip[hidden]{display:none}`}</style>
         {col(1, half, 'First half')}
         <div style={{ flex: '1 1 520px', maxWidth: 'min(760px, calc((100vh - 170px) * 1.15))', minWidth: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ fontSize: '13px', fontWeight: 800, color: '#15181d', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <img src={`logos/${logoFile(this.state.league, code)}.png`} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />{t?.name}
-            <span style={{ fontWeight: 600, color: '#8b909a', fontSize: '11.5px' }}>· point at a club on the polygon to change</span>
+          <div style={{ fontSize: '13px', fontWeight: 800, color: '#15181d', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '8px', minHeight: '24px' }}>
+            {t ? <><img src={`logos/${logoFile(this.state.league, code!)}.png`} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />{t.name}
+              <button onClick={() => this.setState({ polySel: null })} style={{ border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: '11.5px', fontWeight: 700, color: '#2563eb', cursor: 'pointer' }}>· show all matches</button></>
+              : <>All matches <span style={{ fontWeight: 600, color: '#8b909a', fontSize: '11.5px' }}>· point at a club on the polygon to follow it</span></>}
           </div>
           <div ref={this.polyRef} className="poly" style={{ width: '100%' }} />
         </div>
