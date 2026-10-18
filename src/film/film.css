@@ -275,3 +275,5 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 .subs .gsum .nw{white-space:nowrap}
 @media (max-width: 760px){ .pan .cph{width:auto;height:52%;top:46%;border-width:4px} }
 @media (max-width: 760px){ .subs .sub-top .lb{width:auto;flex-basis:100%} }
+.subs .sec{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 16px}   /* the summary right after the title, one line */
+.subs .sec .gsum{margin-left:0;justify-content:flex-start}

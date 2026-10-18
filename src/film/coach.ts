@@ -78,7 +78,7 @@ function subsHTML(C: Dict, code: string, id: string, recs: Dict[]) {
   const rank = (o: typeof used, min = 1) => Object.values(o).filter(x => x.n >= min).sort((a, b) => b.n - a.n).slice(0, 5)
   const top = rank(used), offs = rank(outs), swaps = rank(swap, 2)   // a swap counts once it has happened twice
   const chips = (lb: string, L: { name: string; n: number }[]) => L.length ? `<div class="sub-top"><span class="lb">${lb}</span>${L.map(x => `<span class="g">${esc(x.name)} <b>×${x.n}</b></span>`).join('')}</div>` : ''
-  return `<div class="subs"><div class="sec">His substitutions<span class="gsum">${[`<b>${total}</b> changes in ${mine.length} game${mine.length === 1 ? '' : 's'}`, avgFirst != null && `first change at <b>${avgFirst}'</b> on average`,
+  return `<div class="subs"><div class="sec">Substitutions<span class="gsum">${[`<b>${total}</b> changes in ${mine.length} game${mine.length === 1 ? '' : 's'}`, avgFirst != null && `first change at <b>${avgFirst}'</b> on average`,
       ht && `<b>${ht}</b> at half-time`, `subs scored <b>${G}</b>, assisted <b>${A}</b>`].filter(Boolean).map(c => `<span class="nw">${c}</span>`).join(' · ')}</span></div>
     ${chips('Most used off the bench', top)}${chips('Most taken off', offs)}${chips('Most repeated change', swaps)}
     <div class="sgs">${games.slice(0, 8).join('')}</div></div>`

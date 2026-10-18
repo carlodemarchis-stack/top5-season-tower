@@ -116,10 +116,10 @@ const ROLE = ['G', 'D', 'M', 'F', 'C'], TAG: Record<string, string> = { G: 'GK',
 const minsOf = (x: Dict) => x.kind === 'gk' ? x.d.MIN : x.d.min
 const P: Dict[] = (team.squad as Dict[]).map(sq => sq.pos === 'G' ? { kind: 'gk', sq, d: keeper(sq) } : { kind: 'out', sq, d: outfield(sq) })
   .sort((a, b) => minsOf(b) - minsOf(a) || (+a.sq.jersey || 99) - (+b.sq.jersey || 99))
-// the film closes on the head coach (FotMob, src/film/coach.ts): his games, and anyone before him this season
+// the head coach (FotMob, src/film/coach.ts) comes after the players who have played, before those who haven't
 const played = games.map(M => { const me = side(M), op = me === 'h' ? 'a' : 'h'; return { id: M.id, md: M.md, opp: M[op], ha: me === 'h' ? 'H' : 'A', gf: M.score[me], ga: M.score[op] } })
 const ST = COACHES ? stints(COACHES, CODE, played) : [], HEAD = ST.length ? COACHES!.coaches[ST[ST.length - 1].id] : null
-if (HEAD) P.push({ kind: 'coach', sq: { name: HEAD.name, pos: 'C', nat: HEAD.nat }, d: {} })
+if (HEAD) P.splice(P.filter(x => minsOf(x) > 0).length, 0, { kind: 'coach', sq: { name: HEAD.name, pos: 'C', nat: HEAD.nat }, d: {} })   // after the last player with league minutes
 
 const mark = (id: string) => { const v = avgVote(CTX, id); return v == null ? null : v.toFixed(2) }
 const fb = (sq: Dict) => sq.thumb || undefined
@@ -155,7 +155,7 @@ film.innerHTML = P.map(card).join('')
 // top bar: the club, back to its team card
 $('lgs').innerHTML = `<a class="lgb on" href="teams.html?lg=${LG}&t=${CODE}" title="Back to the ${esc(club.name || CODE)} team card"><img src="${logo(LG, CODE)}" alt=""><b style="font-size:12px;font-weight:900;white-space:nowrap">${esc(club.name || CODE)}</b><span>${P.length}</span></a>`
 const NPL = P.filter(x => x.kind !== 'coach').length
-$('cnote').innerHTML = `${NPL} players of ${esc(club.name || CODE)}, ${LEAGUE_NAME[LG]} ${SEASON.replace('-', '/')}, most league minutes first${HEAD ? ', then the head coach' : ''}.`
+$('cnote').innerHTML = `${NPL} players of ${esc(club.name || CODE)}, ${LEAGUE_NAME[LG]} ${SEASON.replace('-', '/')}, most league minutes first${HEAD ? ', the head coach after the last one who has played' : ''}.`
 
 // ?p=<espnId> (a tile of the Squad tab): open on that player, then drop it from the URL
 if (QS.has('p')) {
