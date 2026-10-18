@@ -817,6 +817,10 @@ export class SeasonTower extends React.Component<Props, State> {
         // the club under the pointer becomes the one shown, and stays when the pointer leaves (the leader to start)
         enter: i => this.setState({ polySel: d.teams[i].code }),
         click: i => this.setState({ polySel: d.teams[i].code }),
+      }, {   // this app's six result shades (won 2+ · won 1 · draw · 0-0 · lost 1 · lost 2+), as everywhere else in it
+        shade: (gf, ga) => RES6[res6(gf, ga)][0],
+        pie: { w: RES6.W1[0], d: RES6.D[0], l: RES6.L1[0] },
+        legend: Object.values(RES6).map(([fill, , label]) => `<span><i style="background:${fill}"></i>${label}</span>`).join(''),
       })
     }
     const code = (d.teams.some(t => t.code === this.state.polySel) ? this.state.polySel : d.teams[0]?.code)
@@ -826,14 +830,13 @@ export class SeasonTower extends React.Component<Props, State> {
     const teams = v.polyTeams as Dict[], T = v.polyT as Dict, N = this.maxW(), half = Math.floor(N / 2)
     this._poly = { key: `${this.state.league}|${this.state.season}|${v.tw}|${v.polyMs.filter((m: Dict) => m.gi != null).length}|${teams.map(t => t.code).join(',')}`, teams, ms: v.polyMs }
     const code = this.polyCode(v), t = T[code], ix = (c: string) => teams.findIndex(x => x.code === c)
-    const RC: Dict = { W: '#2f9a4f', D: '#d8b03a', L: '#c0453b' }
     const col = (from: number, to: number, side: string) => {
       const games = (t?.games || []).filter((g: Dict) => g.w >= from && g.w <= to).sort((a: Dict, b: Dict) => a.w - b.w)
       return (
         <div style={{ flex: '0 0 230px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px', alignSelf: 'center' }}>
           <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: '#8b909a', margin: '0 0 6px 2px' }}>{side} · MD {from}–{to}</div>
           {games.map((g: Dict) => {
-            const r = g.w <= v.tw ? this.getRes(code, g.id) : null, res = r ? (r.gf > r.ga ? 'W' : r.gf < r.ga ? 'L' : 'D') : ''
+            const r = g.w <= v.tw ? this.getRes(code, g.id) : null, k6 = r ? res6(r.gf, r.ga) : ''
             return (
               <div key={g.id} onMouseEnter={() => this._polyApi?.pair(ix(code), ix(g.opp))} onMouseLeave={() => this._polyApi?.focus(ix(code))} onClick={() => this.openPop(code, g.id)} title={`MD${g.w} · ${t.name} ${g.ha === 'H' ? 'v' : '@'} ${T[g.opp]?.name || g.opp}${r ? ` · ${r.gf}-${r.ga}` : ' · to play'}`}
                 style={{ display: 'grid', gridTemplateColumns: '28px 14px 18px minmax(0,1fr) 40px', alignItems: 'center', gap: '6px', padding: '3px 6px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', background: '#fff', border: '1px solid #ECEEF1' }}>
@@ -841,7 +844,7 @@ export class SeasonTower extends React.Component<Props, State> {
                 <span style={{ fontSize: '9px', fontWeight: 800, color: '#8b909a' }}>{g.ha === 'H' ? 'H' : 'A'}</span>
                 <img src={`logos/${logoFile(this.state.league, g.opp)}.png`} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
                 <span style={{ fontWeight: 700, color: '#15181d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{T[g.opp]?.name || g.opp}</span>
-                <span style={{ justifySelf: 'end', minWidth: '34px', textAlign: 'center', borderRadius: '5px', padding: '2px 5px', fontSize: '11px', fontWeight: 800, fontVariantNumeric: 'tabular-nums', background: r ? RC[res] : '#EEF0F2', color: r ? '#fff' : '#9aa0a8' }}>{r ? `${r.gf}–${r.ga}` : '–'}</span>
+                <span style={{ justifySelf: 'end', minWidth: '34px', textAlign: 'center', borderRadius: '5px', padding: '2px 5px', fontSize: '11px', fontWeight: 800, fontVariantNumeric: 'tabular-nums', background: r ? RES6[k6][0] : '#EEF0F2', color: r ? RES6[k6][1] : '#9aa0a8' }}>{r ? `${r.gf}–${r.ga}` : '–'}</span>
               </div>
             )
           })}
