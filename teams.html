@@ -44,6 +44,10 @@
     .pan .grp .p0{left:50%;transform:translateX(-50%);height:calc(var(--ph,84%) * .9);z-index:3}
     .pan .grp .p1{left:16%;transform:translateX(-50%);height:calc(var(--ph,84%) * .74);z-index:2;filter:drop-shadow(0 10px 24px rgba(0,0,0,.35)) brightness(.82)}
     .pan .grp .p2{left:84%;transform:translateX(-50%);height:calc(var(--ph,84%) * .74);z-index:2;filter:drop-shadow(0 10px 24px rgba(0,0,0,.35)) brightness(.82)}
+    .pan .grp .plab{position:absolute;bottom:14px;transform:translateX(-50%);z-index:4;max-width:31%;padding:4px 10px;border-radius:99px;background:rgba(16,18,22,.62);color:#fff;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;backdrop-filter:blur(4px)}
+    .pan .grp .plab b{font-weight:800}
+    .pan .grp .l0{left:50%;bottom:22px;font-size:13px}.pan .grp .l1{left:16%}.pan .grp .l2{left:84%}
+    @media (max-width: 1180px), (max-height: 640px){ .pan .grp .plab{display:none} }   /* only where the panel has room */
     .pan .bigcrest{position:absolute;left:50%;bottom:8%;transform:translateX(-50%);width:62%;z-index:1;filter:drop-shadow(0 12px 30px rgba(0,0,0,.35))}
     .pan .wm.team{right:auto;left:50%;top:auto;bottom:14%;transform:translateX(-50%);width:92%;opacity:.13}
     .c2.tm .mk{display:none}
