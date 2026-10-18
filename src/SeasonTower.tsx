@@ -204,7 +204,7 @@ export class SeasonTower extends React.Component<Props, State> {
   state: State = {
     seasons: null, league: this._init!.league || 'ITA', leagueOpen: false, season: this._init!.season || this.props.season, seasonOpen: false, results: {}, cw: 1280, ch: 600,
     pop: null, teamPop: null, throughWeek: null, playing: false, groupBy: 'table', rankBy: 'points',
-    layout: this._init!.layout || 'rows',   // open in the vertical (stacked-rows) view
+    layout: this._init!.layout || 'barcode',   // open on the season barcode (the UEFA cups, which have none, fall back to rows)
     polySel: null,
     helpOpen: false,
     statsOpen: !!(this._init as any).stats,
