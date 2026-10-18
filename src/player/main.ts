@@ -92,7 +92,7 @@ function card(x: Dict) {
       <div class="n"><b>${d.GA}</b><span>Conceded</span></div>
       <div class="n"><b>${d.PCT ?? '–'}${d.PCT == null ? '' : '%'}</b><span>Save %</span></div>
       <div class="n"><b>${d.CS}</b><span>Clean sheets</span></div>
-      <div class="n"><b>${d.GP}</b><span>Starts</span></div>
+      <div class="n"><b>${d.MIN}'</b><span>Minutes${d.GP ? ` · ${d.GP} start${d.GP === 1 ? '' : 's'}` : ''}</span></div>
       ${vm ? `<div class="n"><b>${vm}</b><span>Avg mark</span></div>` : `<div class="n"><b>${d.PF ? `${d.PS}/${d.PF}` : '–'}</b><span>Pens saved</span></div>`}`
     return keeperCard(CTX, d, { badge, nums, photoFallback: fb(sq), big: shirt })
   }
