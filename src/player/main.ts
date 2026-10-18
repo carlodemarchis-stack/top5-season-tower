@@ -65,7 +65,8 @@ function keeper(sq: Dict) {
     const pens = M.shots.filter((x: Dict) => x.s === op && x.pen && inTime(x))
     k.games.push({ id: M.id, md: M.md, opp: M[op], ha: me === 'h' ? 'H' : 'A', gf: M.score[me], ga: M.score[op], min: Math.round(Math.min(until, 90)),
       sv: off ? faced.filter((x: Dict) => x.k === 'on').length : (M.stats[me]?.saves ?? faced.filter((x: Dict) => x.k === 'on').length),
-      conc: conc.length, pf: pens.length, ps: pens.filter((x: Dict) => x.k === 'on').length })
+      conc: conc.length, pf: pens.length, ps: pens.filter((x: Dict) => x.k === 'on').length,
+      yc: pl.ev.filter((e: string[]) => e[0] === 'yc').length, rc: pl.ev.filter((e: string[]) => e[0] === 'rc').length })
     k.shots.push(...faced.filter((x: Dict) => x.p).map((x: Dict) => [x.p, x.k === 'goal' ? 'g' : 's']))
     k.conceded.push(...conc.map((g: Dict) => [g.min, g.by, g.kind, M.md, M[op]]))
   }

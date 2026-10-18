@@ -34,6 +34,8 @@ export function lum(hex: string) {
 }
 const POS: Record<string, string> = { F: 'Forward', M: 'Midfielder', D: 'Defender', G: 'Goalkeeper' }
 const initials = (n: string) => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('')
+// a booking in a game, in the box's top-right corner (beside the result, not stacked with the goals)
+const cardsHTML = (yc?: number, rc?: number) => (yc ? '<i class="cd y" title="yellow card"></i>' : '') + (rc ? `<i class="cd r${yc ? ' two' : ''}" title="red card"></i>` : '')
 const matchHref = (ctx: Ctx, lg: string, md: number, id: string) => ctx.SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
 // the panel photo: the portrait, then (squad film) the thumbnail, then the initials
 function photo(src: string | null, name: string, fb?: string, href?: string) {
@@ -119,7 +121,7 @@ function strip2(ctx: Ctx, p: Dict, club: Dict, noLine = false) {
     const ink = !m.role || m.min < 45 ? '#15181d' : fg
     return `<div class="c2${m.role ? (m.role === 'B' ? ' sub' : '') : ' dnp'}" data-mid="${g.id}" data-gid="${g.id}"${matchHref(ctx, p.lg, g.w, g.id)}>
       <div class="mk">${marks}</div>
-      <div class="bx" style="background:${bg};color:${ink}"><span class="vl" style="height:${veil}%"></span><b>${m.gf}-${m.ga}</b></div>
+      <div class="bx" style="background:${bg};color:${ink}"><span class="vl" style="height:${veil}%"></span><b>${m.gf}-${m.ga}</b>${cardsHTML(m.YC, m.RC)}</div>
       <div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, p.lg, p.espnId, g.w)}</div>`
   }
   const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:${maxMarks}">${gs.map(cell).join('')}</div></div>`
@@ -209,7 +211,7 @@ function strip(ctx: Ctx, k: Dict, club: Dict) {
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
     return `<div class="c2" data-mid="${m.id}"${matchHref(ctx, k.lg, g.w, m.id)} title="MD${m.md} · ${m.ha === 'H' ? 'vs' : 'at'} ${esc(m.opp)} ${m.gf}-${m.ga} · ${m.sv} saves · ${m.conc} conceded${m.min < 90 ? ` · ${m.min}'` : ''}">
       <div class="mk">${Array.from({ length: m.conc }, () => '<i class="ga"></i>').join('')}</div>
-      <div class="bx" style="background:${bg};color:${fg}"><b>${m.sv}</b></div><div class="op">${at}${esc(m.opp)}</div>${voteHTML(ctx, k.lg, k.id, m.md)}</div>` }
+      <div class="bx" style="background:${bg};color:${fg}"><b>${m.sv}</b>${cardsHTML(m.yc, m.rc)}</div><div class="op">${at}${esc(m.opp)}</div>${voteHTML(ctx, k.lg, k.id, m.md)}</div>` }
   const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:${maxMarks}">${gs.map(cell).join('')}</div></div>`
   return `<div class="s2">${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}</div>`
 }
