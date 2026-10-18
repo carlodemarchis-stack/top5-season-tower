@@ -1,5 +1,4 @@
-// Squad film: one card per player of one club (?lg=ITA&team=INT), in the Squad tab's order (keepers, defenders,
-// midfielders, forwards; most minutes first). Outfield players get the scorer card, keepers the goalkeeper card
+// Squad film: one card per player of one club (?lg=ITA&team=INT), most league minutes first. Outfield players get the scorer card, keepers the goalkeeper card
 // (src/film/cards.ts) — one look for every player. Everything is built here from the team card's squad (bio, photo)
 // and the league's match cards (who played, minutes, goals, assists, cards, saves, shots faced); Serie A adds the
 // Fantacalcio mark under each game. ?p=<espnId> opens on that player (the Squad tab's tiles link here).
@@ -76,16 +75,17 @@ function keeper(sq: Dict) {
   return k
 }
 
-// ---------- the squad, in the Squad tab's order ----------
+// ---------- the squad, most minutes played first (whatever the role) ----------
 const ROLE = ['G', 'D', 'M', 'F'], TAG: Record<string, string> = { G: 'GK', D: 'DEF', M: 'MID', F: 'FWD' }
-const P: Dict[] = ROLE.flatMap(r => (team.squad as Dict[]).filter(p => p.pos === r)
-  .sort((a, b) => b.min - a.min || b.apps - a.apps || (+a.jersey || 99) - (+b.jersey || 99)))
-  .map(sq => sq.pos === 'G' ? { kind: 'gk', sq, d: keeper(sq) } : { kind: 'out', sq, d: outfield(sq) })
+const minsOf = (x: Dict) => x.kind === 'gk' ? x.d.MIN : x.d.min
+const P: Dict[] = (team.squad as Dict[]).map(sq => sq.pos === 'G' ? { kind: 'gk', sq, d: keeper(sq) } : { kind: 'out', sq, d: outfield(sq) })
+  .sort((a, b) => minsOf(b) - minsOf(a) || (+a.sq.jersey || 99) - (+b.sq.jersey || 99))
 
 const mark = (id: string) => { const v = avgVote(CTX, id); return v == null ? null : v.toFixed(2) }
 const fb = (sq: Dict) => sq.thumb || undefined
 function card(x: Dict) {
   const { sq, d } = x, badge = TAG[sq.pos] || '', vm = LG === 'ITA' ? mark(sq.espnId) : null
+  const shirt: [string, string] = [sq.jersey || '–', 'shirt']   // the panel's big number: his shirt number
   if (x.kind === 'gk') {
     const nums = `
       <div class="n big"><b>${d.SV}</b><span>Saves${d.PS ? ` · ${d.PS} pen${d.PS > 1 ? 's' : ''}` : ''}</span></div>
@@ -94,18 +94,18 @@ function card(x: Dict) {
       <div class="n"><b>${d.CS}</b><span>Clean sheets</span></div>
       <div class="n"><b>${d.GP}</b><span>Starts</span></div>
       ${vm ? `<div class="n"><b>${vm}</b><span>Avg mark</span></div>` : `<div class="n"><b>${d.PF ? `${d.PS}/${d.PF}` : '–'}</b><span>Pens saved</span></div>`}`
-    return keeperCard(CTX, d, { badge, nums, photoFallback: fb(sq), big: d.GP ? undefined : [`${sq.min || 0}'`, 'minutes'] })
+    return keeperCard(CTX, d, { badge, nums, photoFallback: fb(sq), big: shirt })
   }
-  // forwards (and anyone with 2+ goals) carry their goals on the panel, everyone else their minutes
-  const big: [number | string, string] = sq.pos === 'F' || d.G >= 2 ? [d.G, `goal${d.G === 1 ? '' : 's'}`] : [`${d.min}'`, 'minutes']
+  // the highlighted number: goals for a scorer, minutes for everyone else
+  const goalsN = `<b>${d.G}</b><span>Goals${d.pens ? ` · ${d.pens} pen${d.pens > 1 ? 's' : ''}` : ''}</span>`, minsN = `<b>${d.min}'</b><span>Minutes</span>`
   const nums = `
-    <div class="n big"><b>${d.G}</b><span>Goals${d.pens ? ` · ${d.pens} pen${d.pens > 1 ? 's' : ''}` : ''}</span></div>
+    <div class="n big">${d.G ? goalsN : minsN}</div>
+    <div class="n">${d.G ? minsN : goalsN}</div>
     <div class="n"><b>${d.A}</b><span>Assists</span></div>
     <div class="n"><b>${d.apps}</b><span>Games${d.starts < d.apps ? ` · ${d.starts} starts` : ''}</span></div>
-    <div class="n"><b>${d.min}'</b><span>Minutes</span></div>
     <div class="n"><b>${d.YC}${d.RC ? `<i class="rcard">/${d.RC}</i>` : ''}</b><span>${d.RC ? 'Yellow / red' : 'Yellow cards'}</span></div>
     <div class="n"><b>${vm ?? (d.G ? Math.round(d.min / d.G) + "'" : '–')}</b><span>${vm ? 'Avg mark' : 'Per goal'}</span></div>`
-  return scorerCard(CTX, d, { badge, big, nums, photoFallback: fb(sq), noGoals: d.apps ? 'No goals yet' : 'No league minutes yet' })
+  return scorerCard(CTX, d, { badge, big: shirt, nums, photoFallback: fb(sq), noGoals: d.apps ? 'No goals yet' : 'No league minutes yet' })
 }
 
 const $ = (id: string) => document.getElementById(id)!
@@ -113,7 +113,7 @@ const film = $('film')
 film.innerHTML = P.map(card).join('')
 // top bar: the club, back to its team card
 $('lgs').innerHTML = `<a class="lgb on" href="teams.html?lg=${LG}&t=${CODE}" title="Back to the ${esc(club.name || CODE)} team card"><img src="${logo(LG, CODE)}" alt=""><b style="font-size:12px;font-weight:900;white-space:nowrap">${esc(club.name || CODE)}</b><span>${P.length}</span></a>`
-$('cnote').innerHTML = `${P.length} players of ${esc(club.name || CODE)}, ${LEAGUE_NAME[LG]} ${SEASON.replace('-', '/')}, in the squad's order: keepers, defenders, midfielders, forwards, most minutes first.`
+$('cnote').innerHTML = `${P.length} players of ${esc(club.name || CODE)}, ${LEAGUE_NAME[LG]} ${SEASON.replace('-', '/')}, most league minutes first.`
 
 // ?p=<espnId> (a tile of the Squad tab): open on that player, then drop it from the URL
 if (QS.has('p')) {

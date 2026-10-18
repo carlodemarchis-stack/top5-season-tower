@@ -139,6 +139,17 @@ if (!DRY) {
 }
 console.log(`squads: ${teams.reduce((s, t) => s + t.squad.length, 0)} players · ${thumbs} thumbnails · ${noThumb} without (initials)`)
 
+// every squad player's large portrait (the squad film's panel, player.html): 600px, fetched once per player and kept
+// (folder + cache shared with the scorers film); the thumbnail's own source, so it is never a stand-in
+let bigNew = 0
+if (!DRY) await pool(teams.flatMap(t => t.squad.filter(p => p.thumb && p._src)), 6, async (p) => {
+  const file = path.join(PHOTOS, `${p.espnId}.webp`)
+  if (fs.existsSync(file) && photoCache[p.espnId]) return
+  const buf = await get(p._src, { json: false }); if (!buf) { warns.push(`photo: ${p._src} unreachable for ${p.name}`); return }
+  await savePhoto(buf, file, 600, 78); photoCache[p.espnId] = p._src; bigNew++
+})
+if (bigNew) console.log(`large portraits: ${bigNew} new`)
+
 // the panel always shows three players with a real photo: goals first, then assists, then minutes
 await pool(teams, 3, async (t) => {
   const pick = t.squad.filter(p => p.thumb && p._src).sort((a, b) => b.G - a.G || b.A - a.A || b.min - a.min).slice(0, 3)
