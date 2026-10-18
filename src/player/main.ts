@@ -53,7 +53,7 @@ function availNote(states: string[], mds: number[], where: string[]) {
   let run = 0; for (let i = known.length - 1; i >= 0 && (known[i].s === 'X' || known[i].s === 'XR'); i--) run++
   const last5 = known.slice(-5), n5 = last5.filter(x => x.s === 'X' || x.s === 'XR').length
   const first = known[known.length - run], ban = run && first.s === 'XR' ? `sent off ${where[first.i - 1]} in MD ${mds[first.i - 1]}` : ''
-  if (run === 1 && ban) return `<i class="sus"></i>Suspended for MD ${first.md}: ${ban}`
+  if (run === 1 && ban) return `<i></i>Suspended for MD ${first.md}: ${ban}`
   if (run >= 2) return `<i></i>Not in the matchday squad for the last <b>${run}</b> games (since MD ${first.md})${ban ? `, the first a ban: ${ban}` : ''}`
   if (n5 >= 2) return `<i></i>Not in the matchday squad in <b>${n5}</b> of the last ${last5.length} games`
   return ''
