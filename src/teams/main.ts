@@ -60,10 +60,10 @@ function card(t: Dict) {
   const photos = (t.panel || []).slice(0, 3)   // three players with a real photo: goals, then assists, then minutes
   const group = photos.length
     ? `<div class="grp">${photos.map((s: Dict, i: number) => `<img class="p${photos.length === 2 && i === 1 ? 2 : i}" src="${s.photo}" alt="${esc(s.name)}">`).join('')}${photos.map((s: Dict, i: number) => {
-        // a label at each player's feet: name and goals (assists when he hasn't scored); hidden where space is short
-        const sc = (t.scorers || []).find((x: Dict) => x.espnId === s.espnId), G = sc ? sc.G : s.G, A = sc ? sc.A : s.A   // the scorer list is newer than the panel's totals
-        const what = G ? `${G} goal${G === 1 ? '' : 's'}` : A ? `${A} assist${A === 1 ? '' : 's'}` : ''
-        return `<span class="plab l${photos.length === 2 && i === 1 ? 2 : i}"><b>${esc(s.name)}</b>${what ? ` · ${what}` : ''}</span>` }).join('')}</div>`
+        // a label at each player's feet: the leader's full name in the middle, the two beside him by surname
+        // (first name dropped: "De Bruyne", not "Bruyne"), pinned to the panel's edges; hidden where space is short
+        const side = i > 0, nm = side && /\s/.test(s.name) ? s.name.replace(/^\S+\s+/, '') : s.name
+        return `<span class="plab l${photos.length === 2 && i === 1 ? 2 : i}">${esc(nm)}</span>` }).join('')}</div>`
     : `<img class="bigcrest" src="${logo(t.code, t.lg)}" alt="">`
   const ppg = t.played ? (t.pts / t.played).toFixed(ALL ? 2 : 1) : '–'
   // all leagues: the rank is across the five and the big number is points per game (the sort key)
