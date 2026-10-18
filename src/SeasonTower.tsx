@@ -54,7 +54,6 @@ interface State {
   rankBy: 'points' | 'gd'
   layout: 'towers' | 'rows' | 'barcode' | 'poly'   // vertical towers (portrait) vs horizontal rows (landscape) vs the season barcode vs everyone-vs-everyone
   polySel: string | null     // everyone-vs-everyone: the club whose matches fill the side columns (null = the leader)
-  polyHover: string | null   // …and the one under the pointer, shown while hovered
   helpOpen: boolean
   creditsOpen: boolean
   moreOpen: boolean          // "+" — the other AGWAS sport experiences
@@ -207,7 +206,7 @@ export class SeasonTower extends React.Component<Props, State> {
     seasons: null, league: this._init!.league || 'ITA', leagueOpen: false, season: this._init!.season || this.props.season, seasonOpen: false, results: {}, cw: 1280, ch: 600,
     pop: null, teamPop: null, throughWeek: null, playing: false, groupBy: 'table', rankBy: 'points',
     layout: this._init!.layout || 'rows',   // open in the vertical (stacked-rows) view
-    polySel: null, polyHover: null,
+    polySel: null,
     helpOpen: false,
     statsOpen: !!(this._init as any).stats,
     creditsOpen: false,
@@ -807,7 +806,7 @@ export class SeasonTower extends React.Component<Props, State> {
   _poly: { key: string; teams: Dict[]; ms: Dict[] } | null = null
   _polyApi: PolyApi | null = null
   _polyKey = ''
-  polyCode(v: Dict) { return this.state.polyHover || (v.polyTeams.some((t: Dict) => t.code === this.state.polySel) ? this.state.polySel : v.polyTeams[0]?.code) }
+  polyCode(v: Dict) { return (v.polyTeams.some((t: Dict) => t.code === this.state.polySel) ? this.state.polySel : v.polyTeams[0]?.code) }
   drawPoly() {
     const box = this.polyRef.current, d = this._poly
     if (!box || !d) { this._polyKey = ''; return }
@@ -815,12 +814,12 @@ export class SeasonTower extends React.Component<Props, State> {
     if (key !== this._polyKey) {
       this._polyKey = key
       this._polyApi = polyChart(box, { teams: d.teams as any, ms: d.ms as any }, {
-        enter: i => this.setState({ polyHover: d.teams[i].code }),
-        leave: () => this.setState({ polyHover: null }),
-        click: i => this.setState({ polySel: d.teams[i].code, polyHover: null }),
+        // the club under the pointer becomes the one shown, and stays when the pointer leaves (the leader to start)
+        enter: i => this.setState({ polySel: d.teams[i].code }),
+        click: i => this.setState({ polySel: d.teams[i].code }),
       })
     }
-    const code = this.state.polyHover || (d.teams.some(t => t.code === this.state.polySel) ? this.state.polySel : d.teams[0]?.code)
+    const code = (d.teams.some(t => t.code === this.state.polySel) ? this.state.polySel : d.teams[0]?.code)
     this._polyApi?.focus(d.teams.findIndex(t => t.code === code))
   }
   renderPoly(v: Dict) {
@@ -860,7 +859,7 @@ export class SeasonTower extends React.Component<Props, State> {
         <div style={{ flex: '1 1 520px', maxWidth: 'min(760px, calc((100vh - 170px) * 1.15))', minWidth: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ fontSize: '13px', fontWeight: 800, color: '#15181d', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <img src={`logos/${logoFile(this.state.league, code)}.png`} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />{t?.name}
-            <span style={{ fontWeight: 600, color: '#8b909a', fontSize: '11.5px' }}>{this.state.polyHover ? '' : '· click a club on the polygon to change'}</span>
+            <span style={{ fontWeight: 600, color: '#8b909a', fontSize: '11.5px' }}>· point at a club on the polygon to change</span>
           </div>
           <div ref={this.polyRef} className="poly" style={{ width: '100%' }} />
         </div>
@@ -1486,7 +1485,7 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div>Drag the <b>matchday slider</b> (or <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>‹</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>›</kbd>) to move through the season — it stops at the <b>last played matchday</b>.</div>
                   <div>Switch <b>league &amp; season</b> with the dropdowns, flip <b>vertical towers / landscape rows</b> with ⊤ / ⊢, and go <b>fullscreen</b> with ⛶.</div>
                   <div><b>▥ Season barcode</b> (the five leagues): every club's season as a strip of cells, one per matchday — <b style={{ color: '#177a41' }}>won</b> (darker by 2+ goals), <b style={{ color: '#b58a06' }}>draw</b>, <b style={{ color: '#7d838c' }}>0-0</b>, <b style={{ color: '#b3323a' }}>lost</b> (darker by 2+), pale grey still to play — rows in standings order. Columns line up, so a postponed game shows as a hole. Click a cell for the match.</div>
-                  <div><b>◔ Everyone vs everyone</b> (the five leagues): the league as a polygon — clubs on the corners in standings order, each a win / draw / loss pie sized by its points; every match is a line between the two clubs, each half coloured by the result for the club it starts from, thicker for a bigger margin; first and second legs are two parallel lines, matches still to play a faint dashed one. Beside it, one club's season: first half on the left, second half on the right. Click a club on the polygon to pick it (hover to peek); hover a match in a column to keep only that pairing, click it for the match.</div>
+                  <div><b>◔ Everyone vs everyone</b> (the five leagues): the league as a polygon — clubs on the corners in standings order, each a win / draw / loss pie sized by its points; every match is a line between the two clubs, each half coloured by the result for the club it starts from, thicker for a bigger margin; first and second legs are two parallel lines, matches still to play a faint dashed one. Beside it, one club's season: first half on the left, second half on the right. Point at a club on the polygon to show its season (it stays when you move away; the leader to start); hover a match in a column to keep only that pairing, click it for the match.</div>
                   <div><b>Keyboard:</b> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>←</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>→</kbd> change league, <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>↑</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>↓</kbd> step the matchday.</div>
                   <div><b>Click a match</b> for the scoreline &amp; details, or a <b>team's label</b> for its full record.</div>
                   <p className="agwas-rel"><a href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener">Release notes</a> <a className="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>
