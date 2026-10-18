@@ -5,6 +5,7 @@
 import '../film/film.css'
 import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
 import { scorerCard, keeperCard, matchTip, avgVote, esc, ord, logo, LEAGUE_NAME, type Ctx } from '../film/cards'
+import { loadCoaches, coachCard, stints } from '../film/coach'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -22,6 +23,7 @@ const [{ TEAMCARDS }, { TEAMS: T1 }, votes, ...MF] = await Promise.all([
 const TEAMS: Record<string, Dict> = { [LG]: T1 }
 const CTX: Ctx = { TEAMS, SEASON, VOTES: (votes as Dict | null)?.VOTES?.v || {} }
 const MATCHES: Dict[] = MF.flatMap((f: Dict) => f.MATCHES)
+const COACHES = SEASON === '2026-27' ? await loadCoaches(LG, SEASON) : null
 const team = TEAMCARDS.teams.find((t: Dict) => t.code === QS.get('team')) || TEAMCARDS.teams[0]
 const CODE = team.code, club = T1[CODE] || {}
 
@@ -110,14 +112,19 @@ function keeper(sq: Dict) {
 }
 
 // ---------- the squad, most minutes played first (whatever the role) ----------
-const ROLE = ['G', 'D', 'M', 'F'], TAG: Record<string, string> = { G: 'GK', D: 'DEF', M: 'MID', F: 'FWD' }
+const ROLE = ['G', 'D', 'M', 'F', 'C'], TAG: Record<string, string> = { G: 'GK', D: 'DEF', M: 'MID', F: 'FWD', C: 'COACH' }
 const minsOf = (x: Dict) => x.kind === 'gk' ? x.d.MIN : x.d.min
 const P: Dict[] = (team.squad as Dict[]).map(sq => sq.pos === 'G' ? { kind: 'gk', sq, d: keeper(sq) } : { kind: 'out', sq, d: outfield(sq) })
   .sort((a, b) => minsOf(b) - minsOf(a) || (+a.sq.jersey || 99) - (+b.sq.jersey || 99))
+// the film closes on the head coach (FotMob, src/film/coach.ts): his games, and anyone before him this season
+const played = games.map(M => { const me = side(M), op = me === 'h' ? 'a' : 'h'; return { id: M.id, md: M.md, opp: M[op], ha: me === 'h' ? 'H' : 'A', gf: M.score[me], ga: M.score[op] } })
+const ST = COACHES ? stints(COACHES, CODE, played) : [], HEAD = ST.length ? COACHES!.coaches[ST[ST.length - 1].id] : null
+if (HEAD) P.push({ kind: 'coach', sq: { name: HEAD.name, pos: 'C', nat: HEAD.nat }, d: {} })
 
 const mark = (id: string) => { const v = avgVote(CTX, id); return v == null ? null : v.toFixed(2) }
 const fb = (sq: Dict) => sq.thumb || undefined
 function card(x: Dict) {
+  if (x.kind === 'coach') return coachCard(CTX, COACHES!, LG, CODE, played, teamLine)
   const { sq, d } = x, badge = TAG[sq.pos] || '', vm = LG === 'ITA' ? mark(sq.espnId) : null
   const shirt: [string, string] = [sq.jersey || '–', '']   // the panel's big number: his shirt number (no word under it)
   if (x.kind === 'gk') {
@@ -147,28 +154,33 @@ const film = $('film')
 film.innerHTML = P.map(card).join('')
 // top bar: the club, back to its team card
 $('lgs').innerHTML = `<a class="lgb on" href="teams.html?lg=${LG}&t=${CODE}" title="Back to the ${esc(club.name || CODE)} team card"><img src="${logo(LG, CODE)}" alt=""><b style="font-size:12px;font-weight:900;white-space:nowrap">${esc(club.name || CODE)}</b><span>${P.length}</span></a>`
-$('cnote').innerHTML = `${P.length} players of ${esc(club.name || CODE)}, ${LEAGUE_NAME[LG]} ${SEASON.replace('-', '/')}, most league minutes first.`
+const NPL = P.filter(x => x.kind !== 'coach').length
+$('cnote').innerHTML = `${NPL} players of ${esc(club.name || CODE)}, ${LEAGUE_NAME[LG]} ${SEASON.replace('-', '/')}, most league minutes first${HEAD ? ', then the head coach' : ''}.`
 
 // ?p=<espnId> (a tile of the Squad tab): open on that player, then drop it from the URL
 if (QS.has('p')) {
-  const at = P.findIndex(x => String(x.sq.espnId) === QS.get('p')), q = new URLSearchParams(location.search); q.delete('p')
+  const at = P.findIndex(x => QS.get('p') === 'coach' ? x.kind === 'coach' : String(x.sq.espnId) === QS.get('p')), q = new URLSearchParams(location.search); q.delete('p')
   history.replaceState(null, '', location.pathname + '?' + q.toString() + (at >= 0 ? '#' + (at + 1) : location.hash))
 }
 
 function onPaint(i: number) {
   const { sq, d } = P[i]
+  if (P[i].kind === 'coach') {
+    $('ctx').innerHTML = `${esc(club.name || CODE)} · head coach · <b>${esc(sq.name)}</b>`
+    document.querySelector('meta[name="agwas:title"]')?.setAttribute('content', `${sq.name} · head coach · ${club.name || CODE}`); return
+  }
   $('ctx').innerHTML = `${esc(club.name || CODE)} squad · ${team.pos ? ord(team.pos) : ''} in ${LEAGUE_NAME[LG]} · <b>${esc(sq.name)}</b> · ${TAG[sq.pos] || ''}${sq.jersey ? ` #${esc(sq.jersey)}` : ''} · ${P[i].kind === 'gk' ? `${d.GP} starts` : `${d.apps} games, ${d.min}'`}`
   const meta = (n: string, v: string) => document.querySelector(`meta[name="agwas:${n}"]`)?.setAttribute('content', v)
   meta('mentions', LG_IG[LG]); meta('title', `${sq.name} · ${club.name || CODE} · ${LEAGUE_NAME[LG]}`)
 }
 
 // search: a player of the squad; a number jumps to that card
-const INDEX = P.map((x, i) => ({ i, role: x.sq.pos, label: x.sq.name, sub: `${TAG[x.sq.pos] || ''}${x.sq.jersey ? ` #${x.sq.jersey}` : ''} · ${x.sq.min || 0}'`,
-  key: [x.sq.name, x.sq.nat, TAG[x.sq.pos], x.sq.jersey].join(' ').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() }))
+const INDEX = P.map((x, i) => ({ i, role: x.sq.pos, label: x.sq.name, sub: x.kind === 'coach' ? 'head coach' : `${TAG[x.sq.pos] || ''}${x.sq.jersey ? ` #${x.sq.jersey}` : ''} · ${x.sq.min || 0}'`,
+  key: [x.sq.name, x.sq.nat, TAG[x.sq.pos], x.kind === 'coach' ? 'coach manager' : '', x.sq.jersey].join(' ').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() }))
 function jumpHTML(q: string) {
   const qq = q.trim().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   const hits = /^\d+$/.test(qq) ? INDEX.filter(x => x.i === +qq - 1) : INDEX.filter(x => qq.split(/\s+/).every(w => x.key.includes(w)))
-  const NAME: Record<string, string> = { G: 'Goalkeepers', D: 'Defenders', M: 'Midfielders', F: 'Forwards' }
+  const NAME: Record<string, string> = { G: 'Goalkeepers', D: 'Defenders', M: 'Midfielders', F: 'Forwards', C: 'Coach' }
   return ROLE.map(r => { const rows = hits.filter(x => x.role === r); if (!rows.length) return ''
     return `<div class="jsec"><div class="jsechd">${NAME[r]}<span>${rows.length}</span></div><div class="jgrid">${rows.map(x =>
       `<div class="jrow" data-i="${x.i}"><span class="jn">${x.i + 1}</span><span class="jl">${esc(x.label)}<span class="jt">${esc(x.sub)}</span></span></div>`).join('')}</div></div>` }).join('') || '<p>No player matches.</p>'

@@ -107,6 +107,15 @@ jobs:
           else
             echo "No new league results — goalkeeper cards unchanged."
           fi
+      # head coaches (FotMob): both benches of every new match + each club's current coach — the daily run also catches
+      # an appointment made between games
+      - name: Head coaches (FotMob)
+        run: |
+          if ! git diff --quiet -- 'src/data/results-*-2026-27.js' || [ "${{ github.event.schedule }}" = "0 8 * * *" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            node scripts/update-coaches.mjs || echo "::warning::coaches not updated — will retry on the next trigger"
+          else
+            echo "No new league results — coaches unchanged."
+          fi
 
       # Serie A player marks (Fantacalcio · Redazione) for the player cards. Published hours after the games, often
       # after the results, so it runs on every trigger (two small pages: the last two played match days); it writes
@@ -119,7 +128,7 @@ jobs:
         run: |
           git config user.name "results-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/data/results-*-2026-27.js src/data/standings-*-2026-27.js src/data/highlights-*-2026-27.js src/data/schedule-CL-2026-27.js src/data/schedule-EL-2026-27.js src/data/schedule-ECL-2026-27.js src/data/scorers-TOP5-2026-27.js public/players scripts/scorers-photo-cache.json src/data/teams-*-2026-27.js public/squad scripts/squad-photo-cache.json src/data/matches-*-2026-27-md*.js src/data/keepers-TOP5-2026-27.js src/data/votes-ITA-2026-27.js scripts/votes-ids-ITA.json
+          git add src/data/results-*-2026-27.js src/data/standings-*-2026-27.js src/data/highlights-*-2026-27.js src/data/schedule-CL-2026-27.js src/data/schedule-EL-2026-27.js src/data/schedule-ECL-2026-27.js src/data/scorers-TOP5-2026-27.js public/players scripts/scorers-photo-cache.json src/data/teams-*-2026-27.js public/squad scripts/squad-photo-cache.json src/data/matches-*-2026-27-md*.js src/data/keepers-TOP5-2026-27.js src/data/votes-ITA-2026-27.js scripts/votes-ids-ITA.json src/data/coaches-*-2026-27.js scripts/coaches-cache.json public/coaches
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No new results — nothing to deploy."

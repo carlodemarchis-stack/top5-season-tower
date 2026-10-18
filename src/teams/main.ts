@@ -3,6 +3,7 @@
 // Data: src/data/teams-<LG>-<season>.js (built + verified by scripts/update-teams.mjs); club colours/names from the schedule.
 import '../film/film.css'
 import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
+import { loadCoaches, coachChip } from '../film/coach'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -18,11 +19,12 @@ try { localStorage.setItem('top5.teams.lg', LG) } catch { }
 const ALL = LG === 'ALL'
 const LOAD = ALL ? LG_ORDER.filter(has) : [LG]
 // per league: its clubs (names, colours, fixtures), its table size, its team cards; every card carries its league as t.lg
-const TEAMS_OF: Record<string, Dict> = {}, N_OF: Record<string, number> = {}, CARDS_OF: Record<string, Dict> = {}
+const TEAMS_OF: Record<string, Dict> = {}, N_OF: Record<string, number> = {}, CARDS_OF: Record<string, Dict> = {}, COACHES_OF: Record<string, Dict | null> = {}
 await Promise.all(LOAD.map(async lg => {
   const [{ TEAMCARDS }, { TEAMS }] = await Promise.all([FILES[`../data/teams-${lg}-${SEASON}.js`](), import(`../data/schedule-${lg}-${SEASON}.js`)]) as Dict[]
   TEAMCARDS.teams.forEach((t: Dict) => t.lg = lg)
   TEAMS_OF[lg] = TEAMS; N_OF[lg] = TEAMCARDS.teams.length; CARDS_OF[lg] = TEAMCARDS
+  COACHES_OF[lg] = SEASON === '2026-27' ? await loadCoaches(lg, SEASON) : null
 }))
 const ppgOf = (t: Dict) => t.played ? t.pts / t.played : -1
 // the league photo shoots frame differently (LaLiga / Ligue 1 waist-up, the rest chest-up)
@@ -75,7 +77,8 @@ function card(t: Dict) {
     <div class="body">
       <div>
         <h1 style="--len:${[...club.name || t.code].length};--word:${Math.max(...(club.name || t.code).split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(club.name || t.code)}</h1>
-        <div class="meta" style="margin-top:8px">${LEAGUE_NAME[t.lg]} · <b>${t.pos ? ord(t.pos) : '–'}</b> · ${t.W}-${t.D}-${t.L} · GD ${gd >= 0 ? '+' : ''}${gd}${t.scorers[0]?.G ? ` · top scorer <b>${esc(t.scorers[0].name)}</b>` : ''}</div>
+        <div class="meta" style="margin-top:8px">${LEAGUE_NAME[t.lg]} · <b>${t.pos ? ord(t.pos) : '–'}</b> · ${t.W}-${t.D}-${t.L} · GD ${gd >= 0 ? '+' : ''}${gd}${topScorers(t)}</div>
+        ${coachChip(COACHES_OF[t.lg], t.lg, t.code, playedOf(t, club))}
       </div>
       <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button>${SORTBAR}</div>
       <div class="pane pane-season">
@@ -95,6 +98,19 @@ function card(t: Dict) {
       <div class="pane pane-squad">${squadGrid(t)}</div>
     </div>
   </section>`
+}
+
+// the meta line's top scorer — every player tied on the most goals ("top scorers A, B and C · 2 goals each"), a count past three
+function topScorers(t: Dict) {
+  const top = t.scorers[0]?.G; if (!top) return ''
+  const names = t.scorers.filter((s: Dict) => s.G === top).map((s: Dict) => `<b>${esc(s.name)}</b>`)
+  if (names.length > 3) return ` · top scorers: <b>${names.length}</b> players on ${top} goal${top === 1 ? '' : 's'} each`   // a long tie: the Scorers section lists them
+  return names.length === 1 ? ` · top scorer ${names[0]}` : ` · top scorers ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]} · ${top} goal${top === 1 ? '' : 's'} each`
+}
+// the club's played games as the coach helpers read them ({ md, opp, ha, gf, ga })
+function playedOf(t: Dict, club: Dict) {
+  const byId: Record<string, Dict> = Object.fromEntries(t.matches.map((m: Dict) => [m.id, m]))
+  return (club.games || []).filter((g: Dict) => byId[g.id]).map((g: Dict) => ({ md: g.w, opp: g.opp, ha: g.ha, gf: byId[g.id].gf, ga: byId[g.id].ga }))
 }
 
 // ---------- the season in two rows; the darker part of each box = the club's possession ----------

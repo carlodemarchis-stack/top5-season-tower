@@ -7,6 +7,7 @@
 // Data: src/data/matches-<LG>-<season>-md<NN>.js (scripts/update-matches.mjs); club names / colours from the schedule.
 import '../film/film.css'
 import { initFilm, initHighlight, initNav, initLinks } from '../film/chrome'
+import { loadCoaches, coachOf, coachHref, surname } from '../film/coach'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -27,13 +28,14 @@ const MD = ALL ? 0 : MDS.includes(+(QS.get('md') || 0)) ? +QS.get('md')! : MDS[M
 const WINDOW_DAYS = 7
 const mdFile = (lg: string, md: number) => FILES[`../data/matches-${lg}-${SEASON}-md${String(md).padStart(2, '0')}.js`]
 // every match carries its league (club names, colours, crests come from that league's schedule)
-const TEAMS_OF: Record<string, Dict> = {}
+const TEAMS_OF: Record<string, Dict> = {}, COACHES_OF: Record<string, Dict | null> = {}
 let MATCHES: Dict[] = []
 for (const lg of ALL ? LG_ORDER.filter(has) : [LG]) {
   // one league: its matchday · all leagues: the last three matchdays of each (a midweek round + its weekends), then the window
   const mds = ALL ? mdsOf(lg).slice(-3) : [MD]
   const [sch, ...files] = await Promise.all([import(`../data/schedule-${lg}-${SEASON}.js`), ...mds.map(md => mdFile(lg, md)())]) as Dict[]
   TEAMS_OF[lg] = sch.TEAMS
+  COACHES_OF[lg] = SEASON === '2026-27' ? await loadCoaches(lg, SEASON) : null
   for (const f of files) for (const m of f.MATCHES) MATCHES.push({ ...m, lg })
 }
 if (ALL) {
@@ -96,6 +98,11 @@ function rowsOf(t: Dict): Dict[][] {
 }
 
 // ---------- one card ----------
+// the coach on each bench (FotMob line-ups): his surname under the formation, a link to his card in the squad film
+function coachTag(M: Dict, ha: string) {
+  const C = COACHES_OF[M.lg], code = ha === 'H' ? M.h : M.a, id = coachOf(C, code, ha === 'H' ? M.a : M.h, ha), k = id ? C!.coaches[id] : null
+  return k ? `<span class="co" data-href="${coachHref(M.lg, code)}" title="${esc(k.name)} · coach">coach ${esc(surname(k))}</span>` : ''
+}
 function card(M: Dict) {
   const H = { code: M.h, name: nameOf(M, M.h), color: TEAM(M, M.h).primary || '#555', ...M.home }
   const A = { code: M.a, name: nameOf(M, M.a), color: TEAM(M, M.a).primary || '#555', ...M.away }
@@ -232,8 +239,8 @@ function card(M: Dict) {
   return `
     <div class="pan pitch">${MARKS}
       <img class="cw t" src="${logo(H.code, M.lg)}" alt=""><img class="cw b" src="${logo(A.code, M.lg)}" alt="">
-      <div class="tlab t${onLight(H.color)}"><a class="tn" href="teams.html?lg=${M.lg}&t=${H.code}" title="${esc(H.name)} · team card">${esc(H.name)}</a><span class="tx"><b>${esc(H.form)}</b>${ord(M.table.h[0])} → ${ord(M.table.h[1])}</span></div>
-      <div class="tlab b${onLight(A.color)}"><a class="tn" href="teams.html?lg=${M.lg}&t=${A.code}" title="${esc(A.name)} · team card">${esc(A.name)}</a><span class="tx"><b>${esc(A.form)}</b>${ord(M.table.a[0])} → ${ord(M.table.a[1])}</span></div>
+      <div class="tlab t${onLight(H.color)}"><a class="tn" href="teams.html?lg=${M.lg}&t=${H.code}" title="${esc(H.name)} · team card">${esc(H.name)}</a><span class="tx"><b>${esc(H.form)}</b>${ord(M.table.h[0])} → ${ord(M.table.h[1])}${coachTag(M, 'H')}</span></div>
+      <div class="tlab b${onLight(A.color)}"><a class="tn" href="teams.html?lg=${M.lg}&t=${A.code}" title="${esc(A.name)} · team card">${esc(A.name)}</a><span class="tx"><b>${esc(A.form)}</b>${ord(M.table.a[0])} → ${ord(M.table.a[1])}${coachTag(M, 'A')}</span></div>
       <div class="bigsc t" style="--sc:${scoreInk(H.color)}"><b>${M.score.h}</b></div>
       <div class="bigsc b" style="--sc:${scoreInk(A.color)}"><b>${M.score.a}</b></div>
       ${half(H, true)}${half(A, false)}

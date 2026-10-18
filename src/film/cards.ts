@@ -41,6 +41,7 @@ const initials = (n: string) => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('
 // a booking in a game, in the box's top-right corner (beside the result, not stacked with the goals)
 const cardsHTML = (yc?: number, rc?: number) => (yc ? '<i class="cd y" title="yellow card"></i>' : '') + (rc ? `<i class="cd r${yc ? ' two' : ''}" title="red card"></i>` : '')
 const matchHref = (ctx: Ctx, lg: string, md: number, id: string) => ctx.SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
+export const matchHrefOf = matchHref
 // the panel photo: the portrait, then (squad film) the thumbnail, then the initials
 function photo(src: string | null, name: string, fb?: string, href?: string) {
   if (!src) return `<div class="ini">${esc(initials(name))}</div>`
@@ -50,7 +51,7 @@ function photo(src: string | null, name: string, fb?: string, href?: string) {
 }
 
 // the player's bio as a lower third on the photo: label over value, one cell each (role · age · nation · height)
-function bio(cells: [string, unknown][]) {
+export function bio(cells: [string, unknown][]) {
   const c = cells.filter(([, v]) => v != null && v !== '')
   return c.length ? `<div class="bio">${c.map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join('')}</div>` : ''
 }
