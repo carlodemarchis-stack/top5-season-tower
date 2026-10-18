@@ -71,7 +71,9 @@ function outfield(sq: Dict) {
     const start = pl.st ? 0 : clock(on.min), end = Math.min(90, off ? clock(off.min) : red ? clock(red[1]) : 90)
     const goals = M.goals.filter((g: Dict) => String(g.byId) === String(pl.id) && g.s === me && g.kind !== 'og').map((g: Dict) => ({ min: g.min, kind: g.kind, ast: g.ast }))
     const n = (k: string) => pl.ev.filter((e: string[]) => e[0] === k).length
-    return { ...base, role: pl.st ? 'S' : 'B', min: Math.max(1, Math.round(end - start)), goals, G: goals.length, A: n('ast'), YC: n('yc'), RC: n('rc') }
+    // his assists: the minute from his own events, the scorer from our side's goal at that minute
+    const assists = pl.ev.filter((e: string[]) => e[0] === 'ast').map((e: string[]) => ({ min: e[1], to: M.goals.find((g: Dict) => g.s === me && g.min === e[1])?.by || '' }))
+    return { ...base, role: pl.st ? 'S' : 'B', min: Math.max(1, Math.round(end - start)), goals, assists, G: goals.length, A: n('ast'), YC: n('yc'), RC: n('rc') }
   })
   settle(matches, 'role', (m: Dict) => !!m.RC)
   const played = matches.filter(m => m.role === 'S' || m.role === 'B'), sum = (k: string) => played.reduce((a, m: Dict) => a + (m[k] || 0), 0)
