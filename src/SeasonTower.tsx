@@ -1387,6 +1387,11 @@ export class SeasonTower extends React.Component<Props, State> {
                       {v.popHighlights.length > 1 && <div style={{ marginTop: '6px', fontSize: '10px', color: '#9298a1', textAlign: 'center' }}>Versions are region‑locked — open the one available where you are.</div>}
                     </div>
                   )}
+                  {v.popCard && (
+                    <a href={v.popCard} title="The full match card: line-ups, goals, every shot, the flow of the match" style={{ marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '11px 14px', borderRadius: '10px', background: '#15181d', color: '#fff', fontSize: '13px', fontWeight: 800, textDecoration: 'none', letterSpacing: '.01em' }}>
+                      Find out more · open the match card <span aria-hidden style={{ fontSize: '15px', lineHeight: 1 }}>→</span>
+                    </a>
+                  )}
                   {v.popIsSim && <div style={{ marginTop: '12px', fontSize: '10.5px', color: '#B0B4BC', textAlign: 'center' }}>Simulated scoreline — 2026/27 not yet played.</div>}
                 </div>
               </div>
@@ -1891,6 +1896,7 @@ export class SeasonTower extends React.Component<Props, State> {
     let popHomeColor = '#8A8F98', popAwayColor = '#8A8F98', popHomeName = '', popAwayName = '', popHomeCode = '', popAwayCode = ''
     let popScoreA = '—', popScoreB = '—', popHomeDim: React.CSSProperties = {}, popAwayDim: React.CSSProperties = {}, popAccentStyle = '', popIsSim = false
     let popHighlights: { lang: string; id: string; label: string; flag: string }[] = []
+    let popCard = ''   // the full match card (matches.html) for a played, real game of a league that has them
     if (pop) {
       popHighlights = this.normHighlights(S.seasons && S.seasons[S.season].HL && S.seasons[S.season].HL[pop.id])
       const home = pop.ha === 'H' ? pop.code : pop.opp
@@ -1911,6 +1917,7 @@ export class SeasonTower extends React.Component<Props, State> {
         const c = res === 'D' ? ['#F2E4BC', '#7C6320'] : ['#E7F4EC', '#1F8A4C']
         popResBadge = lbl; popResStyleObj = { background: c[0], color: c[1] }
         popIsSim = !isReal && !this.activeReal()[pop.id]
+        if (!popIsSim && S.season === '2026-27' && MATCH_LEAGUES.includes(S.league)) popCard = `matches.html?lg=${S.league}&md=${pop.w}&m=${pop.id}`
       } else { popResBadge = 'TO PLAY'; popResStyleObj = { background: '#EDEFF2', color: '#727781' } }
       const bits: string[] = []
       const kk = this.fmtKick(pop.et); if (kk) bits.push(kk)
@@ -1983,7 +1990,7 @@ export class SeasonTower extends React.Component<Props, State> {
       rowsWrapStyle: `position:relative;display:flex;flex-direction:column;gap:2px;width:max-content;min-width:100%;padding-right:${chartW}px;`,
       playedStr: `${decided} / ${mx * Math.floor(list.length / 2)}`, leaderAbbr: leader.code, leaderPts: leader.Pts,
       pop, popWeek, popResBadge, popResStyleObj, popChips, popHomeColor, popAwayColor, popHomeName, popAwayName, popHomeCode, popAwayCode,
-      popScoreA, popScoreB, popHomeDim, popAwayDim, popAccentStyle, popIsSim, popHighlights,
+      popScoreA, popScoreB, popHomeDim, popAwayDim, popAccentStyle, popIsSim, popHighlights, popCard,
       tm,
     }
   }
