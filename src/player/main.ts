@@ -4,7 +4,7 @@
 // Fantacalcio mark under each game. ?p=<espnId> opens on that player (the Squad tab's tiles link here).
 import '../film/film.css'
 import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
-import { scorerCard, keeperCard, matchTip, avgVote, esc, ord, logo, n2, LEAGUE_NAME, type Ctx } from '../film/cards'
+import { scorerCard, keeperCard, matchTip, avgVote, esc, ord, logo, n2, gamesN, LEAGUE_NAME, type Ctx } from '../film/cards'
 import { loadCoaches, coachCard, stints } from '../film/coach'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
@@ -136,7 +136,7 @@ function card(x: Dict) {
       <div class="n"><b>${d.PCT ?? '–'}${d.PCT == null ? '' : '%'}</b><span>Save %</span></div>
       <div class="n"><b>${d.CS}</b><span>Clean sheets</span></div>
       <div class="n"><b>${d.MIN}'</b><span>Minutes</span></div>
-      <div class="n"><b>${d.APPS}${n2(d.GP)}</b><span>Games / started</span></div>
+      ${gamesN(games.length, d.APPS, d.GP)}
       ${vm ? `<div class="n"><b>${vm}</b><span>Avg mark</span></div>` : `<div class="n"><b>${d.PF ? `${d.PS}${n2(d.PF)}` : '–'}</b><span>Pens saved</span></div>`}`
     return keeperCard(CTX, d, { badge, nums, photoFallback: fb(sq), big: shirt, noClub: true, note: d.note })
   }
@@ -146,7 +146,7 @@ function card(x: Dict) {
   const nums = `
     ${d.G || !d.A ? `<div class="n big">${d.G ? goalsN : minsN}</div><div class="n">${d.G ? minsN : goalsN}</div>${astN}`
       : `<div class="n big"><b>${d.A}</b><span>Assists</span></div><div class="n">${minsN}</div><div class="n">${goalsN}</div>`}
-    <div class="n"><b>${d.apps}${n2(d.starts)}</b><span>Games / started</span></div>
+    ${gamesN(games.length, d.apps, d.starts)}
     <div class="n"><b>${d.YC}${d.RC ? n2(d.RC, 'r') : ''}</b><span>${d.RC ? 'Yellow / red' : 'Yellow cards'}</span></div>
     <div class="n"><b>${vm ?? (d.G ? Math.round(d.min / d.G) + "'" : '–')}</b><span>${vm ? 'Avg mark' : 'Per goal'}</span></div>`
   return scorerCard(CTX, d, { badge, big: shirt, nums, photoFallback: fb(sq), noGoals: d.apps ? 'No goals yet' : 'No league minutes yet', noClub: true, note: d.note })
