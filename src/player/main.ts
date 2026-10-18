@@ -139,10 +139,10 @@ function card(x: Dict) {
   }
   // the highlighted number: goals for a scorer, minutes for everyone else
   const goalsN = `<b>${d.G}</b><span>Goals${d.pens ? ` · ${d.pens} pen${d.pens > 1 ? 's' : ''}` : ''}</span>`, minsN = `<b>${d.min}'</b><span>Minutes</span>`
+  const astN = `<div class="n"><b>${d.A}</b><span>Assists</span></div>`   // no goals but assists: assists come first, then goals
   const nums = `
     <div class="n big">${d.G ? goalsN : minsN}</div>
-    <div class="n">${d.G ? minsN : goalsN}</div>
-    <div class="n"><b>${d.A}</b><span>Assists</span></div>
+    ${d.G || !d.A ? `<div class="n">${d.G ? minsN : goalsN}</div>${astN}` : `${astN}<div class="n">${goalsN}</div>`}
     <div class="n"><b>${d.apps}</b><span>Games${d.starts < d.apps ? ` · ${d.starts} starts` : ''}</span></div>
     <div class="n"><b>${d.YC}${d.RC ? `<i class="rcard">/${d.RC}</i>` : ''}</b><span>${d.RC ? 'Yellow / red' : 'Yellow cards'}</span></div>
     <div class="n"><b>${vm ?? (d.G ? Math.round(d.min / d.G) + "'" : '–')}</b><span>${vm ? 'Avg mark' : 'Per goal'}</span></div>`
