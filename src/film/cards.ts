@@ -45,6 +45,12 @@ function photo(src: string | null, name: string, fb?: string, href?: string) {
   return `<img class="ph"${link} src="${src}" alt="${esc(name)}" onerror="${fb ? `this.onerror=function(){${toIni}};this.src='${fb}'` : toIni}">`
 }
 
+// the player's bio as a lower third on the photo: label over value, one cell each (role · age · nation · height)
+function bio(cells: [string, unknown][]) {
+  const c = cells.filter(([, v]) => v != null && v !== '')
+  return c.length ? `<div class="bio">${c.map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join('')}</div>` : ''
+}
+
 // Serie A: each game's Fantacalcio mark (Redazione) under its box — scripts/update-votes.mjs; other leagues have none
 export function voteHTML(ctx: Ctx, lg: string, id: string, md: number) {
   if (lg !== 'ITA') return ''
@@ -69,7 +75,6 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
   const goals = p.matches.flatMap((m: Dict) => m.goals.map((g: Dict) => ({ ...g, m })))
     .map((g: Dict) => `<span class="g" data-mid="${g.m.id}"><b>${esc(g.min)}</b> ${g.m.ha === 'H' ? 'vs' : 'at'} ${esc(g.m.opp)}${g.kind === 'pen' ? '<em>PEN</em>' : g.kind === 'head' ? '<em>HEAD</em>' : g.kind === 'fk' ? '<em>FK</em>' : ''}${g.ast ? ` · ast ${esc(g.ast)}` : ''}</span>`).join('')
   const minPerGoal = p.G ? Math.round(p.min / p.G) : null
-  const age = p.age != null ? `${p.age}` : ''
   const [bigN, bigW] = opt.big || [p.G, `goal${p.G === 1 ? '' : 's'}`]
   return `<section class="card" id="p-${p.espnId}" style="--c:${c};--c2:${c2};--ink:${ink};--hlink:${hlInk};--ph:${PHOTO_H[p.lg]}">
     <div class="pan">
@@ -77,11 +82,11 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
       <div class="rk">${opt.badge ?? `#${p.rank}`}</div>
       <div class="gbig"><b>${bigN}</b><span>${bigW}</span></div>
       ${photo(p.photo, p.name, opt.photoFallback, opt.href)}
+      ${bio([['Role', POS[p.pos] || p.posName], ['Age', p.age], ['Nation', p.nat], ['Height', p.heightCm ? `${p.heightCm} cm` : null]])}
     </div>
     <div class="body">
       <div>
         <h1 style="--len:${[...p.name].length};--word:${Math.max(...p.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(p.name)} · his card in the squad"` : ''}>${esc(p.name)}</h1>
-        <div class="meta" style="margin-top:8px">${[POS[p.pos] || p.posName, age && `<b>${age}</b> yrs`, esc(p.nat), p.jersey && `#${esc(p.jersey)}`, p.heightCm && `${p.heightCm} cm`].filter(Boolean).join(' · ')}</div>
       </div>
       ${opt.noClub ? '' : `<div class="club"><img src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">${esc(club.name || p.team)}
         <span class="tl"><b>${t.pos ? ord(t.pos) : '–'}</b> · <b>${t.pts}</b> pts · ${t.W}-${t.D}-${t.L} · GD ${t.GF - t.GA >= 0 ? '+' : ''}${t.GF - t.GA}</span></div>`}
@@ -228,11 +233,11 @@ export function keeperCard(ctx: Ctx, k: Dict, opt: CardOpt = {}) {
       <div class="rk">${opt.badge ?? `#${k.rank}`}</div>
       <div class="gbig"><b>${bigN}</b><span>${bigW}</span></div>
       ${photo(k.photo, k.name, opt.photoFallback, opt.href)}
+      ${bio([['Role', 'Goalkeeper'], ['Age', k.age], ['Nation', k.nat]])}
     </div>
     <div class="body">
       <div>
         <h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(k.name)} · his card in the squad"` : ''}>${esc(k.name)}</h1>
-        <div class="meta" style="margin-top:8px">${['Goalkeeper', k.age != null && `<b>${k.age}</b> yrs`, esc(k.nat), k.n && `#${esc(k.n)}`].filter(Boolean).join(' · ')}</div>
       </div>
       ${opt.noClub ? '' : `<div class="club"><img src="${logo(k.lg, k.team)}" alt="" onerror="this.remove()">${esc(club.name || k.team)}
         <span class="tl">${LEAGUE_NAME[k.lg]}${k.tpos ? ` · <b>${ord(k.tpos)}</b>` : ''}</span></div>`}
