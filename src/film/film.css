@@ -277,3 +277,6 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 @media (max-width: 760px){ .subs .sub-top .lb{width:auto;flex-basis:100%} }
 .subs .sec{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 16px}   /* the summary right after the title, one line */
 .subs .sec .gsum{margin-left:0;justify-content:flex-start}
+/* the coach card: the formation over each game box */
+.c2 .mk .fm{font-size:clamp(8px,.72vw,10px);font-weight:800;letter-spacing:-.02em;color:#15181d;white-space:nowrap;line-height:1}
+.c2.dnp .mk .fm{color:#a3a8af}

@@ -101,16 +101,21 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
   const myMarks = games.filter(g => coachOf(C, code, g.opp, g.ha) === cur.id && marks?.[g.md] != null).map(g => marks![g.md])
   const avgMark = myMarks.length ? myMarks.reduce((a, b) => a + b, 0) / myMarks.length : null
   const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w), half = Math.ceil(all.length / 2)
+  // the club's formation in each game (the match report's line-up), over its box
+  const FORM: Record<string, string> = Object.fromEntries(recs.map(M => [M.id, (M.h === code ? M.home : M.away)?.form || '']))
+  const fcount: Record<string, number> = {}
+  for (const M of recs) if (FORM[M.id] && coachOf(C, code, M.h === code ? M.a : M.h, M.h === code ? 'H' : 'A') === cur.id) fcount[FORM[M.id]] = (fcount[FORM[M.id]] || 0) + 1
+  const forms = Object.entries(fcount).sort((a, b) => b[1] - a[1]).map(([f, n]) => `<b>${esc(f)}</b> ×${n}`).join(', ')
   const cell = (g: Dict) => {
     const m = byId[g.id], at = g.ha === 'A' ? '@' : ''
     if (!m) return `<div class="c2 up"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
     const who = coachOf(C, code, g.opp, g.ha), his = who === cur.id, [bg, fg] = RES6[res6(m.gf, m.ga)]
     const title = `MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${g.opp} ${m.gf}-${m.ga}${who && !his ? ` · ${C.coaches[who]?.name} on the bench` : ''}`
-    return `<div class="c2${his ? '' : ' dnp'}" data-mid="${g.id}"${matchHrefOf(ctx, lg, g.w, g.id)} title="${esc(title)}"><div class="mk"></div>
+    return `<div class="c2${his ? '' : ' dnp'}" data-mid="${g.id}"${matchHrefOf(ctx, lg, g.w, g.id)} title="${esc(title)}${FORM[g.id] ? ` · ${FORM[g.id]}` : ''}"><div class="mk">${FORM[g.id] ? `<span class="fm">${esc(FORM[g.id])}</span>` : ''}</div>
       <div class="bx" style="background:${bg};color:${his ? fg : '#15181d'}"><span class="vl" style="height:${his ? 0 : 100}%"></span><b>${m.gf}-${m.ga}</b></div>
       <div class="op">${at}${esc(g.opp)}</div>${his ? markHTML(marks?.[g.w]) : `<div class="vt">${esc(tag(C.coaches[who!]))}</div>`}</div>`
   }
-  const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:0">${gs.map(cell).join('')}</div></div>`
+  const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:1.4">${gs.map(cell).join('')}</div></div>`
   const list = S.length > 1 ? `<div class="glist"><div class="sec">The bench this season</div><div class="goals">${S.map(s => { const x = C.coaches[s.id]
     return `<span class="g${s.id === cur.id ? ' on' : ''}">${x.ph ? `<img class="cf" src="${coachPhoto(s.id)}" alt="">` : ''}<b>${esc(x.name)}</b> ${span(s)}${s.from == null ? '' : ` · ${s.W}-${s.D}-${s.L} · ${pts(s)} pts`}</span>` }).join('')}</div></div>` : ''
   return `<section class="card coachc" id="coach" style="--c:${c};--c2:${c2};--ink:${ink};--hlink:${hlInk}">
@@ -131,7 +136,7 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
         <div class="n"><b>${n('CS')}</b><span>Clean sheets</span></div>
         <div class="n"><b>${teamLine.pos ? ord(teamLine.pos) : '–'}</b><span>Table now</span></div>
       </div>
-      ${S.length > 1 ? `<div class="avail">Greyed: games under ${S.length > 2 ? 'the coaches' : 'the coach'} before him, tagged under the box</div>` : ''}
+      ${forms || S.length > 1 ? `<div class="avail"><span>${[forms && `His formations: ${forms}`, S.length > 1 && `greyed: games under ${S.length > 2 ? 'the coaches' : 'the coach'} before him, tagged under the box`].filter(Boolean).join(' · ')}</span></div>` : ''}
       <div class="s2">${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}</div>
       ${list}
       ${subsHTML(C, code, cur.id, recs)}
