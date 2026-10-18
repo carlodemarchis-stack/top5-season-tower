@@ -832,14 +832,14 @@ export class SeasonTower extends React.Component<Props, State> {
     const col = (from: number, to: number, side: string) => {
       const games = (t?.games || []).filter((g: Dict) => g.w >= from && g.w <= to).sort((a: Dict, b: Dict) => a.w - b.w)
       return (
-        <div style={{ flex: '0 0 230px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px', alignSelf: 'center' }}>
+        <div style={{ flex: '0 1 270px', minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '3px', alignSelf: 'center' }}>
           <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: '#8b909a', margin: '0 0 6px 2px' }}>{side} · MD {from}–{to}</div>
           {!t && <div style={{ fontSize: '12px', color: '#9aa0a8', lineHeight: 1.5, padding: '10px 4px', borderTop: '1px dashed #E4E7EB' }}>Point at a club on the polygon to see its {side.toLowerCase()} here.</div>}
           {games.map((g: Dict) => {
             const r = g.w <= v.tw ? this.getRes(code!, g.id) : null, k6 = r ? res6(r.gf, r.ga) : ''
             return (
               <div key={g.id} onMouseEnter={() => this._polyApi?.pair(ix(code!), ix(g.opp))} onMouseLeave={() => this._polyApi?.focus(ix(code!))} onClick={() => this.openPop(code!, g.id)} title={`MD${g.w} · ${t!.name} ${g.ha === 'H' ? 'v' : '@'} ${T[g.opp]?.name || g.opp}${r ? ` · ${r.gf}-${r.ga}` : ' · to play'}`}
-                style={{ display: 'grid', gridTemplateColumns: '28px 14px 18px minmax(0,1fr) 40px', alignItems: 'center', gap: '6px', padding: '3px 6px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', background: '#fff', border: '1px solid #ECEEF1' }}>
+                style={{ display: 'grid', gridTemplateColumns: '32px 14px 20px minmax(0,1fr) 42px', alignItems: 'center', gap: '6px', padding: '0 7px', height: `clamp(26px, calc((100vh - 250px) / ${to - from + 1} - 3px), 46px)`, boxSizing: 'border-box', borderRadius: '6px', cursor: 'pointer', fontSize: '12.5px', background: '#fff', border: '1px solid #ECEEF1' }}>
                 <span style={{ fontSize: '10px', fontWeight: 700, color: '#9aa0a8', fontVariantNumeric: 'tabular-nums' }}>MD{g.w}</span>
                 <span style={{ fontSize: '9px', fontWeight: 800, color: '#8b909a' }}>{g.ha === 'H' ? 'H' : 'A'}</span>
                 <img src={`logos/${logoFile(this.state.league, g.opp)}.png`} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
@@ -852,14 +852,14 @@ export class SeasonTower extends React.Component<Props, State> {
       )
     }
     return (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', justifyContent: 'center', alignItems: 'flex-start', padding: '4px 4px 10px' }}>
-        <style>{`.poly{flex:1 1 520px;max-width:min(760px,calc((100vh - 170px) * 1.15));min-width:300px}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'space-between', alignItems: 'center', padding: '4px 12px 10px', minHeight: '100%' }}>
+        <style>{`.poly{width:100%}
           .poly-leg{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;font-size:12px;color:#727781;margin-top:6px}.poly-leg span{display:inline-flex;align-items:center;gap:5px}
           .poly-leg i{width:10px;height:10px;border-radius:2px;display:inline-block}.poly-leg i.dash{width:14px;height:0;border-top:1.5px dashed #9aa0a8;border-radius:0}
           .poly-wrap{position:relative}.poly-wrap svg{display:block}.poly-team{cursor:pointer}.poly-team.on .ring{stroke-width:2.5}.poly-team.on text{font-weight:800}
           .poly-tip{position:absolute;pointer-events:none;background:#fff;color:#15181d;border:1px solid #E4E7EB;border-radius:6px;padding:5px 9px;font-size:12px;white-space:nowrap;z-index:5;box-shadow:0 4px 12px rgba(0,0,0,.15)}.poly-tip[hidden]{display:none}`}</style>
         {col(1, half, 'First half')}
-        <div style={{ flex: '1 1 520px', maxWidth: 'min(760px, calc((100vh - 170px) * 1.15))', minWidth: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ flex: '1 1 520px', maxWidth: 'calc((100vh - 175px) * 1.19)', minWidth: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ fontSize: '13px', fontWeight: 800, color: '#15181d', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '8px', minHeight: '24px' }}>
             {t ? <><img src={`logos/${logoFile(this.state.league, code!)}.png`} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />{t.name}
               <button onClick={() => this.setState({ polySel: null })} style={{ border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: '11.5px', fontWeight: 700, color: '#2563eb', cursor: 'pointer' }}>· show all matches</button></>
