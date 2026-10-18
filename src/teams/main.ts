@@ -33,8 +33,9 @@ const PHOTO_H: Record<string, string> = { ESP: '82%', FRA: '80%', ITA: '76%', EN
 
 // same six result shades as the towers / barcode / scorer cards
 const RES6: Record<string, [string, string]> = {
-  bigW: ['#177a41', '#fff'], W1: ['#3a9e62', '#0b2414'], D: ['#EAB308', '#3d3000'],
-  nil: ['#9aa0a8', '#22262d'], L1: ['#dc5c5e', '#2a0709'], bigL: ['#b3323a', '#fff'],
+  // white scores on every shade (one look across the app)
+  bigW: ['#177a41', '#fff'], W1: ['#3a9e62', '#fff'], D: ['#EAB308', '#fff'],
+  nil: ['#9aa0a8', '#fff'], L1: ['#dc5c5e', '#fff'], bigL: ['#b3323a', '#fff'],
 }
 const res6 = (gf: number, ga: number) => { const d = gf - ga; return d >= 2 ? 'bigW' : d === 1 ? 'W1' : d === 0 ? (gf === 0 ? 'nil' : 'D') : d === -1 ? 'L1' : 'bigL' }
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))

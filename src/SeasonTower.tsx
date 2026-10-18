@@ -135,10 +135,9 @@ const ordSuffix = (n: number) => (n % 100 >= 11 && n % 100 <= 13) ? 'th' : n % 1
 // Overview results view: six shades by margin. Each pair brackets the app's single win / loss colour
 // (#1f8a4c / #d0454a) so the headline stays green-amber-red and the margin reads as texture.
 const RES6: Record<string, [string, string, string]> = {   // key → [fill, text ink, legend label]
-  // text ink per shade: white on the dark pair, near-black of the same hue on the light pair — white on the light
-  // green / red was only 3.4 / 3.7:1; these give 4.9 / 5.1:1 (the dark pair is 5.4 / 6.1:1)
-  bigW: ['#177a41', '#fff', 'Won 2+'], W1: ['#3a9e62', '#0b2414', 'Won 1'], D: ['#EAB308', '#3d3000', 'Draw'],
-  nil: ['#9aa0a8', '#22262d', '0-0'], L1: ['#dc5c5e', '#2a0709', 'Lost 1'], bigL: ['#b3323a', '#fff', 'Lost 2+'],
+  // text ink: white on every shade (one look across the app, by choice — the light pair reads at ~3.5:1)
+  bigW: ['#177a41', '#fff', 'Won 2+'], W1: ['#3a9e62', '#fff', 'Won 1'], D: ['#EAB308', '#fff', 'Draw'],
+  nil: ['#9aa0a8', '#fff', '0-0'], L1: ['#dc5c5e', '#fff', 'Lost 1'], bigL: ['#b3323a', '#fff', 'Lost 2+'],
 }
 const res6 = (gf: number, ga: number) => { const d = gf - ga; return d >= 2 ? 'bigW' : d === 1 ? 'W1' : d === 0 ? (gf === 0 ? 'nil' : 'D') : d === -1 ? 'L1' : 'bigL' }
 // Vite statically globs every league/season data file that exists on disk.
