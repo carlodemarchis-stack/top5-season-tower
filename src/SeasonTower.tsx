@@ -1,5 +1,6 @@
 import React from 'react'
 import { css } from './css'
+import { polyChart, type PolyApi } from './poly'
 
 // ---------------------------------------------------------------------------
 // Serie A Season Tower — football sibling of the NFL Season Tower.
@@ -51,7 +52,9 @@ interface State {
   playing: boolean
   groupBy: 'table' | 'zones'
   rankBy: 'points' | 'gd'
-  layout: 'towers' | 'rows' | 'barcode'   // vertical towers (portrait) vs horizontal rows (landscape) vs the season barcode
+  layout: 'towers' | 'rows' | 'barcode' | 'poly'   // vertical towers (portrait) vs horizontal rows (landscape) vs the season barcode vs everyone-vs-everyone
+  polySel: string | null     // everyone-vs-everyone: the club whose matches fill the side columns (null = the leader)
+  polyHover: string | null   // …and the one under the pointer, shown while hovered
   helpOpen: boolean
   creditsOpen: boolean
   moreOpen: boolean          // "+" — the other AGWAS sport experiences
@@ -110,7 +113,7 @@ const isUefa = (id: LeagueId) => LEAGUES.some(l => l.id === id && l.uefa)
 // clashes with the domestic sets (e.g. AJA = Auxerre in Ligue 1 but Ajax in the Champions League).
 const logoFile = (league: LeagueId, code: string) => isUefa(league) ? `${league}_${code}` : (league === 'FRA' && code === 'BRE' ? 'FRA_BRE' : code)
 // URL state (#league/season/week/layout) so a reload restores exactly where the user was.
-function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; layout?: 'towers' | 'rows' | 'barcode'; overview?: boolean } {
+function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; layout?: 'towers' | 'rows' | 'barcode' | 'poly'; overview?: boolean } {
   const h = (typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '')
   if (!h) return {}
   const [lg, se, wk, ly] = h.split('/')
@@ -120,7 +123,7 @@ function parseHash(): { league?: LeagueId; season?: SeasonId; week?: number; lay
   if (LEAGUES.some(l => l.id === lg)) out.league = lg
   if (SEASONS.some(s => s.id === se)) out.season = se
   if (wk != null && /^\d+$/.test(wk)) out.week = parseInt(wk, 10)
-  if (ly === 'towers' || ly === 'rows' || ly === 'barcode') out.layout = ly
+  if (ly === 'towers' || ly === 'rows' || ly === 'barcode' || ly === 'poly') out.layout = ly
   return out
 }
 
@@ -204,6 +207,7 @@ export class SeasonTower extends React.Component<Props, State> {
     seasons: null, league: this._init!.league || 'ITA', leagueOpen: false, season: this._init!.season || this.props.season, seasonOpen: false, results: {}, cw: 1280, ch: 600,
     pop: null, teamPop: null, throughWeek: null, playing: false, groupBy: 'table', rankBy: 'points',
     layout: this._init!.layout || 'rows',   // open in the vertical (stacked-rows) view
+    polySel: null, polyHover: null,
     helpOpen: false,
     statsOpen: !!(this._init as any).stats,
     creditsOpen: false,
@@ -474,7 +478,7 @@ export class SeasonTower extends React.Component<Props, State> {
       <div style="font-size:14px;font-weight:900;margin:3px 0 5px;font-variant-numeric:tabular-nums">${line}</div>
       <div style="display:flex;align-items:center;gap:6px">${verdict}<span style="color:#727781">${escHtml(me.name)}, ${r.ha === 'H' ? 'at home' : 'away'}</span></div>`
   }
-  setLayout(l: 'towers' | 'rows' | 'barcode') { if (l === this.state.layout) return; this.startPin(); this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
+  setLayout(l: 'towers' | 'rows' | 'barcode' | 'poly') { if (l === this.state.layout) return; this.startPin(); this.setState({ layout: l, pop: null, teamPop: null }, () => this.syncUrl()) }
   pickSeason(id: SeasonId) {
     if (id === this.state.season) { this.setState({ seasonOpen: false }); return }
     if (this._timer) { clearInterval(this._timer); this._timer = null }
@@ -583,7 +587,8 @@ export class SeasonTower extends React.Component<Props, State> {
     return m
   }
   componentDidUpdate(_pp: Props, ps: State, snap: Dict | null) {
-    if (this.state.layout !== 'barcode') this._towerLayout = this.state.layout
+    if (this.state.layout !== 'barcode' && this.state.layout !== 'poly') this._towerLayout = this.state.layout
+    this.drawPoly()
     // keep the range thumb pinned to the (clamped) matchday even when React skips the controlled update
     if (this.sliderRef.current) this.sliderRef.current.value = String(this.state.throughWeek ?? 0)
     // a full reshuffle (layout / season / league / overview switch) should NOT FLIP-animate — every row
@@ -790,6 +795,76 @@ export class SeasonTower extends React.Component<Props, State> {
               data.map(d => bar(d, d.tg.map((x: number, i: number) => ({ k: String(i), val: x, fill: TG[i][0], ink: TG[i][1], text: pctTxt(x, d.played), title: `${d.name} · ${i === 5 ? '5+' : i} goals · ${x} of ${d.played} matches` })), 1, String(d.hg + d.ag))))}
           </div>
         </div>
+      </div>
+    )
+  }
+
+  // ---- everyone vs everyone ------------------------------------------------
+  // The league as a polygon (src/poly.ts) between two columns with one club's season: first half on the left,
+  // second half on the right. The club is the one clicked on the polygon (the leader to start), or the one under
+  // the pointer while hovered; a row lights only that pairing's lines and opens the match on click.
+  polyRef = React.createRef<HTMLDivElement>()
+  _poly: { key: string; teams: Dict[]; ms: Dict[] } | null = null
+  _polyApi: PolyApi | null = null
+  _polyKey = ''
+  polyCode(v: Dict) { return this.state.polyHover || (v.polyTeams.some((t: Dict) => t.code === this.state.polySel) ? this.state.polySel : v.polyTeams[0]?.code) }
+  drawPoly() {
+    const box = this.polyRef.current, d = this._poly
+    if (!box || !d) { this._polyKey = ''; return }
+    const key = d.key + '|' + box.clientWidth
+    if (key !== this._polyKey) {
+      this._polyKey = key
+      this._polyApi = polyChart(box, { teams: d.teams as any, ms: d.ms as any }, {
+        enter: i => this.setState({ polyHover: d.teams[i].code }),
+        leave: () => this.setState({ polyHover: null }),
+        click: i => this.setState({ polySel: d.teams[i].code, polyHover: null }),
+      })
+    }
+    const code = this.state.polyHover || (d.teams.some(t => t.code === this.state.polySel) ? this.state.polySel : d.teams[0]?.code)
+    this._polyApi?.focus(d.teams.findIndex(t => t.code === code))
+  }
+  renderPoly(v: Dict) {
+    const teams = v.polyTeams as Dict[], T = v.polyT as Dict, N = this.maxW(), half = Math.floor(N / 2)
+    this._poly = { key: `${this.state.league}|${this.state.season}|${v.tw}|${v.polyMs.filter((m: Dict) => m.gi != null).length}|${teams.map(t => t.code).join(',')}`, teams, ms: v.polyMs }
+    const code = this.polyCode(v), t = T[code], ix = (c: string) => teams.findIndex(x => x.code === c)
+    const RC: Dict = { W: '#2f9a4f', D: '#d8b03a', L: '#c0453b' }
+    const col = (from: number, to: number, side: string) => {
+      const games = (t?.games || []).filter((g: Dict) => g.w >= from && g.w <= to).sort((a: Dict, b: Dict) => a.w - b.w)
+      return (
+        <div style={{ flex: '0 0 230px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px', alignSelf: 'center' }}>
+          <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: '#8b909a', margin: '0 0 6px 2px' }}>{side} · MD {from}–{to}</div>
+          {games.map((g: Dict) => {
+            const r = g.w <= v.tw ? this.getRes(code, g.id) : null, res = r ? (r.gf > r.ga ? 'W' : r.gf < r.ga ? 'L' : 'D') : ''
+            return (
+              <div key={g.id} onMouseEnter={() => this._polyApi?.pair(ix(code), ix(g.opp))} onMouseLeave={() => this._polyApi?.focus(ix(code))} onClick={() => this.openPop(code, g.id)} title={`MD${g.w} · ${t.name} ${g.ha === 'H' ? 'v' : '@'} ${T[g.opp]?.name || g.opp}${r ? ` · ${r.gf}-${r.ga}` : ' · to play'}`}
+                style={{ display: 'grid', gridTemplateColumns: '28px 14px 18px minmax(0,1fr) 40px', alignItems: 'center', gap: '6px', padding: '3px 6px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', background: '#fff', border: '1px solid #ECEEF1' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: '#9aa0a8', fontVariantNumeric: 'tabular-nums' }}>MD{g.w}</span>
+                <span style={{ fontSize: '9px', fontWeight: 800, color: '#8b909a' }}>{g.ha === 'H' ? 'H' : 'A'}</span>
+                <img src={`logos/${logoFile(this.state.league, g.opp)}.png`} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+                <span style={{ fontWeight: 700, color: '#15181d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{T[g.opp]?.name || g.opp}</span>
+                <span style={{ justifySelf: 'end', minWidth: '34px', textAlign: 'center', borderRadius: '5px', padding: '2px 5px', fontSize: '11px', fontWeight: 800, fontVariantNumeric: 'tabular-nums', background: r ? RC[res] : '#EEF0F2', color: r ? '#fff' : '#9aa0a8' }}>{r ? `${r.gf}–${r.ga}` : '–'}</span>
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+    return (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', justifyContent: 'center', alignItems: 'flex-start', padding: '4px 4px 10px' }}>
+        <style>{`.poly{flex:1 1 520px;max-width:min(760px,calc((100vh - 170px) * 1.15));min-width:300px}
+          .poly-leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:#727781;margin-bottom:4px}.poly-leg span{display:inline-flex;align-items:center;gap:5px}
+          .poly-leg i{width:10px;height:10px;border-radius:2px;display:inline-block}.poly-leg i.dash{width:14px;height:0;border-top:1.5px dashed #9aa0a8;border-radius:0}
+          .poly-wrap{position:relative}.poly-wrap svg{display:block}.poly-team{cursor:pointer}.poly-team.on .ring{stroke-width:2.5}.poly-team.on text{font-weight:800}
+          .poly-tip{position:absolute;pointer-events:none;background:#fff;color:#15181d;border:1px solid #E4E7EB;border-radius:6px;padding:5px 9px;font-size:12px;white-space:nowrap;z-index:5;box-shadow:0 4px 12px rgba(0,0,0,.15)}.poly-tip[hidden]{display:none}`}</style>
+        {col(1, half, 'First half')}
+        <div style={{ flex: '1 1 520px', maxWidth: 'min(760px, calc((100vh - 170px) * 1.15))', minWidth: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ fontSize: '13px', fontWeight: 800, color: '#15181d', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <img src={`logos/${logoFile(this.state.league, code)}.png`} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />{t?.name}
+            <span style={{ fontWeight: 600, color: '#8b909a', fontSize: '11.5px' }}>{this.state.polyHover ? '' : '· click a club on the polygon to change'}</span>
+          </div>
+          <div ref={this.polyRef} className="poly" style={{ width: '100%' }} />
+        </div>
+        {col(half + 1, N, 'Second half')}
       </div>
     )
   }
@@ -1153,6 +1228,8 @@ export class SeasonTower extends React.Component<Props, State> {
             <button onClick={() => this.setLayout('towers')} title="Vertical towers" style={{ padding: '6px 10px', border: 'none', background: (v.viewMode || v.layout) === 'towers' ? '#15181d' : '#fff', color: (v.viewMode || v.layout) === 'towers' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊤</button>
             <button onClick={() => this.setLayout('rows')} title="Landscape rows" style={{ padding: '6px 10px', border: 'none', background: (v.viewMode || v.layout) === 'rows' ? '#15181d' : '#fff', color: (v.viewMode || v.layout) === 'rows' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>⊢</button>
             {!isUefa(this.state.league) && <button onClick={() => this.setLayout('barcode')} title="Season barcode — every game, W / D / L" style={{ padding: '6px 10px', border: 'none', background: v.viewMode === 'barcode' ? '#15181d' : '#fff', color: v.viewMode === 'barcode' ? '#fff' : '#727781', fontSize: '13px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>▥</button>}
+            {!isUefa(this.state.league) && <button onClick={() => this.setLayout('poly')} title="Everyone vs everyone — every match as a line between two clubs" aria-label="Everyone vs everyone" style={{ padding: '6px 10px', border: 'none', background: v.viewMode === 'poly' ? '#15181d' : '#fff', color: v.viewMode === 'poly' ? '#fff' : '#727781', cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center' }}>
+              <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M8 8V1.5A6.5 6.5 0 0 1 14.2 10Z" fill="currentColor" /></svg></button>}
           </div>}
 
           <button onClick={() => this.setState({ moreOpen: true })} title="More sports experiences" aria-label="More sports experiences" style={{ ...iconBtn, marginLeft: v.overview && v.ovKind === 'uefa' ? 'auto' : undefined, fontSize: '19px', fontWeight: 700 }}>+</button>
@@ -1175,7 +1252,7 @@ export class SeasonTower extends React.Component<Props, State> {
 
         {/* ---------- chart ---------- */}
         <div ref={this.chartRef} style={{ position: 'relative', flex: '1 1 0', minHeight: 0, overflow: 'auto', padding: '6px 8px 14px' }}>
-          {v.overview ? this.renderOverview(v) : v.barcode ? this.renderBarcode(v, crestWatermark) : v.layout === 'rows' ? (
+          {v.overview ? this.renderOverview(v) : v.poly ? this.renderPoly(v) : v.barcode ? this.renderBarcode(v, crestWatermark) : v.layout === 'rows' ? (
             <div style={css(v.rowsWrapStyle)}>
               {/* qualification bands — light zone backdrop BEHIND the rank rows (matches the towers view) */}
               {(v.zoneBands || []).map((b: any, i: number) => (
@@ -1409,6 +1486,7 @@ export class SeasonTower extends React.Component<Props, State> {
                   <div>Drag the <b>matchday slider</b> (or <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>‹</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>›</kbd>) to move through the season — it stops at the <b>last played matchday</b>.</div>
                   <div>Switch <b>league &amp; season</b> with the dropdowns, flip <b>vertical towers / landscape rows</b> with ⊤ / ⊢, and go <b>fullscreen</b> with ⛶.</div>
                   <div><b>▥ Season barcode</b> (the five leagues): every club's season as a strip of cells, one per matchday — <b style={{ color: '#177a41' }}>won</b> (darker by 2+ goals), <b style={{ color: '#b58a06' }}>draw</b>, <b style={{ color: '#7d838c' }}>0-0</b>, <b style={{ color: '#b3323a' }}>lost</b> (darker by 2+), pale grey still to play — rows in standings order. Columns line up, so a postponed game shows as a hole. Click a cell for the match.</div>
+                  <div><b>◔ Everyone vs everyone</b> (the five leagues): the league as a polygon — clubs on the corners in standings order, each a win / draw / loss pie sized by its points; every match is a line between the two clubs, each half coloured by the result for the club it starts from, thicker for a bigger margin; first and second legs are two parallel lines, matches still to play a faint dashed one. Beside it, one club's season: first half on the left, second half on the right. Click a club on the polygon to pick it (hover to peek); hover a match in a column to keep only that pairing, click it for the match.</div>
                   <div><b>Keyboard:</b> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>←</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>→</kbd> change league, <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>↑</kbd> <kbd style={{ background: '#F1F2F4', borderRadius: '4px', padding: '1px 5px', fontFamily: 'inherit', fontWeight: 700 }}>↓</kbd> step the matchday.</div>
                   <div><b>Click a match</b> for the scoreline &amp; details, or a <b>team's label</b> for its full record.</div>
                   <p className="agwas-rel"><a href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener">Release notes</a> <a className="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>
@@ -1591,6 +1669,18 @@ export class SeasonTower extends React.Component<Props, State> {
       }
       return { abbr: e.code, cells }
     })
+
+    // EVERYONE VS EVERYONE — clubs in standings order, every fixture once (home side), played up to the matchday
+    const poly = S.layout === 'poly' && !isUefa(S.league)
+    const polyTeams = poly ? list.map(e => ({ n: e.t.name, pts: e.Pts, code: e.code })) : []
+    const polyMs: Dict[] = []
+    if (poly) {
+      const ix: Dict = {}; list.forEach((e, i) => { ix[e.code] = i })
+      for (const e of list) for (const g of e.t.games) if (g.ha === 'H' && ix[g.opp] != null) {
+        const r = g.w <= tw ? this.getRes(e.code, g.id) : null
+        polyMs.push(r ? { i: ix[e.code], j: ix[g.opp], md: g.w, gi: r.gf, gj: r.ga } : { i: ix[e.code], j: ix[g.opp], md: g.w })
+      }
+    }
 
     // Fixed cell sizes — the tower no longer squeezes to fit; it grows as tall as the games
     // need and the canvas scrolls. Win and loss are 3× the height of a draw (per request).
@@ -1886,7 +1976,7 @@ export class SeasonTower extends React.Component<Props, State> {
 
     return {
       ...base, loading: false, orient, teamsSorted, layout, uefa, zoneBands, colW, colGap: uefa ? 1 : 2, rowH, rowGap: 2,
-      barcode, bcN, bcRows, viewMode: barcode ? 'barcode' : layout, rowLabelW,
+      barcode, bcN, bcRows, viewMode: barcode ? 'barcode' : layout, rowLabelW, poly, polyTeams, polyMs, polyT: T, tw,
       // the barcode also carries an 11px matchday axis (+2px gap) above its rows; shave that off the row
       // height so the whole table fits the chart without a vertical scroll
       bcRowH: Math.max(22, Math.min(rowH, Math.floor((chartH - 13 - (nTeams - 1) * 2) / nTeams))),
