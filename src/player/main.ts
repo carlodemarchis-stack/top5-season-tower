@@ -94,7 +94,7 @@ function card(x: Dict) {
       <div class="n"><b>${d.CS}</b><span>Clean sheets</span></div>
       <div class="n"><b>${d.MIN}'</b><span>Minutes${d.GP ? ` · ${d.GP} start${d.GP === 1 ? '' : 's'}` : ''}</span></div>
       ${vm ? `<div class="n"><b>${vm}</b><span>Avg mark</span></div>` : `<div class="n"><b>${d.PF ? `${d.PS}/${d.PF}` : '–'}</b><span>Pens saved</span></div>`}`
-    return keeperCard(CTX, d, { badge, nums, photoFallback: fb(sq), big: shirt })
+    return keeperCard(CTX, d, { badge, nums, photoFallback: fb(sq), big: shirt, noClub: true })
   }
   // the highlighted number: goals for a scorer, minutes for everyone else
   const goalsN = `<b>${d.G}</b><span>Goals${d.pens ? ` · ${d.pens} pen${d.pens > 1 ? 's' : ''}` : ''}</span>`, minsN = `<b>${d.min}'</b><span>Minutes</span>`
@@ -105,7 +105,7 @@ function card(x: Dict) {
     <div class="n"><b>${d.apps}</b><span>Games${d.starts < d.apps ? ` · ${d.starts} starts` : ''}</span></div>
     <div class="n"><b>${d.YC}${d.RC ? `<i class="rcard">/${d.RC}</i>` : ''}</b><span>${d.RC ? 'Yellow / red' : 'Yellow cards'}</span></div>
     <div class="n"><b>${vm ?? (d.G ? Math.round(d.min / d.G) + "'" : '–')}</b><span>${vm ? 'Avg mark' : 'Per goal'}</span></div>`
-  return scorerCard(CTX, d, { badge, big: shirt, nums, photoFallback: fb(sq), noGoals: d.apps ? 'No goals yet' : 'No league minutes yet' })
+  return scorerCard(CTX, d, { badge, big: shirt, nums, photoFallback: fb(sq), noGoals: d.apps ? 'No goals yet' : 'No league minutes yet', noClub: true })
 }
 
 const $ = (id: string) => document.getElementById(id)!

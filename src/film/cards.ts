@@ -10,6 +10,7 @@ export type CardOpt = {
   nums?: string                          // the numbers row (default: the film's own)
   photoFallback?: string                 // a second photo to try (the squad thumbnail) before the initials
   noGoals?: string                       // outfield, no goal yet: what the goal section says
+  noClub?: boolean                       // no club line under the name (the squad film is one club, named in its top bar)
 }
 
 export const LEAGUE_NAME: Record<string, string> = { ITA: 'Serie A', ENG: 'Premier League', ESP: 'LaLiga', FRA: 'Ligue 1', GER: 'Bundesliga' }
@@ -78,8 +79,8 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
         <h1 style="--len:${[...p.name].length};--word:${Math.max(...p.name.split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(p.name)}</h1>
         <div class="meta" style="margin-top:8px">${[POS[p.pos] || p.posName, age && `<b>${age}</b> yrs`, esc(p.nat), p.jersey && `#${esc(p.jersey)}`, p.heightCm && `${p.heightCm} cm`].filter(Boolean).join(' · ')}</div>
       </div>
-      <div class="club"><img src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">${esc(club.name || p.team)}
-        <span class="tl"><b>${t.pos ? ord(t.pos) : '–'}</b> · <b>${t.pts}</b> pts · ${t.W}-${t.D}-${t.L} · GD ${t.GF - t.GA >= 0 ? '+' : ''}${t.GF - t.GA}</span></div>
+      ${opt.noClub ? '' : `<div class="club"><img src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">${esc(club.name || p.team)}
+        <span class="tl"><b>${t.pos ? ord(t.pos) : '–'}</b> · <b>${t.pts}</b> pts · ${t.W}-${t.D}-${t.L} · GD ${t.GF - t.GA >= 0 ? '+' : ''}${t.GF - t.GA}</span></div>`}
       <div class="nums">${opt.nums ?? `
         <div class="n big"><b>${p.G}</b><span>Goals${p.pens ? ` · ${p.pens} pen${p.pens > 1 ? 's' : ''}` : ''}</span></div>
         <div class="n"><b>${p.A}</b><span>Assists</span></div>
@@ -229,8 +230,8 @@ export function keeperCard(ctx: Ctx, k: Dict, opt: CardOpt = {}) {
         <h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(k.name)}</h1>
         <div class="meta" style="margin-top:8px">${['Goalkeeper', k.age != null && `<b>${k.age}</b> yrs`, esc(k.nat), k.n && `#${esc(k.n)}`].filter(Boolean).join(' · ')}</div>
       </div>
-      <div class="club"><img src="${logo(k.lg, k.team)}" alt="" onerror="this.remove()">${esc(club.name || k.team)}
-        <span class="tl">${LEAGUE_NAME[k.lg]}${k.tpos ? ` · <b>${ord(k.tpos)}</b>` : ''}</span></div>
+      ${opt.noClub ? '' : `<div class="club"><img src="${logo(k.lg, k.team)}" alt="" onerror="this.remove()">${esc(club.name || k.team)}
+        <span class="tl">${LEAGUE_NAME[k.lg]}${k.tpos ? ` · <b>${ord(k.tpos)}</b>` : ''}</span></div>`}
       <div class="nums">${opt.nums ?? `
         <div class="n big"><b>${k.SV}</b><span>Saves${k.PS ? ` · ${k.PS} pen${k.PS > 1 ? 's' : ''}` : ''}</span></div>
         <div class="n"><b>${k.GA}</b><span>Conceded</span></div>
