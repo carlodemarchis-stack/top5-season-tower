@@ -41,7 +41,8 @@ for (const lg of FULL) {
     const t = CARDS[lg].teams.find((x: Dict) => x.code === code) || {}
     const teamLine = { pos: t.pos }
     for (const id of new Set([H.id, ...S.map(s => s.id)])) {
-      const mine = S.filter(s => s.id === id), G = mine.reduce((a, s) => a + s.W + s.D + s.L, 0)
+      if (id !== H.id && S.filter(s => s.id === id).every(s => H.standIn.includes(s))) continue   // a stand-in: his games are the head coach's
+      const mine = S.filter(s => s.id === id || (id === H.id && H.standIn.includes(s))), G = mine.reduce((a, s) => a + s.W + s.D + s.L, 0)
       const former = id !== H.id; if (former && G < MIN_GAMES) continue   // a one- or two-game stand-in gets no card
       const P = mine.reduce((a, s) => a + 3 * s.W + s.D, 0), GD = mine.reduce((a, s) => a + s.GF - s.GA, 0)
       ENTRIES.push({ lg, code, id, former, G, P, GD, ppg: G ? P / G : 0, played, recs, teamLine })

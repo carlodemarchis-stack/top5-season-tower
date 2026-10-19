@@ -63,8 +63,8 @@ export function coachChip(C: Dict | null, lg: string, code: string, played: Dict
 // most, takes off most, the change he repeats, and each recent game's changes (minute, who came on for whom; ● a goal / ○ an assist by the sub)
 const short = (n: string) => /\s/.test(n) ? n.replace(/^\S+\s+/, '') : n
 const minute = (m: string) => parseInt(m, 10) || 0
-function subsHTML(C: Dict, code: string, id: string, recs: Dict[]) {
-  const mine = recs.filter(M => coachOf(C, code, M.h === code ? M.a : M.h, M.h === code ? 'H' : 'A') === id).sort((a, b) => b.md - a.md)
+function subsHTML(code: string, recs: Dict[], counts: (M: Dict) => boolean) {
+  const mine = recs.filter(counts).sort((a, b) => b.md - a.md)
   if (!mine.length) return ''
   const used: Record<string, { name: string; n: number }> = {}, outs: typeof used = {}, swap: typeof used = {}
   let total = 0, firsts: number[] = [], ht = 0, G = 0, A = 0
@@ -109,29 +109,34 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
   const sinceCell: [string, unknown] = former ? ['In charge', myS.length ? (myS[0].from === myS[myS.length - 1].to ? `MD ${myS[0].from}` : `MD ${myS[0].from}–${myS[myS.length - 1].to}`) : '–'] : ['Since', H.since]
   const club = ctx.TEAMS[lg][code] || {}
   const c = club.primary || '#555', light = lum(c) > 0.55, ink = light ? '#15181d' : '#fff', c2 = light ? '#15181d' : c, hlInk = lum(c) > 0.183 ? '#15181d' : '#fff'
-  const mine = S.filter(s => s.id === cur.id), n = (f: keyof Stint) => mine.reduce((a, s) => a + (s[f] as number), 0)
+  // a stand-in's games (Domenichini while Spalletti was out) are the head coach's: he is still the coach, only absent
+  // from the bench — unlike a sacked coach's or an interim's before a new appointment, which stay greyed
+  const standIn = (who: string | null, md: number) => !former && H.standIn.some(s => s.id === who && md >= s.from! && md <= s.to!)
+  const counts = (who: string | null, md: number) => who === cur.id || standIn(who, md)
+  const countsM = (M: Dict) => counts(coachOf(C, code, M.h === code ? M.a : M.h, M.h === code ? 'H' : 'A'), M.md)
+  const mine = S.filter(s => s.id === cur.id || (!former && H.standIn.includes(s))), n = (f: keyof Stint) => mine.reduce((a, s) => a + (s[f] as number), 0)
   const G = n('W') + n('D') + n('L'), P = 3 * n('W') + n('D'), ppg = G ? (P / G).toFixed(2) : '–'
   const byId: Record<string, Dict> = Object.fromEntries(games.map(g => [g.id, g]))
-  const myMarks = games.filter(g => coachOf(C, code, g.opp, g.ha) === cur.id && marks?.[g.md] != null).map(g => marks![g.md])
+  const myMarks = games.filter(g => coachOf(C, code, g.opp, g.ha) === cur.id && marks?.[g.md] != null).map(g => marks![g.md])   // his own benches only: a stand-in's mark is the stand-in's
   const avgMark = myMarks.length ? myMarks.reduce((a, b) => a + b, 0) / myMarks.length : null
   const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w), half = Math.ceil(all.length / 2)
   // the club's formation in each game (the match report's line-up), over its box
   const FORM: Record<string, string> = Object.fromEntries(recs.map(M => [M.id, (M.h === code ? M.home : M.away)?.form || '']))
   const fcount: Record<string, number> = {}
-  for (const M of recs) if (FORM[M.id] && coachOf(C, code, M.h === code ? M.a : M.h, M.h === code ? 'H' : 'A') === cur.id) fcount[FORM[M.id]] = (fcount[FORM[M.id]] || 0) + 1
+  for (const M of recs) if (FORM[M.id] && countsM(M)) fcount[FORM[M.id]] = (fcount[FORM[M.id]] || 0) + 1
   const forms = Object.entries(fcount).sort((a, b) => b[1] - a[1]).map(([f, n]) => `<b>${esc(f)}</b> ×${n}`).join(', ')
   const cell = (g: Dict) => {
     const m = byId[g.id], at = g.ha === 'A' ? '@' : ''
     if (!m) return `<div class="c2 up"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
-    const who = coachOf(C, code, g.opp, g.ha), his = who === cur.id, [bg, fg] = RES6[res6(m.gf, m.ga)]
-    const title = `MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${g.opp} ${m.gf}-${m.ga}${who && !his ? ` · ${C.coaches[who]?.name} on the bench` : ''}`
+    const who = coachOf(C, code, g.opp, g.ha), his = counts(who, g.w), si = his && who !== cur.id, [bg, fg] = RES6[res6(m.gf, m.ga)]
+    const title = `MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${g.opp} ${m.gf}-${m.ga}${who && who !== cur.id ? ` · ${C.coaches[who]?.name} on the bench${si ? ' (stand-in)' : ''}` : ''}`
     return `<div class="c2${his ? '' : ' dnp'}" data-mid="${g.id}"${matchHrefOf(ctx, lg, g.w, g.id)} title="${esc(title)}${FORM[g.id] ? ` · ${FORM[g.id]}` : ''}"><div class="mk">${FORM[g.id] ? `<span class="fm">${esc(FORM[g.id])}</span>` : ''}</div>
       <div class="bx" style="background:${bg};color:${his ? fg : '#15181d'}"><span class="vl" style="height:${his ? 0 : 100}%"></span><b>${m.gf}-${m.ga}</b></div>
-      <div class="op">${at}${esc(g.opp)}</div>${his ? markHTML(marks?.[g.w]) : `<div class="vt">${esc(tag(C.coaches[who!]))}</div>`}</div>`
+      <div class="op">${at}${esc(g.opp)}</div>${his && !si ? markHTML(marks?.[g.w]) : `<div class="vt${si ? ' si' : ''}">${esc(tag(C.coaches[who!]))}</div>`}</div>`
   }
   const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:1.4">${gs.map(cell).join('')}</div></div>`
   const list = S.length > 1 ? `<div class="glist"><div class="sec">The bench this season</div><div class="goals">${S.map(s => { const x = C.coaches[s.id]
-    return `<span class="g${s.id === cur.id ? ' on' : ''}">${x.ph ? `<img class="cf" src="${coachPhoto(s.id)}" alt="">` : ''}<b>${esc(x.name)}</b> ${span(s)}${s.from == null ? '' : ` · ${s.W}-${s.D}-${s.L} · ${pts(s)} pts`}</span>` }).join('')}</div></div>` : ''
+    return `<span class="g${s.id === cur.id ? ' on' : ''}">${x.ph ? `<img class="cf" src="${coachPhoto(s.id)}" alt="">` : ''}<b>${esc(x.name)}</b> ${span(s)}${s.from == null ? '' : ` · ${s.W}-${s.D}-${s.L} · ${pts(s)} pts`}${H.standIn.includes(s) ? ' · stand-in' : ''}</span>` }).join('')}</div></div>` : ''
   return `<section class="card coachc" id="${opt.id || 'coach'}" style="--c:${c};--c2:${c2};--ink:${ink};--hlink:${hlInk}">
     <div class="pan">
       <img class="wm" src="${logo(lg, code)}" alt="" onerror="this.remove()">
@@ -150,10 +155,13 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
         <div class="n"><b>${n('CS')}</b><span>Clean sheets</span></div>
         <div class="n"><b>${teamLine.pos ? ord(teamLine.pos) : '–'}</b><span>Table now</span></div>
       </div>
-      ${forms || S.length > 1 ? `<div class="avail"><span>${[forms && `His formations: ${forms}`, S.length > 1 && `greyed: games with another coach on the bench${H.standIn.length ? ' (a stand-in)' : ''}, tagged under the box`].filter(Boolean).join(' · ')}</span></div>` : ''}
+      ${(() => { const grey = S.some(s => !mine.includes(s)), si = !former && H.standIn.length
+        const parts = [forms && `His formations: ${forms}`, si && `${H.standIn.map(s => `${esc(C.coaches[s.id].name)} on the bench in ${span(s)}`).join(', ')}: a stand-in, counted in his record`,
+          grey && `greyed: games with another coach in charge, tagged under the box`].filter(Boolean)
+        return parts.length ? `<div class="avail"><span>${parts.join(' · ')}</span></div>` : '' })()}
       <div class="s2">${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}</div>
       ${list}
-      ${subsHTML(C, code, cur.id, recs)}
+      ${subsHTML(code, recs, countsM)}
     </div>
   </section>`
 }
