@@ -13,11 +13,14 @@ const SEASON = '2026-27'   // coaches are kept for the current season only
 const LG_ORDER = ['ITA', 'ENG', 'ESP', 'FRA', 'GER']
 const LG_IG: Record<string, string> = { ITA: 'seriea', ENG: 'premierleague', ESP: 'laliga', FRA: 'ligue1', GER: 'bundesliga' }
 const MIN_GAMES = 3
+const LIST = LG_ORDER.includes(QS.get('lg') || '') ? QS.get('lg')! : 'ALL'
+const FULL = LIST === 'ALL' ? LG_ORDER : [LIST]   // match data only for the leagues on show; the rest just count their coaches
 
 const MATCH_FILES = import.meta.glob('../data/matches-*-*-md*.js')
 const VOTE_FILES = import.meta.glob('../data/votes-*.js')
 const TEAMS: Record<string, Dict> = {}, CARDS: Record<string, Dict> = {}, COACHES: Record<string, Dict> = {}, RECS: Record<string, Dict[]> = {}
 await Promise.all(LG_ORDER.map(async lg => {
+  if (!FULL.includes(lg)) { const C = await loadCoaches(lg, SEASON); if (C) COACHES[lg] = C; return }
   const files = Object.keys(MATCH_FILES).filter(f => f.includes(`/matches-${lg}-${SEASON}-md`))
   const [sch, tc, C, ...MF] = await Promise.all([import(`../data/schedule-${lg}-${SEASON}.js`), import(`../data/teams-${lg}-${SEASON}.js`), loadCoaches(lg, SEASON), ...files.map(f => MATCH_FILES[f]())]) as Dict[]
   TEAMS[lg] = sch.TEAMS; CARDS[lg] = tc.TEAMCARDS; if (C) COACHES[lg] = C
@@ -29,7 +32,7 @@ const CTX: Ctx = { TEAMS, SEASON, VOTES: {} }
 // ---------- every coach of every club this season, with his record there ----------
 type Entry = { lg: string; code: string; id: string; former: boolean; G: number; P: number; GD: number; ppg: number; played: Dict[]; recs: Dict[]; teamLine: Dict }
 const ENTRIES: Entry[] = []
-for (const lg of LG_ORDER) {
+for (const lg of FULL) {
   const C = COACHES[lg]; if (!C) continue
   for (const code of Object.keys(TEAMS[lg])) {
     const recs = RECS[lg].filter(M => M.h === code || M.a === code).sort((a, b) => a.md - b.md)
@@ -47,7 +50,6 @@ for (const lg of LG_ORDER) {
 }
 // points per game, best first; under three games after everyone else; ties on points, then goal difference
 const order = (a: Entry, b: Entry) => +(b.G >= MIN_GAMES) - +(a.G >= MIN_GAMES) || b.ppg - a.ppg || b.P - a.P || b.GD - a.GD
-const LIST = LG_ORDER.includes(QS.get('lg') || '') ? QS.get('lg')! : 'ALL'
 const listOf = (l: string) => ENTRIES.filter(e => l === 'ALL' || e.lg === l).sort(order)
 const P = listOf(LIST)
 const nameOf = (e: Entry) => COACHES[e.lg].coaches[e.id].name
@@ -61,7 +63,15 @@ const $ = (id: string) => document.getElementById(id)!
 const film = $('film')
 film.innerHTML = P.map(card).join('')
 const listUrl = (l: string) => { const q = new URLSearchParams(location.search); l === 'ALL' ? q.delete('lg') : q.set('lg', l); const qs = q.toString(); return location.pathname + (qs ? '?' + qs : '') + '#1' }   // a top-bar switch starts at card 1
-const lsize = (l: string) => listOf(l).length
+// a league not loaded counts from its coaches file alone: every current coach + anyone else on its benches 3+ times
+function countOf(lg: string) {
+  const C = COACHES[lg]; if (!C) return 0
+  const games: Record<string, number> = {}
+  for (const [k, [h, a]] of Object.entries(C.matches as Record<string, string[]>)) { const [H, A] = k.split('-'); games[`${H}:${h}`] = (games[`${H}:${h}`] || 0) + 1; games[`${A}:${a}`] = (games[`${A}:${a}`] || 0) + 1 }
+  const cur = new Set(Object.entries(C.teams as Record<string, string>).map(([code, id]) => `${code}:${id}`))
+  return cur.size + Object.entries(games).filter(([k, n]) => !cur.has(k) && n >= MIN_GAMES).length
+}
+const lsize = (l: string): number => l === 'ALL' ? LG_ORDER.reduce((a, lg) => a + lsize(lg), 0) : FULL.includes(l) ? listOf(l).length : countOf(l)
 $('lgs').innerHTML = `<a class="lgb all${LIST === 'ALL' ? ' on' : ''}" href="${listUrl('ALL')}" title="Every coach of the five leagues · ${lsize('ALL')}"><b>All Leagues</b><span>${lsize('ALL')}</span></a>` +
   LG_ORDER.map(lg => `<a class="lgb${LIST === lg ? ' on' : ''}" data-lg="${lg}" href="${listUrl(lg)}" title="${LEAGUE_NAME[lg]} coaches · ${lsize(lg)}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"><span>${lsize(lg)}</span></a>`).join('')
 const formers = P.filter(e => e.former).length
