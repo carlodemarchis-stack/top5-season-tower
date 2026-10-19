@@ -22,7 +22,7 @@ export function coachOf(C: Dict | null, code: string, opp: string, ha: string): 
   return m ? m[ha === 'H' ? 0 : 1] : null
 }
 // a club's coaches this season, in order, from its played games ({ md, opp, ha, gf, ga }); a coach appointed since the
-// last game (the club page's current coach) closes the list with no games yet
+// last game (the club page's current coach, not yet on any bench) closes the list with no games yet
 export function stints(C: Dict | null, code: string, played: Dict[]): Stint[] {
   const out: Stint[] = []
   for (const g of [...played].sort((a, b) => a.md - b.md)) {
@@ -32,8 +32,16 @@ export function stints(C: Dict | null, code: string, played: Dict[]): Stint[] {
     s.to = g.md; s[g.gf > g.ga ? 'W' : g.gf < g.ga ? 'L' : 'D']++; s.GF += g.gf; s.GA += g.ga; if (!g.ga) s.CS++
   }
   const cur = C?.teams[code]
-  if (cur && out[out.length - 1]?.id !== cur) out.push({ id: cur, from: null, to: null, W: 0, D: 0, L: 0, GF: 0, GA: 0, CS: 0 })
+  if (cur && !out.some(s => s.id === cur)) out.push({ id: cur, from: null, to: null, W: 0, D: 0, L: 0, GF: 0, GA: 0, CS: 0 })
   return out
+}
+// the head coach = the club page's current coach (else the last on the bench); a game someone else was on the bench
+// for AFTER his first one is a stand-in (Domenichini for a banned Spalletti), not a change of coach
+export function headOf(C: Dict | null, code: string, S: Stint[]) {
+  const id = C?.teams[code] || S[S.length - 1]?.id, mine = S.filter(s => s.id === id), first = mine.find(s => s.from != null)
+  const since = !first ? 'just appointed' : first.from === S[0].from ? 'season start' : `MD ${first.from}`
+  const before = S.filter(s => s.id !== id && (!first || (s.from ?? 99) < first.from!)), standIn = S.filter(s => s.id !== id && first && (s.from ?? 0) > first.from!)
+  return { id, mine, since, before, standIn }
 }
 const span = (s: Stint) => s.from == null ? 'no game yet' : s.from === s.to ? `MD ${s.from}` : `MD ${s.from}–${s.to}`
 const pts = (s: Stint) => 3 * s.W + s.D
@@ -42,12 +50,13 @@ const tag = (k: Dict | undefined) => surname(k).normalize('NFD').replace(/[\u030
 
 // the team card's line under the club name: the current coach, and who came before him this season
 export function coachChip(C: Dict | null, lg: string, code: string, played: Dict[]) {
-  const S = stints(C, code, played), cur = S[S.length - 1]; if (!cur) return ''
-  const k = C!.coaches[cur.id], age = ageOf(k.dob), before = S.slice(0, -1)
+  const S = stints(C, code, played), H = headOf(C, code, S); if (!H.id) return ''
+  const k = C!.coaches[H.id], age = ageOf(k.dob), list = (L: Stint[]) => L.map(s => `${esc(surname(C!.coaches[s.id]))} ${span(s)}`).join(', ')
+  const extra = [H.before.length && `before: ${list(H.before)}`, H.standIn.length && `stand-in: ${list(H.standIn)}`].filter(Boolean).join(' · ')
   return `<div class="coach" data-href="${coachHref(lg, code)}" title="${esc(k.name)} · his card">
-    ${k.ph ? `<img src="${coachPhoto(cur.id)}" alt="">` : ''}<span class="cl">Coach</span><b>${esc(k.name)}</b>
-    <span class="cm">${[k.nat, age && `${age}`, before.length ? (cur.from == null ? 'just appointed' : `since MD ${cur.from}`) : ''].filter(Boolean).map(esc).join(' · ')}</span>
-    ${before.length ? `<span class="cb">before: ${before.map(s => `${esc(surname(C!.coaches[s.id]))} ${span(s)}`).join(', ')}</span>` : ''}</div>`
+    ${k.ph ? `<img src="${coachPhoto(H.id)}" alt="">` : ''}<span class="cl">Coach</span><b>${esc(k.name)}</b>
+    <span class="cm">${[k.nat, age && `${age}`, H.before.length || !H.mine.length ? (H.since === 'just appointed' ? H.since : `since ${H.since}`) : ''].filter(Boolean).map(esc).join(' · ')}</span>
+    ${extra ? `<span class="cb">${extra}</span>` : ''}</div>`
 }
 
 // his substitutions, from the match records of the games he was on the bench for: a summary, the players he sends on
@@ -92,7 +101,7 @@ const markHTML = (v?: number) => v == null ? '' : `<div class="vt${v >= 7 ? ' hi
 // recs = the club's full match records (src/data/matches-*): his substitutions come from them
 // marks = Serie A: the coach's Fantacalcio mark per match day (votes-ITA `c`, the club's bench that day)
 export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Dict[], teamLine: Dict, recs: Dict[] = [], marks?: Record<string, number>) {
-  const S = stints(C, code, games), cur = S[S.length - 1], k = C.coaches[cur.id]
+  const S = stints(C, code, games), H = headOf(C, code, S), cur = { id: H.id }, k = C.coaches[cur.id]
   const club = ctx.TEAMS[lg][code] || {}
   const c = club.primary || '#555', light = lum(c) > 0.55, ink = light ? '#15181d' : '#fff', c2 = light ? '#15181d' : c, hlInk = lum(c) > 0.183 ? '#15181d' : '#fff'
   const mine = S.filter(s => s.id === cur.id), n = (f: keyof Stint) => mine.reduce((a, s) => a + (s[f] as number), 0)
@@ -124,7 +133,7 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
       <div class="rk">COACH</div>
       <div class="gbig"><b>${G}</b><span>game${G === 1 ? '' : 's'} in charge</span></div>
       ${k.ph ? `<img class="cph" src="${coachPhoto(cur.id)}" alt="${esc(k.name)}">` : ''}
-      ${bio([['Role', 'Head coach'], ['Age', ageOf(k.dob)], ['Nation', k.nat], ['Since', cur.from == null ? 'just appointed' : S.length > 1 ? `MD ${cur.from}` : 'season start']])}
+      ${bio([['Role', 'Head coach'], ['Age', ageOf(k.dob)], ['Nation', k.nat], ['Since', H.since]])}
     </div>
     <div class="body">
       <div><h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(k.name)}</h1></div>
@@ -136,7 +145,7 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
         <div class="n"><b>${n('CS')}</b><span>Clean sheets</span></div>
         <div class="n"><b>${teamLine.pos ? ord(teamLine.pos) : '–'}</b><span>Table now</span></div>
       </div>
-      ${forms || S.length > 1 ? `<div class="avail"><span>${[forms && `His formations: ${forms}`, S.length > 1 && `greyed: games under ${S.length > 2 ? 'the coaches' : 'the coach'} before him, tagged under the box`].filter(Boolean).join(' · ')}</span></div>` : ''}
+      ${forms || S.length > 1 ? `<div class="avail"><span>${[forms && `His formations: ${forms}`, S.length > 1 && `greyed: games with another coach on the bench${H.standIn.length ? ' (a stand-in)' : ''}, tagged under the box`].filter(Boolean).join(' · ')}</span></div>` : ''}
       <div class="s2">${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}</div>
       ${list}
       ${subsHTML(C, code, cur.id, recs)}

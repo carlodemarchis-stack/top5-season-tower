@@ -5,7 +5,7 @@
 import '../film/film.css'
 import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
 import { scorerCard, keeperCard, matchTip, avgVote, esc, ord, logo, n2, gamesN, LEAGUE_NAME, type Ctx } from '../film/cards'
-import { loadCoaches, coachCard, stints } from '../film/coach'
+import { loadCoaches, coachCard, stints, headOf } from '../film/coach'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -120,7 +120,7 @@ const P: Dict[] = (team.squad as Dict[]).map(sq => sq.pos === 'G' ? { kind: 'gk'
   .sort((a, b) => minsOf(b) - minsOf(a) || (+a.sq.jersey || 99) - (+b.sq.jersey || 99))
 // the head coach (FotMob, src/film/coach.ts) comes after the players who have played, before those who haven't
 const played = games.map(M => { const me = side(M), op = me === 'h' ? 'a' : 'h'; return { id: M.id, md: M.md, opp: M[op], ha: me === 'h' ? 'H' : 'A', gf: M.score[me], ga: M.score[op] } })
-const ST = COACHES ? stints(COACHES, CODE, played) : [], HEAD = ST.length ? COACHES!.coaches[ST[ST.length - 1].id] : null
+const ST = COACHES ? stints(COACHES, CODE, played) : [], HID = COACHES && ST.length ? headOf(COACHES, CODE, ST).id : null, HEAD = HID ? COACHES!.coaches[HID] : null
 if (HEAD) P.splice(P.filter(x => minsOf(x) > 0).length, 0, { kind: 'coach', sq: { name: HEAD.name, pos: 'C', nat: HEAD.nat }, d: {} })   // after the last player with league minutes
 
 const mark = (id: string) => { const v = avgVote(CTX, id); return v == null ? null : v.toFixed(2) }
