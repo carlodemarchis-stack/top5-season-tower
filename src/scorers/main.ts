@@ -2,7 +2,7 @@
 // Data: src/data/scorers-TOP5-<season>.js (built + verified by scripts/update-scorers.mjs); club colours/names from the schedules.
 import '../film/film.css'
 import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
-import { scorerCard, matchTip, esc, LEAGUE_NAME, type Ctx } from '../film/cards'
+import { scorerCard, matchTip, esc, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
 type Dict = Record<string, any>
 // ?season=2025-26 loads a past season (data from `update-scorers.mjs --season`)
 const QS = new URLSearchParams(location.search)
@@ -65,6 +65,7 @@ function jumpHTML(q: string) {
 
 // hover / tap a match → its goals light up in the minute line and the goal list (and the other way round); the rest dims
 initLinks(film)
+fitBios(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
 
 initTip(film, '[data-gid]', el => matchTip(CTX, P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!))

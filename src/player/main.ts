@@ -4,7 +4,7 @@
 // Fantacalcio mark under each game. ?p=<espnId> opens on that player (the Squad tab's tiles link here).
 import '../film/film.css'
 import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
-import { scorerCard, keeperCard, matchTip, avgVote, esc, ord, logo, n2, gamesN, LEAGUE_NAME, type Ctx } from '../film/cards'
+import { scorerCard, keeperCard, matchTip, avgVote, esc, ord, logo, n2, gamesN, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
 import { loadCoaches, coachCard, stints, headOf } from '../film/coach'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
@@ -190,6 +190,7 @@ function jumpHTML(q: string) {
 }
 
 initLinks(film)
+fitBios(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
 initTip(film, '[data-gid]', el => { const x = P[[...film.children].indexOf(el.closest('.card')!)]; return x.kind === 'out' ? matchTip(CTX, x.d, el.dataset.gid!) : '' })
 initNav('teams', LG, SEASON)

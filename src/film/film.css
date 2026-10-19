@@ -235,8 +235,8 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 .pan .bio>div{flex:1 1 auto;min-width:0;padding:clamp(8px,1vh,12px) clamp(10px,1.1vw,16px);border-left:1px solid rgba(255,255,255,.14)}
 .pan .bio>div:first-child{border-left:0;flex-grow:1.4}
 .pan .bio span{display:block;font-size:9px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.62)}
-.pan .bio b{display:block;margin-top:3px;font-size:clamp(14px,1.5vw,21px);font-weight:900;letter-spacing:-.01em;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}
-@media (max-width: 760px){ .pan .bio{border-radius:10px} .pan .bio b{font-size:13px} .pan .bio span{font-size:8px;letter-spacing:.14em} }
+.pan .bio b{display:block;margin-top:3px;font-size:var(--bf,clamp(14px,1.5vw,21px));font-weight:900;letter-spacing:-.01em;color:#fff;white-space:nowrap;overflow:hidden;line-height:1.1}   /* --bf: fitBio shrinks all values together until each shows whole */
+@media (max-width: 760px){ .pan .bio{border-radius:10px} .pan .bio b{font-size:var(--bf,13px)} .pan .bio span{font-size:8px;letter-spacing:.14em} }
 /* squad cards: a game out of the matchday squad is hatched over the team's result (a suspension too — the line above the strip
    says so); the bench is plain pale */
 .c2.out .bx .vl{background:repeating-linear-gradient(135deg,rgba(255,255,255,.92) 0 3px,rgba(255,255,255,.5) 3px 6px)!important}

@@ -61,6 +61,18 @@ export function bio(cells: [string, unknown][]) {
   return c.length ? `<div class="bio">${c.map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join('')}</div>` : ''
 }
 
+// the bio's values shrink together (one size for the row) until every one shows whole — never an ellipsis. Refit only
+// when the box's WIDTH changes: a smaller font makes it shorter, and refitting on that would loop
+const bioRO = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(es => es.forEach(e => fitBio(e.target as HTMLElement))) : null
+function fitBio(bio: HTMLElement) {
+  const w = bio.clientWidth; if (!w || bio.dataset.w === String(w)) return
+  bio.dataset.w = String(w); bio.style.removeProperty('--bf')
+  const bs = [...bio.querySelectorAll<HTMLElement>('b')]; if (!bs.length) return
+  let fs = parseFloat(getComputedStyle(bs[0]).fontSize)
+  while (fs > 9 && bs.some(b => b.scrollWidth > b.clientWidth + .5)) { fs -= .5; bio.style.setProperty('--bf', fs + 'px') }
+}
+export function fitBios(root: ParentNode) { root.querySelectorAll<HTMLElement>('.bio').forEach(b => bioRO?.observe(b)) }
+
 // Serie A: each game's Fantacalcio mark (Redazione) under its box — scripts/update-votes.mjs; other leagues have none
 export function voteHTML(ctx: Ctx, lg: string, id: string, md: number) {
   if (lg !== 'ITA') return ''

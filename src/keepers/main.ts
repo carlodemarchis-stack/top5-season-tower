@@ -4,7 +4,7 @@
 // from the schedules.
 import '../film/film.css'
 import { initFilm, initHighlight, initLinks, initNav } from '../film/chrome'
-import { keeperCard, esc, LEAGUE_NAME, type Ctx } from '../film/cards'
+import { keeperCard, esc, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -55,6 +55,7 @@ function jumpHTML(q: string) {
 
 // hover / tap a game: its goals against light up in the club colour
 initLinks(film)
+fitBios(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
 initNav('keepers', LIST, SEASON)
 initFilm({ count: P.length, key: 'top5.keepers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON) + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'keepers.html' })
