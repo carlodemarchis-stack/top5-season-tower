@@ -6,6 +6,6 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './',
-  // five pages: the Season Tower app and the scorer, team, match and goalkeeper card films
-  build: { target: 'es2022', rollupOptions: { input: { main: 'index.html', scorers: 'scorers.html', teams: 'teams.html', matches: 'matches.html', keepers: 'keepers.html', player: 'player.html' } } },
+  // the Season Tower app and the card films: scorers, teams, matches, goalkeepers, squads, coaches
+  build: { target: 'es2022', rollupOptions: { input: { main: 'index.html', scorers: 'scorers.html', teams: 'teams.html', matches: 'matches.html', keepers: 'keepers.html', player: 'player.html', coaches: 'coaches.html' } } },
 })
