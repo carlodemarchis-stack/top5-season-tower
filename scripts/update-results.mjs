@@ -100,7 +100,6 @@ async function validate() {
 // Score corrections: a result football-data.org has wrong, checked against ESPN and FotMob, keyed by our matchId →
 // [home, away]. Each run says whether the source now agrees (then delete the line).
 const SCORE_FIX = {
-  ITA: { e733887f756e4f7fab157413d3aef5ef: [0, 3] },   // MD7 Parma 0-3 Torino (2026-10-19): football-data 1-3; ESPN + FotMob 0-3
 }
 
 async function run() {
