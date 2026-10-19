@@ -283,6 +283,9 @@ function fitNames(root: ParentNode) {
   })
 }
 const NAME_MAX = 46, NAME_MAX2 = 36
+// a card's name rows refit whenever they really get (or change) their size — a card filled off screen is laid out only
+// later (content-visibility), so a fit measured at fill time or on the next frame can be for the wrong width
+const nameRO = new ResizeObserver(es => { for (const c of new Set(es.map(e => (e.target as HTMLElement).closest('.card')))) if (c) fitNames(c) })
 let refit = 0
 addEventListener('resize', () => { cancelAnimationFrame(refit); refit = requestAnimationFrame(() => fitNames(film)) })
 document.fonts?.ready.then(() => fitNames(film))   // measured before Archivo loaded, a name would be sized for the fallback font
@@ -291,6 +294,7 @@ function fill(i: number) {
   const el = cardEls[i]; if (!el || !el.classList.contains('empty')) return
   el.innerHTML = card(P[i]); el.classList.remove('empty')
   fitNames(el)
+  el.querySelectorAll('.tlab').forEach(t => nameRO.observe(t))
   const A = TEAM(P[i], P[i].a).primary || '#555', H = TEAM(P[i], P[i].h).primary || '#555'
   el.style.setProperty('--ca', awayColor(H, A))
 }
