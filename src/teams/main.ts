@@ -4,6 +4,7 @@
 import '../film/film.css'
 import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
 import { loadCoaches, coachChip } from '../film/coach'
+import { rowsOf } from '../film/pitch'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -80,7 +81,7 @@ function card(t: Dict) {
         <div class="meta" style="margin-top:8px">${LEAGUE_NAME[t.lg]} · <b>${t.pos ? ord(t.pos) : '–'}</b> · ${t.W}-${t.D}-${t.L} · GD ${gd >= 0 ? '+' : ''}${gd}${topScorers(t)}</div>
         ${coachChip(COACHES_OF[t.lg], t.lg, t.code, playedOf(t, club))}
       </div>
-      <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button>${SORTBAR}</div>
+      <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button>${SEASON === '2026-27' ? '<button class="tab" data-tab="tac">Tactical</button>' : ''}${SORTBAR}</div>
       <div class="pane pane-season">
       <div class="nums">
         <div class="n big"><b>${t.pts}</b><span>Points · ${ppg}/game</span></div>
@@ -96,6 +97,7 @@ function card(t: Dict) {
       <div class="s2"><div class="sec">Scorers</div><div class="slist">${scorerChips(t)}</div></div></div>
       </div>
       <div class="pane pane-squad">${squadGrid(t)}</div>
+      <div class="pane pane-tac"></div>
     </div>
   </section>`
 }
@@ -111,6 +113,46 @@ function topScorers(t: Dict) {
 function playedOf(t: Dict, club: Dict) {
   const byId: Record<string, Dict> = Object.fromEntries(t.matches.map((m: Dict) => [m.id, m]))
   return (club.games || []).filter((g: Dict) => byId[g.id]).map((g: Dict) => ({ md: g.w, opp: g.opp, ha: g.ha, gf: byId[g.id].gf, ga: byId[g.id].ga }))
+}
+
+// ---------- Tactical tab: every league game's starting XI on a half pitch, newest first, the bench under it ----------
+// the match reports load only when the tab first opens (a league's at a time)
+const MATCH_FILES = import.meta.glob('../data/matches-*-*-md*.js')
+const RECS: Record<string, Promise<Dict[]>> = {}
+const recsOf = (lg: string) => RECS[lg] ??= Promise.all(Object.keys(MATCH_FILES).filter(f => f.includes(`/matches-${lg}-${SEASON}-md`)).map(f => MATCH_FILES[f]()))
+  .then(fs => (fs as Dict[]).flatMap(f => f.MATCHES))
+const surnameOf = (n: string) => { const w = n.trim().split(/\s+/); return w.length > 1 ? w.slice(1).join(' ') : n }
+function tacPitch(t: Dict, M: Dict) {
+  const me = M.h === t.code ? 'home' : 'away', T = M[me], opp = M[me === 'home' ? 'a' : 'h'], gf = M.score[me === 'home' ? 'h' : 'a'], ga = M.score[me === 'home' ? 'a' : 'h']
+  const c = TEAMS_OF[t.lg][t.code]?.primary || '#555', ink = lum(c) > 0.55 ? '#15181d' : '#fff', ring = lum(c) > 0.75 ? '#c9ced4' : 'rgba(255,255,255,.9)'
+  const rows = rowsOf(T), n = rows.length
+  const dot = (p: Dict, x: number, y: number) => `<div class="tp" style="left:${x}%;top:${y}%"><i style="background:${c};color:${ink};box-shadow:0 0 0 1.5px ${ring}">${esc(p.n || '')}</i><span>${esc(surnameOf(p.name))}</span></div>`
+  const xi = rows.map((r, i) => r.map((p, j) => dot(p, (j + 1) / (r.length + 1) * 100, 90 - i * (80 / Math.max(1, n - 1))))).flat().join('')
+  // the bench: who came on (minute, for whom), then the unused substitutes — numbers from the squad list
+  const jersey: Record<string, string> = Object.fromEntries((t.squad || []).map((p: Dict) => [String(p.espnId), p.jersey]))
+  const subs = (M.subs as Dict[]).filter(s => T.players.some((p: Dict) => String(p.id) === String(s.on)))
+  const byId = (id: string) => T.players.find((p: Dict) => String(p.id) === String(id))
+  const used = subs.map(s => { const on = byId(s.on), off = byId(s.off)
+    return `<div class="tkr"><i style="background:${c};color:${ink}">${esc(on?.n || '')}</i><b>${esc(surnameOf(on?.name || ''))}</b><em>${esc(s.min)}${off ? ` for ${esc(surnameOf(off.name))}` : ''}</em></div>` }).join('')
+  const unused = (T.bench || []).map(([id, nm]: string[]) => `<div class="tkr un"><i>${esc(jersey[String(id)] || '')}</i><b>${esc(surnameOf(nm))}</b></div>`).join('')
+  return `<div class="tac" data-mid="${M.id}">
+    <div class="th"${matchHref(t.lg, M.md, M.id)} title="the match card"><b>MD ${M.md}</b> ${M.h === t.code ? 'vs' : 'at'} ${esc(opp)} <span class="rs" style="background:${RES6[res6(gf, ga)][0]}">${gf}-${ga}</span><em>${esc(T.form || '')}</em></div>
+    <div class="tpitch">${xi}</div>
+    <div class="tkb">${used}${unused}${!used && !unused ? '<span class="none">no bench in the report</span>' : ''}</div>
+  </div>`
+}
+let tacBusy = false
+async function fillTactics() {
+  if (tacBusy) return; tacBusy = true
+  const panes = [...film.querySelectorAll<HTMLElement>('.pane-tac')]
+  for (const lg of [...new Set(P.map(t => t.lg))]) {
+    const recs = await recsOf(lg)
+    P.forEach((t, i) => { if (t.lg !== lg || panes[i].dataset.done) return
+      const ms = recs.filter(M => M.h === t.code || M.a === t.code).sort((a, b) => b.md - a.md)
+      panes[i].innerHTML = ms.length ? `<div class="tacs">${ms.map(M => tacPitch(t, M)).join('')}</div>` : '<p class="none">No match reports yet.</p>'
+      panes[i].dataset.done = '1' })
+  }
+  tacBusy = false
 }
 
 // ---------- the season in two rows; the darker part of each box = the club's possession ----------
@@ -445,11 +487,13 @@ function jumpHTML(q: string) {
     `<div class="jrow" data-i="${x.i}"><span class="jn">${x.i + 1}</span><span class="jl">${esc(x.label)}<span class="jt">${esc(x.sub)}</span></span></div>`).join('')}</div></div>` : statsSec ? '' : '<p>No club matches.</p>')
 }
 
-// Season | Squad tab: one choice for every card, remembered
+// Season | Squad | Tactical tab: one choice for every card, remembered
+const TABS = SEASON === '2026-27' ? ['season', 'squad', 'tac'] : ['season', 'squad']
 let TAB = 'season'
-try { TAB = localStorage.getItem('top5.teams.tab') === 'squad' ? 'squad' : 'season' } catch { }
+try { const s = localStorage.getItem('top5.teams.tab') || ''; if (TABS.includes(s)) TAB = s } catch { }
 const setTab = (t: string) => {
-  TAB = t; document.body.classList.toggle('tab-squad', t === 'squad')
+  TAB = t; document.body.classList.toggle('tab-squad', t === 'squad'); document.body.classList.toggle('tab-tac', t === 'tac')
+  if (t === 'tac') fillTactics()
   film.querySelectorAll<HTMLElement>('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t))
   try { localStorage.setItem('top5.teams.tab', t) } catch { }
   sizeDeck()
@@ -508,7 +552,7 @@ film.addEventListener('click', e => {
 })
 setTab(TAB)
 film.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.tab'); if (b) setTab(b.dataset.tab!) })
-addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector('.mod.on') && !e.metaKey && !e.ctrlKey) setTab(TAB === 'squad' ? 'season' : 'squad') })
+addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector('.mod.on') && !e.metaKey && !e.ctrlKey) setTab(TABS[(TABS.indexOf(TAB) + 1) % TABS.length]) })
 
 // hover / tap a match, a goal or a scorer: everything sharing its key lights up in the club colour, the rest dims
 initHighlight(film, '[data-h]', k => `[data-k~="${k}"]`, el => el.dataset.h!)
