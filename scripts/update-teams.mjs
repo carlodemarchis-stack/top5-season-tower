@@ -86,7 +86,7 @@ const clubs = await pool(espnTeams, 4, async (team) => {
     const o = onPitch.get(a.id) || { apps: 0, starts: 0, min: 0 }
     const inj = a.injuries?.[0]
     return { espnId: a.id, name: a.displayName, jersey: a.jersey || null, pos: a.position?.abbreviation || '?', age: a.age ?? null,
-      nat: a.citizenshipCountry?.abbreviation || null, natName: a.citizenship || null, heightCm: a.height ? Math.round(a.height * 2.54) : null, inj: inj ? (inj.status || inj.type?.description || 'injured') : null,
+      nat: a.citizenshipCountry?.abbreviation || null, natName: a.citizenship || null, flag: a.flag?.href ? path.basename(new URL(a.flag.href).pathname, '.png') : null, _flag: a.flag?.href || null, heightCm: a.height ? Math.round(a.height * 2.54) : null, inj: inj ? (inj.status || inj.type?.description || 'injured') : null,
       apps: o.apps, starts: o.starts, min: o.min, G: st.G || 0, A: st.A || 0, YC: st.YC || 0, RC: st.RC || 0,
       ...(a.position?.abbreviation === 'G' ? { SV: st.SV || 0, GA: st.GA || 0 } : {}) }
   })
@@ -165,7 +165,14 @@ await pool(teams, 3, async (t) => {
   }
   if (t.panel.length < 3) warns.push(`${t.code}: only ${t.panel.length} panel player(s) with a real photo`)
 })
-for (const t of teams) for (const p of t.squad) delete p._src
+// nationality flags (ESPN's, one file per country, 48px wide) → public/flags/<code>.webp, fetched once
+const FLAGS = path.join(ROOT, 'public', 'flags'); if (!DRY) fs.mkdirSync(FLAGS, { recursive: true })
+const flagSrc = new Map(teams.flatMap(t => t.squad.filter(p => p._flag).map(p => [p.flag, p._flag])))
+await pool([...flagSrc].filter(([c]) => !fs.existsSync(path.join(FLAGS, `${c}.webp`))), 4, async ([c, href]) => {
+  const buf = await get(href, { json: false }); if (!buf || DRY) return
+  await (await import('sharp')).default(buf).resize({ width: 48 }).webp({ quality: 88 }).toFile(path.join(FLAGS, `${c}.webp`))
+})
+for (const t of teams) for (const p of t.squad) { delete p._src; delete p._flag }
 for (const t of teams) console.log(`${String(t.pos).padStart(2)}. ${t.code.padEnd(4)} ${String(t.pts).padStart(2)} pts ${t.W}-${t.D}-${t.L} ${t.GF}:${t.GA} · poss ${t.avg.poss}% · ${t.matches.length} reports · panel: ${t.panel.map(p => `${p.name} ${p.G}g ${p.A}a`).join(', ')}`)
 if (warns.length) console.log(`\n${warns.length} note(s):\n  ` + warns.join('\n  '))
 if (errors.length) { console.error(`\n✗ ${errors.length} verification error(s) — nothing written:\n  ` + errors.join('\n  ')); process.exit(1) }
