@@ -100,8 +100,13 @@ const markHTML = (v?: number) => v == null ? '' : `<div class="vt${v >= 7 ? ' hi
 // games = the club's played match records ({ id, md, opp, ha, gf, ga }); club = its schedule entry (every fixture)
 // recs = the club's full match records (src/data/matches-*): his substitutions come from them
 // marks = Serie A: the coach's Fantacalcio mark per match day (votes-ITA `c`, the club's bench that day)
-export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Dict[], teamLine: Dict, recs: Dict[] = [], marks?: Record<string, number>) {
-  const S = stints(C, code, games), H = headOf(C, code, S), cur = { id: H.id }, k = C.coaches[cur.id]
+// opt (the coaches film): who = any coach of the club this season (a departed one too), badge = the panel's corner,
+// id = the card's id, href = his card's link (the name)
+export type CoachOpt = { who?: string; badge?: string; id?: string; href?: string }
+export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Dict[], teamLine: Dict, recs: Dict[] = [], marks?: Record<string, number>, opt: CoachOpt = {}) {
+  const S = stints(C, code, games), H = headOf(C, code, S), cur = { id: opt.who || H.id }, k = C.coaches[cur.id]
+  const former = cur.id !== H.id, myS = S.filter(s => s.id === cur.id && s.from != null)
+  const sinceCell: [string, unknown] = former ? ['In charge', myS.length ? (myS[0].from === myS[myS.length - 1].to ? `MD ${myS[0].from}` : `MD ${myS[0].from}–${myS[myS.length - 1].to}`) : '–'] : ['Since', H.since]
   const club = ctx.TEAMS[lg][code] || {}
   const c = club.primary || '#555', light = lum(c) > 0.55, ink = light ? '#15181d' : '#fff', c2 = light ? '#15181d' : c, hlInk = lum(c) > 0.183 ? '#15181d' : '#fff'
   const mine = S.filter(s => s.id === cur.id), n = (f: keyof Stint) => mine.reduce((a, s) => a + (s[f] as number), 0)
@@ -127,16 +132,16 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
   const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:1.4">${gs.map(cell).join('')}</div></div>`
   const list = S.length > 1 ? `<div class="glist"><div class="sec">The bench this season</div><div class="goals">${S.map(s => { const x = C.coaches[s.id]
     return `<span class="g${s.id === cur.id ? ' on' : ''}">${x.ph ? `<img class="cf" src="${coachPhoto(s.id)}" alt="">` : ''}<b>${esc(x.name)}</b> ${span(s)}${s.from == null ? '' : ` · ${s.W}-${s.D}-${s.L} · ${pts(s)} pts`}</span>` }).join('')}</div></div>` : ''
-  return `<section class="card coachc" id="coach" style="--c:${c};--c2:${c2};--ink:${ink};--hlink:${hlInk}">
+  return `<section class="card coachc" id="${opt.id || 'coach'}" style="--c:${c};--c2:${c2};--ink:${ink};--hlink:${hlInk}">
     <div class="pan">
       <img class="wm" src="${logo(lg, code)}" alt="" onerror="this.remove()">
-      <div class="rk">COACH</div>
+      <div class="rk">${opt.badge ?? 'COACH'}</div>
       <div class="gbig"><b>${G}</b><span>game${G === 1 ? '' : 's'} in charge</span></div>
       ${k.ph ? `<img class="cph" src="${coachPhoto(cur.id)}" alt="${esc(k.name)}">` : ''}
-      ${bio([['Role', 'Head coach'], ['Age', ageOf(k.dob)], ['Nation', k.nat], ['Since', H.since]])}
+      ${bio([['Role', former ? 'Former coach' : 'Head coach'], ['Age', ageOf(k.dob)], ['Nation', k.nat], sinceCell])}
     </div>
     <div class="body">
-      <div><h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(k.name)}</h1></div>
+      <div><h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(k.name)} · his club's squad film"` : ''}>${esc(k.name)}</h1></div>
       <div class="nums">
         <div class="n big"><b>${ppg}</b><span>Points per game</span></div>
         <div class="n"><b>${n('W')}-${n('D')}-${n('L')}</b><span>W-D-L</span></div>

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coaches · top-5 EU leagues</title>
+  <meta name="description" content="Every head coach of the five big European leagues — and the ones who left during the season — ranked by points per game: his record, formations, substitutions, his season match by match. Produced with passion by A Guy With A Scarf (Carlo De Marchis)." />
+  <link rel="canonical" href="https://top5.aguywithascarf.com/coaches.html" />
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="A Guy With A Scarf" />
+  <meta property="og:title" content="Coaches — top-5 EU leagues" />
+  <meta property="og:description" content="Every coach of the five leagues, ranked by points per game — record, formations, substitutions and his season match by match." />
+  <meta property="og:url" content="https://top5.aguywithascarf.com/coaches.html" />
+  <meta property="og:image" content="https://top5.aguywithascarf.com/og-teams.png?v=1" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <!-- Twitter/X -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Coaches — top-5 EU leagues" />
+  <meta name="twitter:description" content="The coaches of the five big leagues, ranked by points per game." />
+  <meta name="twitter:image" content="https://top5.aguywithascarf.com/og-teams.png?v=1" />
+  <!-- favicon: a whistle on the coaches purple -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%237c3aed'/%3E%3Ccircle cx='13' cy='18' r='6.5' fill='none' stroke='%23fff' stroke-width='2.4'/%3E%3Cpath d='M13 11.5h12v5h-7' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <!-- AGWAS social capture -->
+  <meta name="agwas:title"    content="Coaches, top-5 leagues">
+  <meta name="agwas:cta"      content="Every coach, ranked by points per game — full film below">
+  <meta name="agwas:mentions" content="seriea">
+  <meta name="agwas:tags"     content="football dataviz">
+  <meta name="agwas:bg"       content="https://top5.aguywithascarf.com/social/football.jpg">
+  <!-- Umami --><script>try{/[?&#]noumami\b/.test(location.href)&&localStorage.setItem('umami.disabled','1')}catch(e){}</script><script defer src="https://m.aguywithascarf.com/k.js" data-website-id="795be6fc-5a41-4d66-85bc-774157d5d2c7"></script>
+    <script defer src="https://dataviz.aguywithascarf.com/ver.js"></script><!-- End Umami -->
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "b7ca744dce3341b2a233a864179a4f42"}'></script><!-- End Cloudflare Web Analytics -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <!-- shared styles: src/film/film.css (imported by src/coaches/main.ts) -->
+</head>
+<body>
+  <div id="topbar">
+    <a class="pill" href="./#ALL/2026-27" title="Back to the Season Tower">←<span class="lbl"> Season Tower</span></a>
+    <div id="lgs"></div>
+        <div id="ctx"></div>
+    <div id="credit">Produced with passion by <b>Carlo De Marchis</b> · <a href="#" onclick="openMod('cmodal');return false">Credits</a><a class="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></div>
+  </div>
+
+  <main id="film" aria-label="Coach cards"></main>
+
+  <div id="ctlbar">
+    <button class="ic" title="Restart (Home)" onclick="go(0)"><svg viewBox="0 0 24 24"><path d="M2 5v6h6"/><path d="M4.6 15.5a8.5 8.5 0 1 0 2-8.8L2 11"/></svg></button>
+    <button class="ic" title="Previous (←)" onclick="step(-1)"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="ic" id="playb" title="Play" onclick="togglePlay()"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></button>
+    <button class="ic" title="Next (→)" onclick="step(1)"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+    <button id="counter" title="Jump to a coach (g)" onclick="openJump()"></button>
+    <button class="ic" title="More sports experiences" onclick="openMod('mmodal')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="ic" title="Help (h)" onclick="openMod('hmodal')"><svg viewBox="0 0 24 24"><path d="M12 17h.01M9.1 9a3 3 0 1 1 4.2 2.7c-.8.4-1.3 1.1-1.3 2"/></svg></button>
+    <button class="ic" title="Fullscreen (f)" onclick="fs()"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M15 4h5v5M9 20H4v-5"/></svg></button>
+  </div>
+
+  <div class="mod" id="jmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <input id="jq" placeholder="Coach, club or nation — or a card number" autocomplete="off" />
+    <div id="jlist"></div>
+  </div></div>
+
+  <div class="mod" id="hmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>How to read a coach card</h3>
+    <p>One card per coach, ranked by <b>points per game</b> in his league games at the club this season (a coach with fewer than three games ranks after the rest). Every club's current head coach has a card; so does a coach who left during the season after three or more games (<b>former</b>). <b>All Leagues</b> ranks all five leagues on one scale.</p>
+    <ul>
+      <li><b>The numbers</b>: points per game, W-D-L, goals for–against, clean sheets and the club's table position now; in Serie A his average Fantacalcio mark.</li>
+      <li><b>The season</b>: one box per club league game, coloured by the result, the formation over it. Greyed boxes are games another coach was on the bench for, tagged under the box (a stand-in, or the coach before or after him).</li>
+      <li><b>The bench this season</b>: every coach the club has had, with his record. <b>Substitutions</b>: how many changes, when the first one comes, who he sends on and takes off, the change he repeats, and his latest games' changes.</li>
+      <li>Who was on the bench comes from each match's line-up (FotMob), so a sacking or a stand-in shows from the right game on.</li>
+    </ul>
+    <p><kbd>←</kbd> <kbd>→</kbd> previous / next · <kbd>space</kbd> play / pause · <kbd>Home</kbd> <kbd>End</kbd> first / last · <kbd>g</kbd> or <kbd>/</kbd> find a coach · <kbd>f</kbd> fullscreen · <kbd>h</kbd> this help · <kbd>Esc</kbd> close</p>
+    <p class="agwas-rel">Release notes <a class="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>
+  </div></div>
+
+  <div class="mod" id="cmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>Credits</h3>
+    <p id="cnote"></p>
+    <p>Coaches, the bench of every match, nationality, age and photos from FotMob. Results, line-ups, formations and substitutions from ESPN match reports, checked against the results in the Season Tower (football-data.org). Serie A coach marks from Fantacalcio (Redazione). Club crests via TheSportsDB; league logos from the leagues.</p>
+    <p>Built by Carlo De Marchis — <i>A Guy With A Scarf</i>.</p>
+  </div></div>
+
+  <div class="mod" id="mmodal" onclick="if(event.target===this)closeMods()"><div class="mbox" onclick="event.stopPropagation()">
+    <h3>More sports experiences</h3>
+    <div class="applist" id="applist"></div>
+    <p style="margin-top:12px"><a href="https://dataviz.aguywithascarf.com" target="_blank" rel="noopener">See them all →</a></p>
+  </div></div>
+
+  <script type="module" src="/src/coaches/main.ts"></script>
+</body>
+</html>

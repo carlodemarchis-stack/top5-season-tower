@@ -79,6 +79,12 @@ for (const lg of LGS) {
   for (const c of current) if (c) { keep(c); teams[c.code] = c.id }
   const noCoach = Object.keys(TEAMS).filter(c => !teams[c]); if (noCoach.length) console.warn(`  ! no current coach for ${noCoach.join(', ')}`)
 
+  // a coach off every club page now (sacked, or a stand-in) has no date of birth from it: his FotMob page, once (cached)
+  await pool(Object.keys(coaches).filter(id => !coaches[id].dob), 3, async (id) => {
+    if (!(`dob:${id}` in cache)) cache[`dob:${id}`] = (await fm(`playerData?id=${id}`))?.birthDate?.utcTime?.slice(0, 10) || null
+    if (cache[`dob:${id}`]) coaches[id].dob = cache[`dob:${id}`]
+  })
+
   // photos: FotMob's head crop, fetched once (a missing one is a 403)
   let got = 0
   await pool(Object.keys(coaches), 4, async (id) => {

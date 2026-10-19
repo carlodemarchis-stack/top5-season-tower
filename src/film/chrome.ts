@@ -158,7 +158,7 @@ export function initLinks(film: HTMLElement) {
 // the films' shared navigation, centred in the top bar (it replaces the old "← Season Tower" pill): Season · Teams ·
 // Matches · Scorers · Keepers, the current one filled in its colour; every tab keeps the league on screen
 // (lg = a league code, or 'ALL') and opens its film at card 1
-export function initNav(self: 'teams' | 'matches' | 'scorers' | 'keepers', lg: string, season = '2026-27') {
+export function initNav(self: 'teams' | 'matches' | 'scorers' | 'keepers' | 'coaches', lg: string, season = '2026-27') {
   const all = !lg || lg === 'ALL'
   const I = {
     season: '<svg viewBox="0 0 16 16" aria-hidden><rect x="1.5" y="8" width="3.2" height="6.5" rx=".6" fill="currentColor"/><rect x="6.4" y="3" width="3.2" height="11.5" rx=".6" fill="currentColor"/><rect x="11.3" y="5.5" width="3.2" height="9" rx=".6" fill="currentColor"/></svg>',
@@ -166,6 +166,7 @@ export function initNav(self: 'teams' | 'matches' | 'scorers' | 'keepers', lg: s
     matches: '<svg viewBox="0 0 18 24" aria-hidden><rect x="1" y="1" width="16" height="22" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M1 12h16" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="12" r="2.8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
     scorers: '<svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5l4.3 3.1-1.6 5h-5.4l-1.6-5z" fill="currentColor"/><path d="M12 7.5V2.5M16.3 10.6l4.6-1.6M14.7 15.6l2.9 4M9.3 15.6l-2.9 4M7.7 10.6L3.1 9" stroke="currentColor" stroke-width="1.6"/></svg>',
     keepers: '<svg viewBox="0 0 26 20" aria-hidden><path d="M2 19V2h22v17" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><circle cx="9" cy="11" r="3" fill="currentColor"/></svg>',
+    coaches: '<svg viewBox="0 0 24 24" aria-hidden><circle cx="9" cy="14" r="6.2" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M9 7.8h12.5v5.2H14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><circle cx="9" cy="14" r="2" fill="currentColor"/></svg>',
   }
   const tabs: [keyof typeof I, string, string, string, string][] = [   // key, label, colour, ink when filled, href
     ['season', 'Season', '#0f766e', '#fff', `./#${all ? 'ALL' : lg}/${season}`],
@@ -173,6 +174,7 @@ export function initNav(self: 'teams' | 'matches' | 'scorers' | 'keepers', lg: s
     ['matches', 'Matches', '#15181d', '#fff', `matches.html?lg=${all ? 'ALL' : lg}#1`],
     ['scorers', 'Scorers', '#D9A900', '#2b2200', all ? 'scorers.html#1' : `scorers.html?lg=${lg}#1`],
     ['keepers', 'Keepers', '#2563eb', '#fff', all ? 'keepers.html#1' : `keepers.html?lg=${lg}#1`],
+    ['coaches', 'Coaches', '#7c3aed', '#fff', all ? 'coaches.html#1' : `coaches.html?lg=${lg}#1`],
   ]
   const nav = document.createElement('nav'); nav.className = 'fnav'; nav.setAttribute('aria-label', 'Views')
   nav.innerHTML = tabs.map(([k, label, c, ink, href]) => `<a class="fn${k === self ? ' on' : ''}" href="${href}" title="${label}" aria-label="${label}" style="--fc:${c};--fi:${ink}"${k === self ? ' aria-current="page"' : ''}>${I[k]}<span class="lbl">${label}</span></a>`).join('')
