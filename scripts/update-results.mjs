@@ -97,6 +97,12 @@ async function validate() {
   console.log(allOk ? '\nMATCH-KEYING VALIDATED ✓ — reconstructs matchIds for every league.' : '\nVALIDATION FAILED')
 }
 
+// Score corrections: a result football-data.org has wrong, checked against ESPN and FotMob, keyed by our matchId →
+// [home, away]. Each run says whether the source now agrees (then delete the line).
+const SCORE_FIX = {
+  ITA: { e733887f756e4f7fab157413d3aef5ef: [0, 3] },   // MD7 Parma 0-3 Torino (2026-10-19): football-data 1-3; ESPN + FotMob 0-3
+}
+
 async function run() {
   const key = process.env.FOOTBALL_DATA_API_KEY
   if (!key) { console.error('Set FOOTBALL_DATA_API_KEY (get a free key at football-data.org/client/register).'); process.exit(1) }
@@ -119,7 +125,9 @@ async function run() {
       if (!home || !away) { skipped++; console.log(`    UNMATCHED ${lg} MD${m.matchday}: "${m.homeTeam?.name}"(${home || '?'}) vs "${m.awayTeam?.name}"(${away || '?'}) — add to OVERRIDES.${lg}`); continue }
       const id = matchIdOf(TEAMS, m.matchday, home, away)
       if (!id) { skipped++; console.log(`    NO FIXTURE ${lg} MD${m.matchday}: ${home} vs ${away}`); continue }
-      results[id] = { hg: m.score.fullTime.home, ag: m.score.fullTime.away }; added++
+      const fix = SCORE_FIX[lg]?.[id]
+      if (fix) console.log(`    SCORE FIX ${lg} MD${m.matchday} ${home}-${away}: ${fix.join('-')} (football-data says ${m.score.fullTime.home}-${m.score.fullTime.away}${fix[0] === m.score.fullTime.home && fix[1] === m.score.fullTime.away ? ' — now agrees, the fix can go' : ''})`)
+      results[id] = fix ? { hg: fix[0], ag: fix[1] } : { hg: m.score.fullTime.home, ag: m.score.fullTime.away }; added++
     }
     console.log(`  ${lg}: ${added} results (${skipped} skipped), total ${Object.keys(results).length}`)
     if (!DRY && added) { writeResults(lg, results); wroteAny = true }
