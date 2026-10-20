@@ -70,24 +70,27 @@ const clubs = await pool(espnTeams, 4, async (team) => {
       for: gFor.map(({ min, kind, by, ast }) => ({ min, kind, by, ast })), against: gAg.map(({ min, kind, by }) => ({ min, kind, by })) })
   }
   matches.sort((a, b) => a.w - b.w)
-  // the squad: ESPN's roster (position, number, age, nationality, injuries, goals/assists/cards/saves) + appearances,
-  // starts and minutes counted from the match reports themselves
+  // the squad: ESPN's roster (position, number, age, nationality, injuries, saves) + appearances, starts, minutes, goals,
+  // assists and cards counted from the match reports themselves — ESPN's season stats lag its reports by a day or so
+  // (Giovanni Simeone's two Monday goals missing the next morning), and count other clubs' games for a transfer
   const onPitch = new Map()
   for (const e of evs) {
     const sm = await summary(e.id)
     for (const p of sm.rosters?.find(r => r.team.id === team.id)?.roster || []) {
       if (!(p.starter || p.subbedIn)) continue
-      const x = onPitch.get(p.athlete.id) || { apps: 0, starts: 0, min: 0 }; x.apps++; if (p.starter) x.starts++; x.min += minutesOf(p); onPitch.set(p.athlete.id, x)
+      const x = onPitch.get(p.athlete.id) || { apps: 0, starts: 0, min: 0, G: 0, A: 0, YC: 0, RC: 0 }; x.apps++; if (p.starter) x.starts++; x.min += minutesOf(p)
+      const ps = Object.fromEntries((p.stats || []).map(s => [s.abbreviation, Number(s.displayValue) || 0]))
+      x.G += ps.G || 0; x.A += ps.A || 0; x.YC += ps.YC || 0; x.RC += ps.RC || 0; onPitch.set(p.athlete.id, x)
     }
   }
   const ros = await get(espn(LG, `/teams/${team.id}/roster`))
   const squadList = (ros?.athletes || []).map(a => {
     const st = Object.fromEntries((a.statistics?.splits?.categories || []).flatMap(c => c.stats.map(x => [x.abbreviation, num(x.displayValue)])))
-    const o = onPitch.get(a.id) || { apps: 0, starts: 0, min: 0 }
+    const o = onPitch.get(a.id) || { apps: 0, starts: 0, min: 0, G: 0, A: 0, YC: 0, RC: 0 }
     const inj = a.injuries?.[0]
     return { espnId: a.id, name: a.displayName, jersey: a.jersey || null, pos: a.position?.abbreviation || '?', age: a.age ?? null,
       nat: a.citizenshipCountry?.abbreviation || null, natName: a.citizenship || null, flag: a.flag?.href ? path.basename(new URL(a.flag.href).pathname, '.png') : null, _flag: a.flag?.href || null, heightCm: a.height ? Math.round(a.height * 2.54) : null, inj: inj ? (inj.status || inj.type?.description || 'injured') : null,
-      apps: o.apps, starts: o.starts, min: o.min, G: st.G || 0, A: st.A || 0, YC: st.YC || 0, RC: st.RC || 0,
+      apps: o.apps, starts: o.starts, min: o.min, G: o.G, A: o.A, YC: o.YC, RC: o.RC,
       ...(a.position?.abbreviation === 'G' ? { SV: st.SV || 0, GA: st.GA || 0 } : {}) }
   })
   const rosterGoals = squadList.reduce((s, p) => s + p.G, 0), ownGoalsFor = matches.reduce((s, m) => s + m.for.filter(x => x.kind === 'og').length, 0)
