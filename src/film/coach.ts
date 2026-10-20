@@ -106,7 +106,7 @@ export type CoachOpt = { who?: string; badge?: string; id?: string; href?: strin
 export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Dict[], teamLine: Dict, recs: Dict[] = [], marks?: Record<string, number>, opt: CoachOpt = {}) {
   const S = stints(C, code, games), H = headOf(C, code, S), cur = { id: opt.who || H.id }, k = C.coaches[cur.id]
   const former = cur.id !== H.id, myS = S.filter(s => s.id === cur.id && s.from != null)
-  const sinceCell: [string, unknown] = former ? ['In charge', myS.length ? (myS[0].from === myS[myS.length - 1].to ? `MD ${myS[0].from}` : `MD ${myS[0].from}–${myS[myS.length - 1].to}`) : '–'] : ['Since', H.since]
+  const sinceCell: [string, unknown] = former ? ['In charge', myS.length ? (myS[0].from === myS[myS.length - 1].to ? `MD ${myS[0].from}` : `MD ${myS[0].from}–${myS[myS.length - 1].to}`) : '–'] : ['Since', H.since.charAt(0).toUpperCase() + H.since.slice(1)]   // "Season start", "Just appointed" in the bio
   const club = ctx.TEAMS[lg][code] || {}
   const c = club.primary || '#555', light = lum(c) > 0.55, ink = light ? '#15181d' : '#fff', c2 = light ? '#15181d' : c, hlInk = lum(c) > 0.183 ? '#15181d' : '#fff'
   // a stand-in's games (Domenichini while Spalletti was out) are the head coach's: he is still the coach, only absent
