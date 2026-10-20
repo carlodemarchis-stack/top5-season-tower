@@ -335,17 +335,19 @@ body.view-tac .pane-season,body:not(.view-tac) .pane-tac{display:none}
 .msg{aspect-ratio:68/92;border-radius:6px;background:#fff;box-shadow:inset 0 0 0 1px #e3e6ea;display:flex;flex-direction:column;align-items:center;padding:6px 3px 4px;gap:1px}.msg svg{width:100%}
 .msg .sv{font-size:24px;font-weight:900;line-height:1;margin-top:4px;color:var(--c2)}.msg span{font-size:9px;font-weight:800;color:#8a9099;text-transform:uppercase;letter-spacing:.08em}
 .msg em{font-style:normal;font-size:9.5px;font-weight:800;color:#b3323a;margin-top:auto}.msg em.cs{color:#177a41}
-.msf{font-size:9.5px;font-weight:700;color:#8a9099;text-align:center;white-space:nowrap;overflow:hidden}
-.msr{font-size:9.5px;font-weight:700;color:#8a9099;text-align:center;white-space:nowrap;overflow:hidden}.msr b{color:#15181d;font-weight:900}
-.msl{display:flex;align-items:center;justify-content:center;gap:2px;min-height:14px;font-size:9.5px}
-.msl .mn{font-weight:800;color:#4b5058;margin-right:2px}
-.msl i,.msleg i{width:6px;height:6px;border-radius:50%;display:inline-block}.msl .gl{background:#15181d}.msl .as{box-shadow:inset 0 0 0 1.4px #15181d}
-.msl .yc,.msl .rc,.msleg .yc,.msleg .rc{width:5px;height:7px;border-radius:1px}.msl .yc,.msleg .yc{background:#EAB308}.msl .rc,.msleg .rc{background:#d92d20}
-.msl .mk{margin-left:3px;font-weight:900;color:#4b5058}.msl .mk.hi{color:#177a41}.msl .mk.lo{color:#b3323a}
+.msx{border-radius:5px;background:#fff;box-shadow:inset 0 0 0 1px #e3e6ea;font-size:9.5px;font-weight:700;color:#8a9099;text-align:center;line-height:15px;overflow:hidden}   /* the table under a game's box */
+.msx>div{padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.msx>div+div{border-top:1px solid #eef0f2}
+.msx .m{color:#15181d;font-weight:800}
+.msx .e{display:flex;align-items:center;justify-content:center;gap:4px;height:17px}.msx .e span{display:flex;align-items:center;gap:2px}
+.msx.none{visibility:hidden}.msgrid.nofacts .msx .e{display:none}
+.msx i,.msleg i{width:6px;height:6px;border-radius:50%;display:inline-block}.msx .gl{background:#15181d}.msx .as{box-shadow:inset 0 0 0 1.4px #15181d}
+.msx .yc,.msx .rc,.msleg .yc,.msleg .rc{width:5px;height:7px;border-radius:1px}.msx .yc,.msleg .yc{background:#EAB308}.msx .rc,.msleg .rc{background:#d92d20}
+.msx .mk{margin-left:auto;min-width:18px;padding:0 3px;border-radius:3px;font-size:9.5px;line-height:13px;font-weight:900;color:#fff;background:#8a9099}.msx .mk.hi{background:#177a41}.msx .mk.lo{background:#b3323a}
+.msx .e span:empty+.mk{margin-left:0}
 .msc[data-href]{cursor:pointer}.msc[data-href]:hover .msp,.msc[data-href]:hover .msg{box-shadow:inset 0 0 0 2px var(--c2)}
-.msleg{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:11px;color:#8a9099;margin-top:auto;padding-top:8px}
+.msleg{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:11px;color:#8a9099;margin-top:auto;padding:8px 0 2px;position:sticky;bottom:0;background:#f5f6f4}   /* stays in sight when the grid scrolls */
 @media (max-width: 760px){ .tacsw.corner{top:6px;right:8px} .tacsw button{padding:3px 8px;font-size:9.5px} .msgrid{grid-template-columns:repeat(4,minmax(0,1fr))} }
 .msp.bn.res{background:color-mix(in srgb,var(--rc) 30%,#fff);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--rc) 45%,#fff)}   /* off the bench: the result colour too */
 .pan .rk small{display:block;font-size:.42em;letter-spacing:0;margin-top:4px;opacity:.85}   /* a ranked film: his rank under the role */
-.msp.heat svg{position:absolute;inset:0;width:100%;height:100%}
-.msp.heat.gk::before{display:none}   /* a keeper's zoomed pitch draws its own boxes */   /* the Heatmaps view: his touches over the result-tinted pitch */
+.msp.heat svg{position:absolute;inset:0;width:100%;height:100%}   /* the Heatmaps view: his touches over the result-tinted pitch */
+.msp.heat.gk::before{display:none}   /* a keeper's zoomed pitch draws its own boxes */

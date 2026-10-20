@@ -23,13 +23,14 @@ const FULL: Spot = (d, a) => [a, 92 - d * 92 / 105]
 const KEEP: Spot = (d, a) => [(a - 4) * 68 / 60, 92 - d * 92 / 36]
 const f1 = (v: number) => v.toFixed(1)
 // his touches: soft overlapping blobs, darker where he was most often; over them the shots (svg markup, see shotMarks)
+let HG = 0   // each pitch its own gradient id: a shared one breaks every pitch when its first copy sits in a hidden card
 function heatPitch(packed: string, tint: string, P: Spot, shots = '') {
-  const pts = packed.match(/../g) || []
-  const blobs = pts.map(c => { const [x, y] = P(parseInt(c[0], 36) / 35 * 105, parseInt(c[1], 36) / 35 * 68); return `<circle cx="${f1(x)}" cy="${f1(y)}" r="9" fill="url(#hg)"/>` }).join('')
+  const pts = packed.match(/../g) || [], id = `hg${++HG}`
+  const blobs = pts.map(c => { const [x, y] = P(parseInt(c[0], 36) / 35 * 105, parseInt(c[1], 36) / 35 * 68); return `<circle cx="${f1(x)}" cy="${f1(y)}" r="9" fill="url(#${id})"/>` }).join('')
   const box = (d0: number, d1: number, a0: number, a1: number) => { const [x0, y0] = P(d0, a0), [x1, y1] = P(d1, a1); return `<rect x="${f1(Math.min(x0, x1))}" y="${f1(Math.min(y0, y1))}" width="${f1(Math.abs(x1 - x0))}" height="${f1(Math.abs(y1 - y0))}"/>` }
   // the lines: the full pitch has the halfway line + the box he attacks (.msp draws his own); the keeper's the box and the six-yard box
   const lines = P === KEEP ? box(-1, 16.5, 13.84, 54.16) + box(-1, 5.5, 24.84, 43.16) : `<line x1="0" x2="68" y1="46" y2="46"/>${box(88.5, 106, 13.84, 54.16)}`
-  return `<div class="msp res heat${P === KEEP ? ' gk' : ''}" style="--rc:${tint}"><svg viewBox="0 0 68 92" preserveAspectRatio="none"><defs><radialGradient id="hg"><stop offset="0" stop-color="#15181d" stop-opacity=".3"/><stop offset="1" stop-color="#15181d" stop-opacity="0"/></radialGradient></defs><g fill="none" stroke="#fff" stroke-width="1">${lines}</g>${blobs}${shots}</svg></div>`
+  return `<div class="msp res heat${P === KEEP ? ' gk' : ''}" style="--rc:${tint}"><svg viewBox="0 0 68 92" preserveAspectRatio="none"><defs><radialGradient id="${id}"><stop offset="0" stop-color="#15181d" stop-opacity=".3"/><stop offset="1" stop-color="#15181d" stop-opacity="0"/></radialGradient></defs><g fill="none" stroke="#fff" stroke-width="1">${lines}</g>${blobs}${shots}</svg></div>`
 }
 // shots in the zone they came from (the commentary gives a zone, not a spot: [metres from the goal line from–to, across
 // from–to, from the shooter's left], as on the match card), scattered inside it; the app's one vocabulary: ● goal ·
@@ -80,6 +81,9 @@ function slotRole(rows: Dict[][], id: string): string | null {
   return n === 1 ? 'DM' : n === 2 ? pick(['LCM', 'RCM']) : n === 3 ? pick(['LCM', 'CM', 'RCM']) : n === 4 ? pick(['LM', 'LCM', 'RCM', 'RM']) : pick(['LM', 'LCM', 'CM', 'RCM', 'RM'])
 }
 const clock = (s: unknown) => { const m = String(s || '').match(/(\d+)'?(?:\+(\d+))?/) || []; return +(m[1] || 0) + Math.min(+(m[2] || 0), 6) * .5 }
+// the table under a game's box (an empty one, hidden, keeps the rows of the grid level where he didn't play)
+const statTable = (form: string, min: string, facts: string, mark: string, empty = false) =>
+  `<div class="msx${empty ? ' none' : ''}"><div class="f">${form || '&nbsp;'}</div><div class="m">${min || '&nbsp;'}</div><div class="e"><span>${facts}</span>${mark}</div></div>`
 const sur = (n: string) => n.split(' ').slice(1).join(' ') || n
 const PL: Record<string, number[]> = { bl: [.17, .74], br: [.83, .74], tl: [.17, .27], tr: [.83, .27], c: [.5, .52], tc: [.5, .25], bc: [.5, .76] }
 
@@ -100,6 +104,7 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
       const [px, py] = PL[x.p], X = 6 + px * 88 + ((i * 37) % 9 - 4), Y = 8 + py * 30 + ((i * 53) % 7 - 3)
       return x.k === 'goal' ? `<circle cx="${X}" cy="${Y}" r="3.6" fill="#b3323a" stroke="#fff" stroke-width="1"/>` : `<circle cx="${X}" cy="${Y}" r="3" fill="#fff" stroke="var(--c)" stroke-width="1.6"/>` }).join('')}</svg>` }
   const href = (md: number, id: string) => ctx.SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
+  let anyFacts = false   // no goal, assist, card or mark all season: the table's third row is left out
   const cell = (g: Dict) => {
     const M = byId[g.id], at = g.ha === 'A' ? '@' : ''
     if (!M) return `<div class="msc up"><div class="mst"><span>${at}${esc(g.opp)}</span></div><div class="msp"></div></div>`
@@ -107,14 +112,17 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
     const top = `<div class="mst"><span>${at}${esc(g.opp)}</span><b class="rs" style="background:${RES[res(gf, ga)]}">${gf}-${ga}</b></div>`
     const p = (T.players as Dict[]).find(x => String(x.id) === ID)
     if (!p) { const bench = (T.bench || []).some((b: string[]) => String(b[0]) === ID)
-      return `<div class="msc out"${href(M.md, M.id)} title="${bench ? 'on the bench, not used' : 'not in the matchday squad'}">${top}<div class="msp ${bench ? 'bn' : 'ns'}">${bench ? 'bench' : ''}</div><div class="msf">&nbsp;</div><div class="msr">&nbsp;</div><div class="msl">&nbsp;</div></div>` }
+      return `<div class="msc out"${href(M.md, M.id)} title="${bench ? 'on the bench, not used' : 'not in the matchday squad'}">${top}<div class="msp ${bench ? 'bn' : 'ns'}">${bench ? 'bench' : ''}</div>${statTable('', '', '', '', true)}</div>` }
     const on = p.st ? null : (M.subs as Dict[]).find(s => String(s.on) === ID), off = (M.subs as Dict[]).find(s => String(s.off) === ID), red = (p.ev as string[][]).find(e => e[0] === 'rc')
     const end = Math.min(90, off ? clock(off.min) : red ? clock(red[1]) : 90), mins = Math.max(1, Math.round(end - (p.st ? 0 : clock(on?.min))))
     const G = (M.goals as Dict[]).filter(x => String(x.byId) === ID && x.s === side && x.kind !== 'og').length, A = (p.ev as string[][]).filter(e => e[0] === 'ast').length
     const mk = ctx.VOTES[ID]?.[M.md]
-    // three lines under the box: the formation · his minutes (↑ on / ↓ off) · goals, assists, cards, mark (his role is the dot)
+    // a small table under the box, one row each: the formation · his minutes (↑ on / ↓ off) · goals, assists and cards,
+    // with the Serie A mark in a badge on the right (his role is the dot)
     const minTxt = !p.st ? `↑${esc(on?.min || '')}` : off ? `↓${esc(off.min)}` : `${mins}'`
-    const facts = `${'<i class="gl"></i>'.repeat(G)}${'<i class="as"></i>'.repeat(A)}${(p.ev as string[][]).some(e => e[0] === 'yc') ? '<i class="yc"></i>' : ''}${red ? '<i class="rc"></i>' : ''}${mk != null ? `<b class="mk${mk >= 7 ? ' hi' : mk < 6 ? ' lo' : ''}">${mk}</b>` : ''}`
+    const facts = `${'<i class="gl"></i>'.repeat(G)}${'<i class="as"></i>'.repeat(A)}${(p.ev as string[][]).some(e => e[0] === 'yc') ? '<i class="yc"></i>' : ''}${red ? '<i class="rc"></i>' : ''}`
+    const mark = mk != null ? `<b class="mk${mk >= 7 ? ' hi' : mk < 6 ? ' lo' : ''}">${mk}</b>` : ''
+    if (facts || mark) anyFacts = true
     const tip = `MD${M.md} · ${at ? 'at' : 'vs'} ${g.opp} ${gf}-${ga} · ${ROLE[p.pos] || p.pos || ''} · ${T.form || ''} · ${mins}'`
     let box = ''
     // the Heatmaps view: the same box, his touches in place of the XI (a game with no map yet falls back to the XI)
@@ -127,14 +135,15 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
       box = `<div class="msg">${goal(M, side, end)}<b class="sv">${sv}</b><span>save${sv === 1 ? '' : 's'}</span>${ga === 0 && mins >= 89 ? '<em class="cs">clean sheet</em>' : `<em>${ga} against</em>`}</div>` }
     else if (!p.st) box = `<div class="msp bn res" style="--rc:${RES[res(gf, ga)]}">off the bench<b>${esc(on?.min || '')}</b>${on ? `for ${esc(sur((T.players as Dict[]).find(x => String(x.id) === String(on.off))?.name || ''))}` : ''}</div>`
     else box = pitch(T, RES[res(gf, ga)])
-    return `<div class="msc${p.st ? ' st' : ' sub'}" data-mid="${M.id}"${href(M.md, M.id)} title="${esc(tip)}">${top}${box}<div class="msf">${esc(T.form || '')}</div><div class="msr">${minTxt}</div><div class="msl">${facts || '&nbsp;'}</div></div>`
+    return `<div class="msc${p.st ? ' st' : ' sub'}" data-mid="${M.id}"${href(M.md, M.id)} title="${esc(tip)}">${top}${box}${statTable(esc(T.form || ''), minTxt, facts, mark)}</div>`
   }
   const starts = mine.filter(M => (M.h === code ? M.home : M.away).players.some((x: Dict) => String(x.id) === ID && x.st))
   const subs = mine.filter(M => (M.h === code ? M.home : M.away).players.some((x: Dict) => String(x.id) === ID && !x.st))
   const roles: Record<string, number[]> = {}
   for (const M of starts) { const T = M.h === code ? M.home : M.away, p = T.players.find((x: Dict) => String(x.id) === ID); (roles[roleOf(p, T)] ||= []).push(M.md) }
   const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w)
-  return `<div class="msgrid">${all.map(cell).join('')}</div>
+  const cells = all.map(cell).join('')
+  return `<div class="msgrid${anyFacts ? '' : ' nofacts'}">${cells}</div>
     <div class="msleg"><span><b>${starts.length}</b> start${starts.length === 1 ? '' : 's'} · <b>${subs.length}</b> off the bench</span>${GK ? '' : Object.entries(roles).sort((a, b) => b[1].length - a[1].length).map(([r, mds]) => `<span><b>${NAMED[r] || esc(r)}</b> ×${mds.length}</span>`).join('')}
       <span>↑ came on · ↓ went off · ● goal · ○ assist · <i class="yc"></i><i class="rc"></i> cards${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''}</span>${heat ? `<span>heat: his touches in the game (FotMob), ${GK ? 'the 36 m in front of his goal · the shots he faced, in the zone they came from: <b style="color:#b3323a">●</b> goal against' : 'attacking up · his shots, in the zone they came from: ● goal'} · ○ on target · × off · ▪ blocked</span>` : ''}</div>`
 }
