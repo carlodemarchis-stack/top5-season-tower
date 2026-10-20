@@ -244,7 +244,7 @@ function bigGoal(k: Dict, c: string) {
 const PLS: Record<string, number[]> = { ...PL, xl: [-.14, .62], xr: [1.14, .62], xh: [.5, -.24], xhl: [.14, -.24], xhr: [.86, -.24], ntl: [.05, -.1], ntr: [.95, -.1] }
 function shotLegend(at: string[][]) {
   const n = (k: string) => at.filter(s => s[1] === k).length
-  return `<span class="gsum"><b>${n('g')}</b> scored · <b>${n('on')}</b> saved · <b>${n('off')}</b> off target${n('blk') ? ` · <b>${n('blk')}</b> blocked` : ''}</span>`
+  return `<span class="gsum">● <b>${n('g')}</b> scored · ○ <b>${n('on')}</b> saved · × <b>${n('off')}</b> off target${n('blk') ? ` · <b>${n('blk')}</b> blocked` : ''}</span>`
 }
 export function shotGoal(at: string[][], c: string, key: string) {
   const W = 260, H = 86, ox = 50, oy = 34
@@ -252,7 +252,7 @@ export function shotGoal(at: string[][], c: string, key: string) {
     const [px, py] = PLS[p], x = ox + px * W + (rnd(i + 3) - .5) * 22, y = oy + py * H + (rnd(i + 9) - .5) * 14
     return k === 'g' ? `<circle cx="${x}" cy="${y}" r="6" fill="${c}" stroke="#fff" stroke-width="2"/>`
       : k === 'on' ? `<circle cx="${x}" cy="${y}" r="4.6" fill="#fff" stroke="${c}" stroke-width="2.2"/>`
-      : `<path d="M${x - 3.5} ${y - 3.5}l7 7M${x + 3.5} ${y - 3.5}l-7 7" stroke="#9aa0a8" stroke-width="2" stroke-linecap="round"/>` }).join('')
+      : `<path d="M${x - 3.5} ${y - 3.5}l7 7M${x + 3.5} ${y - 3.5}l-7 7" stroke="${c}" stroke-width="2" stroke-linecap="round" opacity=".7"/>` }).join('')   // ● goal · ○ saved · × off target, as on every shot graphic
   return `<svg viewBox="0 0 360 140" preserveAspectRatio="xMidYMid meet"><defs><pattern id="ns${key}" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" fill="none" stroke="#dfe3e6" stroke-width=".8"/></pattern></defs>
     <rect x="${ox}" y="${oy}" width="${W}" height="${H}" fill="url(#ns${key})"/>
     <path d="M${ox} ${oy + H}V${oy}H${ox + W}V${oy + H}" fill="none" stroke="#15181d" stroke-width="5" stroke-linejoin="round"/>

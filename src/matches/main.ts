@@ -170,9 +170,10 @@ function card(M: Dict) {
     const home = s.s === 'h', x = home ? y0 : 68 - y0, y = home ? dd : 105 - dd, c = home ? H.color : A.color
     // a goal's solid hover zone: one transparent box over the dot, its ring and the name (svg only hits painted pixels)
     if (s.k === 'goal') return `<g${gk(shotGoal[k])}><rect class="hit" x="${x - 2}" y="${y - 2}" width="${4.4 + short(s.who).length * .95}" height="4" fill="transparent"/><circle cx="${x}" cy="${y}" r="1" fill="${c}" stroke="#fff" stroke-width=".35"/><circle cx="${x}" cy="${y}" r="1.55" fill="none" stroke="${c}" stroke-width=".3"/><text x="${x + 2.1}" y="${y + .55}" font-size="1.5" font-weight="800" fill="#15181d" paint-order="stroke" stroke="#e8ede8" stroke-width=".5">${esc(short(s.who))}</text></g>`
-    if (s.k === 'on') return `<circle cx="${x}" cy="${y}" r=".7" fill="${c}" stroke="#fff" stroke-width=".25"/>`
-    if (s.k === 'blk') return `<g stroke="${c}" stroke-width=".4" opacity=".75"><line x1="${x - .5}" y1="${y - .5}" x2="${x + .5}" y2="${y + .5}"/><line x1="${x - .5}" y1="${y + .5}" x2="${x + .5}" y2="${y - .5}"/></g>`
-    return `<circle cx="${x}" cy="${y}" r=".65" fill="none" stroke="${c}" stroke-width=".3" opacity=".9"/>`
+    // one shape per outcome on every shot graphic of the app: ● goal · ○ on target · × off target · ▪ blocked
+    if (s.k === 'on') return `<circle cx="${x}" cy="${y}" r=".75" fill="#fff" stroke="${c}" stroke-width=".38"/>`
+    if (s.k === 'blk') return `<rect x="${x - .45}" y="${y - .45}" width=".9" height=".9" fill="${c}" opacity=".7"/>`
+    return `<g stroke="${c}" stroke-width=".38" stroke-linecap="round" opacity=".85"><line x1="${x - .55}" y1="${y - .55}" x2="${x + .55}" y2="${y + .55}"/><line x1="${x - .55}" y1="${y + .55}" x2="${x + .55}" y2="${y - .55}"/></g>`
   }
   const shotSvg = `<svg class="sp" viewBox="0 0 68 105" preserveAspectRatio="none">
     <g fill="none" stroke="#c4ccc4" stroke-width=".35"><rect x="0" y="0" width="68" height="105" rx=".8"/><line x1="0" y1="52.5" x2="68" y2="52.5"/><circle cx="34" cy="52.5" r="9.15"/>
@@ -190,7 +191,7 @@ function card(M: Dict) {
     const gks = [gk0, rep && byId[rep.on]].filter(Boolean)
     const W = 100, Hh = 33, ox = 20, oy = 16
     const pts = list.map((x: Dict, k: number) => { const [px, py] = PL[x.p], cx = ox + px * W + (rnd(x.i + 3) - .5) * 9, cy = oy + py * Hh + (rnd(x.i + 9) - .5) * 6
-      return x.k === 'goal' ? `<g${gk(shotGoal[x.i])}><circle r="6" cx="${cx}" cy="${cy}" fill="transparent"/><circle cx="${cx}" cy="${cy}" r="4.2" fill="${c}" stroke="#fff" stroke-width="1.4"/></g>` : x.k === 'on' ? `<circle cx="${cx}" cy="${cy}" r="3.1" fill="#fff" stroke="${c}" stroke-width="1.6"/>` : `<circle cx="${cx}" cy="${cy}" r="2.6" fill="none" stroke="${c}" stroke-width="1" opacity=".55"/>` }).join('')
+      return x.k === 'goal' ? `<g${gk(shotGoal[x.i])}><circle r="6" cx="${cx}" cy="${cy}" fill="transparent"/><circle cx="${cx}" cy="${cy}" r="4.2" fill="${c}" stroke="#fff" stroke-width="1.4"/></g>` : x.k === 'on' ? `<circle cx="${cx}" cy="${cy}" r="3.1" fill="#fff" stroke="${c}" stroke-width="1.6"/>` : `<g stroke="${c}" stroke-width="1.5" stroke-linecap="round" opacity=".7"><line x1="${cx - 2.4}" y1="${cy - 2.4}" x2="${cx + 2.4}" y2="${cy + 2.4}"/><line x1="${cx - 2.4}" y1="${cy + 2.4}" x2="${cx + 2.4}" y2="${cy - 2.4}"/></g>` }).join('')   // × off target, as on every shot graphic
     return `<div class="gm1"><svg viewBox="0 0 140 51"><defs><pattern id="net${M.id}${s}" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M5 0H0V5" fill="none" stroke="#dfe3e6" stroke-width=".5"/></pattern></defs>
       <rect x="${ox}" y="${oy}" width="${W}" height="${Hh}" fill="url(#net${M.id}${s})"/><path d="M${ox} ${oy + Hh}V${oy}H${ox + W}V${oy + Hh}" fill="none" stroke="#15181d" stroke-width="2.2" stroke-linejoin="round"/>
       <line x1="4" x2="136" y1="${oy + Hh}" y2="${oy + Hh}" stroke="#c9ced4" stroke-width=".8"/>${pts}</svg>
