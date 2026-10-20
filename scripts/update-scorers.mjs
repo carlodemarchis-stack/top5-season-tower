@@ -23,7 +23,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { LEAGUES, CUR, get, pool, standIns, espn, squad, matchPlayer, savePhoto, getPhoto, photoUrls, PHOTOS, DATA } from './lib/football.mjs'
+import { LEAGUES, CUR, get, pool, standIns, espn, squad, matchPlayer, savePhoto, getPhoto, photoUrls, clubPhoto, PHOTOS, DATA } from './lib/football.mjs'
 
 const __dir = path.dirname(fileURLToPath(import.meta.url))
 const PHOTO_CACHE = path.join(__dir, 'scorers-photo-cache.json')
@@ -126,6 +126,9 @@ const photoCache = fs.existsSync(PHOTO_CACHE) ? JSON.parse(fs.readFileSync(PHOTO
 if (!NO_PHOTOS) {
   if (!DRY) fs.mkdirSync(PHOTOS, { recursive: true })
   await pool(players, 4, async (p) => {
+    const club = clubPhoto(p.espnId)   // a club-site cut-out wins (scripts/club-photos)
+    if (club) { const file = path.join(PHOTOS, `${p.espnId}.webp`); p.photo = `players/${p.espnId}.webp`; p._match = 'club site'
+      if (!DRY && (photoCache[p.espnId] !== 'club' || !fs.existsSync(file))) { await savePhoto(fs.readFileSync(club), file); photoCache[p.espnId] = 'club' } return }
     const hit = matchPlayer(await squad(p.lg, p.team), { name: p.full || p.name, jersey: p.jersey })
     if (!hit?.src) { warns.push(`photo: no official photo for ${p.name} (${p.lg} ${p.team}) → initials`); p.photo = null; return }
     const file = path.join(PHOTOS, `${p.espnId}.webp`)

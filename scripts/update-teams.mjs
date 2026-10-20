@@ -13,7 +13,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { LEAGUES, CUR, get, pool, espn, loadLeague, squad, matchPlayer, makeCodeFor, savePhoto, getPhoto, photoUrls, minutesOf, standIns, PHOTOS, DATA, ROOT } from './lib/football.mjs'
+import { LEAGUES, CUR, get, pool, espn, loadLeague, squad, matchPlayer, makeCodeFor, savePhoto, getPhoto, photoUrls, minutesOf, standIns, clubPhoto, PHOTOS, DATA, ROOT } from './lib/football.mjs'
 
 const args = process.argv.slice(2)
 const has = (f) => args.includes(f)
@@ -124,6 +124,9 @@ let thumbs = 0, noThumb = 0
 await pool(teams, 3, async (t) => {
   const official = await squad(LG, t.code)
   await pool(t.squad, 4, async (p) => {
+    const club = clubPhoto(p.espnId)   // a club-site cut-out wins (scripts/club-photos)
+    if (club) { const file = path.join(SQUAD_DIR, `${p.espnId}.webp`); p.thumb = `squad/${p.espnId}.webp`; p._src = 'club'; thumbs++
+      if (!DRY && (squadCache[p.espnId] !== 'club' || !fs.existsSync(file))) { await savePhoto(fs.readFileSync(club), file, 200, 72); squadCache[p.espnId] = 'club' } return }
     const hit = matchPlayer(official, { name: p.name, jersey: p.jersey })
     if (!hit?.src) { noThumb++; return }
     const file = path.join(SQUAD_DIR, `${p.espnId}.webp`)
@@ -147,8 +150,8 @@ console.log(`squads: ${teams.reduce((s, t) => s + t.squad.length, 0)} players ·
 let bigNew = 0
 if (!DRY) await pool(teams.flatMap(t => t.squad.filter(p => p.thumb && p._src)), 6, async (p) => {
   const file = path.join(PHOTOS, `${p.espnId}.webp`)
-  if (fs.existsSync(file) && photoCache[p.espnId]) return
-  const buf = await get(p._src, { json: false }); if (!buf) { warns.push(`photo: ${p._src} unreachable for ${p.name}`); return }
+  if (fs.existsSync(file) && photoCache[p.espnId] && (p._src !== 'club' || photoCache[p.espnId] === 'club')) return
+  const buf = p._src === 'club' ? fs.readFileSync(clubPhoto(p.espnId)) : await get(p._src, { json: false }); if (!buf) { warns.push(`photo: ${p._src} unreachable for ${p.name}`); return }
   await savePhoto(buf, file, 600, 78); photoCache[p.espnId] = p._src; bigNew++
 })
 if (bigNew) console.log(`large portraits: ${bigNew} new`)
@@ -160,7 +163,7 @@ await pool(teams, 3, async (t) => {
   for (const p of pick) {
     const file = path.join(PHOTOS, `${p.espnId}.webp`)
     if (!DRY && !(photoCache[p.espnId] === p._src && fs.existsSync(file))) {
-      const buf = await get(p._src, { json: false })
+      const buf = p._src === 'club' ? fs.readFileSync(clubPhoto(p.espnId)) : await get(p._src, { json: false })
       if (!buf) { warns.push(`photo: ${p._src} unreachable for ${p.name}`); continue }
       await savePhoto(buf, file); photoCache[p.espnId] = p._src
     }

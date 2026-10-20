@@ -231,6 +231,11 @@ export async function isSilhouette(buf) {
 }
 
 /** a squad hit's portrait: its source, else its alternates (stand-in silhouettes skipped) → [buffer, the url that answered] */
+// club-site photos for players the league has none (or an old kit) for — fetched from the club's own site and cut out
+// once by hand (rembg), kept in the repo: scripts/club-photos/<espnId>.webp. They win over the league photo.
+export const CLUB_PHOTOS = path.join(ROOT, 'scripts', 'club-photos')
+export const clubPhoto = (id) => { const f = path.join(CLUB_PHOTOS, `${id}.webp`); return fs.existsSync(f) ? f : null }
+
 export async function getPhoto(hit) {
   for (const u of photoUrls(hit)) { const buf = await get(u, { json: false }); if (buf && !(await isLaligaStandIn(u, buf)) && !(await isSilhouette(buf))) return [buf, u] }
   return [null, hit.src]
