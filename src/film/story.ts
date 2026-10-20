@@ -102,7 +102,10 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
     return rows.flatMap((r, i) => r.map((p, j) => ({ p, x: (j + 1) / (r.length + 1) * 100, y: 90 - i * (80 / Math.max(1, n - 1)) }))) }
   // a start's pitch takes the match's result colour (as on the season strip), so the row reads as the run of results;
   // his team-mates are neutral dots, he is the big one in the club colour
-  const pitch = (T: Dict, tint: string) => `<div class="msp res" style="--rc:${tint}">${spots(T).map(({ p, x, y }) => String(p.id) === ID ? `<i class="me" style="left:${x}%;top:${y}%">${esc(p.n)}</i>` : `<i style="left:${x}%;top:${y}%"></i>`).join('')}</div>`
+  // a game off the bench: the same pitch, him (dashed ring) in the slot of the starter he replaced (slot, num)
+  const pitch = (T: Dict, tint: string, slot = ID, num = '', sub = false) => `<div class="msp res" style="--rc:${tint}">${spots(T).map(({ p, x, y }) => String(p.id) === slot ? `<i class="me${sub ? ' in' : ''}" style="left:${x}%;top:${y}%">${esc(num || p.n)}</i>` : `<i style="left:${x}%;top:${y}%"></i>`).join('')}</div>`
+  // the starter whose place he took: the player he replaced, or — a sub for a sub — back up the chain to the XI
+  const starterFor = (M: Dict, T: Dict, id: unknown) => { for (let i = 0; i < 5 && id != null; i++) { const q = (T.players as Dict[]).find(x => String(x.id) === String(id)); if (q?.st) return String(q.id); id = (M.subs as Dict[]).find(s => String(s.on) === String(id))?.off } return null }
   const goal = (M: Dict, side: string, until: number) => {
     const op = side === 'h' ? 'a' : 'h', faced = (M.shots as Dict[]).filter(x => x.s === op && (x.k === 'on' || x.k === 'goal') && x.min + Math.min(x.ex || 0, 6) * .5 <= until && PL[x.p])
     return `<svg viewBox="0 0 100 44"><path d="M6 40V8H94V40" fill="none" stroke="#15181d" stroke-width="2.4"/><line x1="0" x2="100" y1="40" y2="40" stroke="#c9ced4"/>${faced.map((x, i) => {
@@ -132,7 +135,8 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
     const facts = `${'<i class="gl"></i>'.repeat(G)}${'<i class="as"></i>'.repeat(A)}${(p.ev as string[][]).some(e => e[0] === 'yc') ? '<i class="yc"></i>' : ''}${red ? '<i class="rc"></i>' : ''}`
     const mark = mk != null ? `<b class="mk${mk >= 7 ? ' hi' : mk < 6 ? ' lo' : ''}">${mk}</b>` : ''
     if (facts || mark) anyFacts = true
-    const tip = `MD${M.md} · ${at ? 'at' : 'vs'} ${g.opp} ${gf}-${ga} · ${ROLE[p.pos] || p.pos || ''} · ${T.form || ''} · ${mins}'${km ? ` · ${km[0].toFixed(1)} km, top speed ${km[1].toFixed(1)} km/h` : ''}`
+    const subFor = on ? (T.players as Dict[]).find(x => String(x.id) === String(on.off))?.name : ''
+    const tip = `MD${M.md} · ${at ? 'at' : 'vs'} ${g.opp} ${gf}-${ga} · ${ROLE[p.pos] || p.pos || ''} · ${T.form || ''} · ${subFor ? `on for ${subFor} at ${on?.min} · ` : ''}${mins}'${km ? ` · ${km[0].toFixed(1)} km, top speed ${km[1].toFixed(1)} km/h` : ''}`
     let box = ''
     // the Heatmaps view: the same box, his touches in place of the XI (a game with no map yet falls back to the XI)
     const hm = heat?.[M.id]?.[ID]
@@ -142,6 +146,7 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
       : heatPitch(hm, RES[res(gf, ga)], FULL, shotMarks(shotsBy(M, side, name), FULL, false))
     else if (GK && p.st) { const sv = M.stats?.[side]?.saves ?? 0
       box = `<div class="msg">${goal(M, side, end)}<b class="sv">${sv}</b><span>save${sv === 1 ? '' : 's'}</span>${ga === 0 && mins >= 89 ? '<em class="cs">clean sheet</em>' : `<em>${ga} against</em>`}</div>` }
+    else if (!p.st && on && starterFor(M, T, on.off)) box = pitch(T, RES[res(gf, ga)], starterFor(M, T, on.off)!, p.n, true)
     else if (!p.st) box = `<div class="msp bn res" style="--rc:${RES[res(gf, ga)]}">off the bench<b>${esc(on?.min || '')}</b>${on ? `for ${esc(sur((T.players as Dict[]).find(x => String(x.id) === String(on.off))?.name || ''))}` : ''}</div>`
     else box = pitch(T, RES[res(gf, ga)])
     return `<div class="msc${p.st ? ' st' : ' sub'}" data-mid="${M.id}"${href(M.md, M.id)} title="${esc(tip)}">${top}${box}${statTable(esc(T.form || ''), minTxt, kmTxt, facts, mark)}</div>`
@@ -154,7 +159,7 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
   const cells = all.map(cell).join('')
   return `<div class="msgrid${anyFacts ? '' : ' nofacts'}${anyKm ? '' : ' nokm'}">${cells}</div>
     <div class="msleg"><span><b>${starts.length}</b> start${starts.length === 1 ? '' : 's'} · <b>${subs.length}</b> off the bench</span>${GK ? '' : Object.entries(roles).sort((a, b) => b[1].length - a[1].length).map(([r, mds]) => `<span><b>${NAMED[r] || esc(r)}</b> ×${mds.length}</span>`).join('')}
-      <span>↑ came on · ↓ went off · ● goal · ○ assist · <i class="yc"></i><i class="rc"></i> cards${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''}${Object.keys(run).length ? ' · km: distance run (hover a game for his top speed)' : ''}</span>${heat ? `<span>heat: his touches in the game (FotMob), ${GK ? 'the 36 m in front of his goal · the shots he faced, in the zone they came from: <b style="color:#b3323a">●</b> goal against' : 'attacking up · his shots, in the zone they came from: ● goal'} · ○ on target · × off · ▪ blocked</span>` : ''}</div>`
+      <span>↑ came on (dashed ring: in the place of the player he replaced) · ↓ went off · ● goal · ○ assist · <i class="yc"></i><i class="rc"></i> cards${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''}${Object.keys(run).length ? ' · km: distance run (hover a game for his top speed)' : ''}</span>${heat ? `<span>heat: his touches in the game (FotMob), ${GK ? 'the 36 m in front of his goal · the shots he faced, in the zone they came from: <b style="color:#b3323a">●</b> goal against' : 'attacking up · his shots, in the zone they came from: ● goal'} · ○ on target · × off · ▪ blocked</span>` : ''}</div>`
 }
 
 // the switch: one view for every card of the film, remembered; 't' toggles; a pane is drawn when its card comes into view
