@@ -263,6 +263,8 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 /* the coach card's substitutions: a summary, the most-used subs, one small column per recent game */
 .subs{margin-top:4px;flex:1 1 auto;min-height:0;overflow:hidden}   /* the part that gives way on a short screen */
 .coachc .glist{flex:none}   /* the season's coaches always show */
+.coachc .nums .n b{white-space:nowrap}   /* 0-1-2 on one line */
+.avail .cd{display:inline-block;width:6px;height:9px;border-radius:1.5px;vertical-align:-1px;margin-right:4px}.avail .cd.y{background:#EAB308}.avail .cd.r{background:#d92d20}   /* a coach's bookings */
 .subs .sub-top{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin:2px 0 6px}
 .subs .sub-top .lb{width:200px;flex:none;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#9aa0a8}
 .subs .sub-top .g{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:999px;background:#fff;box-shadow:0 0 0 1px #e3e6ea}

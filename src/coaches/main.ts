@@ -7,6 +7,7 @@ import '../film/film.css'
 import { initFilm, initHighlight, initLinks, initNav, initHScroll } from '../film/chrome'
 import { esc, LEAGUE_NAME, fitBios, type Ctx } from '../film/cards'
 import { loadCoaches, coachCard, stints, headOf, coachHref } from '../film/coach'
+import { teamLineOf } from '../film/season'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = '2026-27'   // coaches are kept for the current season only
@@ -39,7 +40,7 @@ for (const lg of FULL) {
     const played = recs.map(M => { const me = M.h === code ? 'h' : 'a', op = me === 'h' ? 'a' : 'h'; return { id: M.id, md: M.md, opp: M[op], ha: me === 'h' ? 'H' : 'A', gf: M.score[me], ga: M.score[op] } })
     const S = stints(C, code, played), H = headOf(C, code, S); if (!H.id) continue
     const t = CARDS[lg].teams.find((x: Dict) => x.code === code) || {}
-    const teamLine = { pos: t.pos }
+    const teamLine = teamLineOf(t)   // the club line under his name: place, points, W-D-L, GD
     for (const id of new Set([H.id, ...S.map(s => s.id)])) {
       if (id !== H.id && S.filter(s => s.id === id).every(s => H.standIn.includes(s))) continue   // a stand-in: his games are the head coach's
       const mine = S.filter(s => s.id === id || (id === H.id && H.standIn.includes(s))), G = mine.reduce((a, s) => a + s.W + s.D + s.L, 0)

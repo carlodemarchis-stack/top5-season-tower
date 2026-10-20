@@ -45,7 +45,7 @@ export function lum(hex: string) {
 const POS: Record<string, string> = { F: 'Forward', M: 'Midfielder', D: 'Defender', G: 'Goalkeeper' }
 const initials = (n: string) => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('')
 // a booking in a game, in the box's top-right corner (beside the result, not stacked with the goals)
-const cardsHTML = (yc?: number, rc?: number) => (yc ? '<i class="cd y" title="yellow card"></i>' : '') + (rc ? `<i class="cd r${yc ? ' two' : ''}" title="red card"></i>` : '')
+export const cardsHTML = (yc?: number, rc?: number) => (yc ? '<i class="cd y" title="yellow card"></i>' : '') + (rc ? `<i class="cd r${yc ? ' two' : ''}" title="red card"></i>` : '')
 const matchHref = (ctx: Ctx, lg: string, md: number, id: string) => ctx.SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
 export const matchHrefOf = matchHref
 // the panel photo: the portrait, then (squad film) the thumbnail, then the initials
