@@ -102,12 +102,12 @@ function card(t: Dict) {
   </section>`
 }
 
-// the meta line's top scorer — every player tied on the most goals ("top scorers A, B and C · 2 goals each"), a count past three
+// the meta line's top scorer and his goals ("top scorer A · 3 goals"); every player tied on the most ("top scorers A, B and C · 2 goals each"), a count past three
 function topScorers(t: Dict) {
   const top = t.scorers[0]?.G; if (!top) return ''
   const names = t.scorers.filter((s: Dict) => s.G === top).map((s: Dict) => `<b>${esc(s.name)}</b>`)
   if (names.length > 3) return ` · top scorers: <b>${names.length}</b> players on ${top} goal${top === 1 ? '' : 's'} each`   // a long tie: the Scorers section lists them
-  return names.length === 1 ? ` · top scorer ${names[0]}` : ` · top scorers ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]} · ${top} goal${top === 1 ? '' : 's'} each`
+  return names.length === 1 ? ` · top scorer ${names[0]} · ${top} goal${top === 1 ? '' : 's'}` : ` · top scorers ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]} · ${top} goal${top === 1 ? '' : 's'} each`
 }
 // the club's played games as the coach helpers read them ({ md, opp, ha, gf, ga })
 function playedOf(t: Dict, club: Dict) {
