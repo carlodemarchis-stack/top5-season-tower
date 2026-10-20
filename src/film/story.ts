@@ -199,7 +199,7 @@ function coachStoryHTML(ctx: Ctx, lg: string, code: string, cid: string, recs: D
   const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w)
   const cells = all.map(cell).join('')
   const forms = Object.entries(fcount).sort((a, b) => b[1] - a[1]).map(([f, n]) => `<span><b>${esc(f)}</b> ×${n}</span>`).join('')
-  return `<div class="msgrid coach nokm">${cells}</div>
+  return `<div class="msgrid xig nokm">${cells}</div>
     <div class="msleg"><span><b>${nGames}</b> game${nGames === 1 ? '' : 's'} · <b>${nSubs}</b> changes</span>${forms}
       <span>his XI in every game · ↓ taken off · ⇄ his first change (hover a game for all of them) · <i class="yc"></i><i class="rc"></i> his bookings${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''} · greyed: another coach on the bench</span></div>`
 }
