@@ -286,7 +286,7 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 .nums .n b .n2{font-style:normal;font-size:.5em;letter-spacing:-.01em;color:#9aa0a8;margin-left:2px}
 .nums .n b .n2.r{color:#b3323a}
 .nums .n b .n0{font-style:normal;font-size:.5em;letter-spacing:-.01em;color:#9aa0a8;margin-right:2px}   /* club games, before his own */
-.nums .n.tri span{letter-spacing:.04em;font-size:.82em}
+.nums .n.tri span{letter-spacing:.06em;font-size:9.5px}   /* smaller than the other labels: it is the longest */
 .c2 .vt.si{color:#7c3aed}   /* coach card: a stand-in on the bench (the game still counts for the head coach) */
 /* a sideways row with ‹ › buttons (initHScroll): each button hides at its end of the row */
 .hsw{position:relative}
