@@ -317,3 +317,33 @@ export function keeperCard(ctx: Ctx, k: Dict, opt: CardOpt = {}) {
     </div>
   </section>`
 }
+
+// ================= THE player card: one card for every film (squad, scorers, keepers) =================
+// The panel's big number is his shirt; the corner his role (+ his rank in a ranked film); the club line always, with
+// the Season | Tactical switch on it; one rule for the numbers. The season itself comes from src/film/season.ts.
+const TAG: Record<string, string> = { G: 'GK', D: 'DEF', M: 'MID', F: 'FWD' }
+export const roleBadge = (pos: string | null, rank?: number | null) => `${TAG[pos || ''] || ''}${rank ? `<small>#${rank}</small>` : ''}`
+export type PlayerOpt = { rank?: number | null; href?: string; story?: boolean }
+const markOf = (ctx: Ctx, id: string) => { const v = avgVote(ctx, id); return v == null ? null : v.toFixed(2) }
+// outfield numbers: the highlighted one is his goals, else his assists, else his minutes; then the other two of those,
+// club / played / started, on target / shots, and the Serie A mark (elsewhere: per goal for a scorer, else his cards)
+export function outfieldCard(ctx: Ctx, d: Dict, o: PlayerOpt = {}) {
+  const goalsN = `<b>${d.G}</b><span>Goals${d.pens ? ` · ${d.pens} pen${d.pens > 1 ? 's' : ''}` : ''}</span>`, astN = `<b>${d.A}</b><span>Assists</span>`, minsN = `<b>${d.min}'</b><span>Minutes</span>`
+  const order = d.G ? [goalsN, astN, minsN] : d.A ? [astN, goalsN, minsN] : [minsN, goalsN, astN]
+  const vm = d.lg === 'ITA' ? markOf(ctx, d.espnId) : null
+  const last = vm ? `<b>${vm}</b><span>Avg mark</span>` : d.G ? `<b>${Math.round(d.min / d.G)}'</b><span>Per goal</span>` : `<b>${d.YC}${d.RC ? n2(d.RC, 'r') : ''}</b><span>${d.RC ? 'Yellow / red' : 'Yellow cards'}</span>`
+  const nums = `<div class="n big">${order[0]}</div><div class="n">${order[1]}</div>${gamesN(d.matches.length, d.apps, d.starts)}
+    <div class="n">${order[2]}</div><div class="n"><b>${d.sog}${n2(d.shots)}</b><span>On target / shots</span></div><div class="n">${last}</div>`
+  return scorerCard(ctx, d, { badge: roleBadge(d.pos, o.rank), big: [d.jersey || '–', ''], nums, photoFallback: d.thumb || undefined, note: d.note,
+    noGoals: d.apps ? 'No goals yet' : 'No league minutes yet', href: o.href, story: o.story })
+}
+// keeper numbers: saves (highlighted), conceded, save %, clean sheets, minutes, club / played / started, the Serie A
+// mark (elsewhere: penalties saved)
+export function keeperFilmCard(ctx: Ctx, k: Dict, o: PlayerOpt = {}) {
+  const vm = k.lg === 'ITA' ? markOf(ctx, k.id) : null
+  const nums = `<div class="n big"><b>${k.SV}</b><span>Saves${k.PS ? ` · ${k.PS} pen${k.PS > 1 ? 's' : ''}` : ''}</span></div>
+    <div class="n"><b>${k.GA}</b><span>Conceded</span></div><div class="n"><b>${k.PCT ?? '–'}${k.PCT == null ? '' : '%'}</b><span>Save %</span></div>
+    <div class="n"><b>${k.CS}</b><span>Clean sheets</span></div><div class="n"><b>${k.MIN}'</b><span>Minutes</span></div>${gamesN(k.games.length + k.missed.length, k.APPS ?? k.GP, k.GP)}
+    ${vm ? `<div class="n"><b>${vm}</b><span>Avg mark</span></div>` : `<div class="n"><b>${k.PF ? `${k.PS}${n2(k.PF)}` : '–'}</b><span>Pens saved</span></div>`}`
+  return keeperCard(ctx, k, { badge: roleBadge('G', o.rank), big: [k.n || '–', ''], nums, photoFallback: k.thumb || undefined, note: k.note, href: o.href, story: o.story })
+}

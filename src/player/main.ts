@@ -5,7 +5,8 @@
 import '../film/film.css'
 import { initStory } from '../film/story'
 import { initFilm, initHighlight, initTip, initLinks, initNav, initHScroll } from '../film/chrome'
-import { scorerCard, keeperCard, matchTip, avgVote, esc, ord, logo, n2, gamesN, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
+import { outfieldCard, keeperFilmCard, matchTip, esc, ord, logo, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
+import { outfieldSeason, keeperSeason, teamLineOf, type Club } from '../film/season'
 import { loadCoaches, coachCard, stints, headOf } from '../film/coach'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
@@ -28,137 +29,25 @@ const COACHES = SEASON === '2026-27' ? await loadCoaches(LG, SEASON) : null
 const team = TEAMCARDS.teams.find((t: Dict) => t.code === QS.get('team')) || TEAMCARDS.teams[0]
 const CODE = team.code, club = T1[CODE] || {}
 
-// ---------- every player's season, from the match cards ----------
-const clock = (s: string) => { const m = String(s || '').match(/(\d+)'(?:\+(\d+))?/) || []; return +(m[1] || 0) + Math.min(+(m[2] || 0), 6) * .5 }
+// ---------- every player's season, from the match cards: src/film/season.ts (the same calculation as the scorers and keepers films) ----------
 const games = MATCHES.filter(M => M.h === CODE || M.a === CODE).sort((a, b) => a.md - b.md)
-const teamLine = { pos: team.pos, pts: team.pts, W: team.W, D: team.D, L: team.L, GF: team.GF, GA: team.GA }
+const teamLine = teamLineOf(team)
 const side = (M: Dict) => M.h === CODE ? 'h' : 'a'
-const plain = (n: unknown) => String(n || '').replace(/ß/g, 'ss').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
-const lastWord = (n: unknown) => plain(n).split(/\s+/).pop()
-
-// a game he didn't play, as far as the match report knows: 'U' on the bench (not used), 'X' not in the matchday squad,
-// '' unknown (a report saved before the bench was kept)
-const benchState = (T: Dict, id: string) => !Array.isArray(T.bench) ? '' : T.bench.some((b: string[]) => String(b[0]) === String(id)) ? 'U' : 'X'
-// only what the reports can tell: 'X' counts from his first matchday squad on (before it he may not have been at the
-// club yet), and an 'X' right after his red card is the ban ('XR'); no other reason is ever guessed
-function settle(list: Dict[], key: string, rc: (x: Dict) => boolean) {
-  const first = list.findIndex(x => x[key] && x[key] !== 'X')
-  list.forEach((x, i) => {
-    if (x[key] !== 'X') return
-    if (first < 0 || i < first) x[key] = ''
-    else if (i > 0 && rc(list[i - 1])) x[key] = 'XR'
-  })
-}
-// the line over the strip: a run of games out of the matchday squad, said as a fact; a run that opens right after a red
-// card names the ban (where[i] = "at Como" for game i)
-function availNote(states: string[], mds: number[], where: string[]) {
-  const known = states.map((s, i) => ({ s, md: mds[i], i })).filter(x => x.s)
-  let run = 0; for (let i = known.length - 1; i >= 0 && (known[i].s === 'X' || known[i].s === 'XR'); i--) run++
-  const last5 = known.slice(-5), n5 = last5.filter(x => x.s === 'X' || x.s === 'XR').length
-  const first = known[known.length - run], ban = run && first.s === 'XR' ? `sent off ${where[first.i - 1]} in MD ${mds[first.i - 1]}` : ''
-  if (run === 1 && ban) return `<i></i>Suspended for MD ${first.md}: ${ban}`
-  if (run >= 2) return `<i></i>Not in the matchday squad for the last <b>${run}</b> games (since MD ${first.md})${ban ? `, the first a ban: ${ban}` : ''}`
-  if (n5 >= 2) return `<i></i>Not in the matchday squad in <b>${n5}</b> of the last ${last5.length} games`
-  return ''
-}
-const WHERE = games.map(M => M.h === CODE ? `vs ${T1[M.a]?.name || M.a}` : `at ${T1[M.h]?.name || M.h}`)
-
-function outfield(sq: Dict) {
-  const matches = games.map(M => {
-    const me = side(M), op = me === 'h' ? 'a' : 'h', T = me === 'h' ? M.home : M.away
-    const base = { id: M.id, w: M.md, ha: me === 'h' ? 'H' : 'A', opp: M[op], gf: M.score[me], ga: M.score[op] }
-    const pl = T.players.find((x: Dict) => String(x.id) === String(sq.espnId))
-    const on = pl && !pl.st ? M.subs.find((s: Dict) => String(s.on) === String(pl.id)) : null
-    if (!pl || (!pl.st && !on)) return { ...base, role: benchState(T, sq.espnId), min: 0, goals: [], G: 0, A: 0 }
-    const off = M.subs.find((s: Dict) => String(s.off) === String(pl.id)), red = pl.ev.find((e: string[]) => e[0] === 'rc')
-    const start = pl.st ? 0 : clock(on.min), end = Math.min(90, off ? clock(off.min) : red ? clock(red[1]) : 90)
-    const goals = M.goals.filter((g: Dict) => String(g.byId) === String(pl.id) && g.s === me && g.kind !== 'og').map((g: Dict) => ({ min: g.min, kind: g.kind, ast: g.ast }))
-    const n = (k: string) => pl.ev.filter((e: string[]) => e[0] === k).length
-    // his assists: the minute from his own events, the scorer from our side's goal at that minute
-    const assists = pl.ev.filter((e: string[]) => e[0] === 'ast').map((e: string[]) => ({ min: e[1], to: M.goals.find((g: Dict) => g.s === me && g.min === e[1])?.by || '' }))
-    return { ...base, role: pl.st ? 'S' : 'B', min: Math.max(1, Math.round(end - start)), goals, assists, G: goals.length, A: n('ast'), YC: n('yc'), RC: n('rc') }
-  })
-  settle(matches, 'role', (m: Dict) => !!m.RC)
-  const played = matches.filter(m => m.role === 'S' || m.role === 'B'), sum = (k: string) => played.reduce((a, m: Dict) => a + (m[k] || 0), 0)
-  // his shots (the scorer card's goal): filed under his name in the commentary — compared without accents or case
-  // (else, in a game with none, his surname when only one shooter of his side has it: "Francesco Pio Esposito")
-  const at = games.flatMap(M => { const me = side(M), S = M.shots as Dict[]
-    let mine = S.filter(x => x.s === me && plain(x.who) === plain(sq.name))
-    if (!mine.length) { const L = S.filter(x => x.s === me && lastWord(x.who) === lastWord(sq.name)); if (new Set(L.map(x => x.who)).size === 1) mine = L }
-    return mine.map(x => [x.p || '', x.k === 'goal' ? 'g' : x.k]) })
-  return { ...sq, at, nat: sq.natName || sq.nat, lg: LG, team: CODE, teamLine, matches, photo: `players/${sq.espnId}.webp`, note: availNote(matches.map(m => m.role === 'S' || m.role === 'B' ? 'P' : m.role), matches.map(m => m.w), WHERE),
-    G: sum('G'), A: sum('A'), YC: sum('YC'), RC: sum('RC'), min: sum('min'), apps: played.length, starts: played.filter(m => m.role === 'S').length,
-    pens: played.reduce((a, m: Dict) => a + m.goals.filter((g: Dict) => g.kind === 'pen').length, 0) }
-}
-
-// a keeper's season, as scripts/update-keepers.mjs builds it: each game he started, every shot on target he faced
-function keeper(sq: Dict) {
-  const k: Dict = { key: `${sq.espnId}-${CODE}`, id: sq.espnId, name: sq.name, n: sq.jersey, lg: LG, team: CODE, age: sq.age, nat: sq.natName || sq.nat, heightCm: sq.heightCm, tpos: team.pos,
-    photo: `players/${sq.espnId}.webp`, games: [], shots: [], conceded: [], missed: [] }
-  for (const M of games) {
-    const me = side(M), op = me === 'h' ? 'a' : 'h', T = me === 'h' ? M.home : M.away
-    const pl = T.players.find((x: Dict) => String(x.id) === String(sq.espnId))
-    if (!pl || !pl.st) { k.missed.push([M.id, M.score[me], M.score[op], pl ? 'P' : benchState(T, sq.espnId), M.md]); continue }
-    const off = pl.ev.find((e: string[]) => e[0] === 'sub'), until = off ? clock(off[1]) : 999
-    const inTime = (x: Dict) => x.min + Math.min(x.ex || 0, 6) * .5 <= until
-    const faced = M.shots.filter((x: Dict) => x.s === op && (x.k === 'on' || x.k === 'goal') && inTime(x))
-    const conc = M.goals.filter((g: Dict) => g.s === op && clock(g.min) <= until)
-    const pens = M.shots.filter((x: Dict) => x.s === op && x.pen && inTime(x))
-    k.games.push({ id: M.id, md: M.md, opp: M[op], ha: me === 'h' ? 'H' : 'A', gf: M.score[me], ga: M.score[op], min: Math.round(Math.min(until, 90)),
-      sv: off ? faced.filter((x: Dict) => x.k === 'on').length : (M.stats[me]?.saves ?? faced.filter((x: Dict) => x.k === 'on').length),
-      conc: conc.length, pf: pens.length, ps: pens.filter((x: Dict) => x.k === 'on').length,
-      yc: pl.ev.filter((e: string[]) => e[0] === 'yc').length, rc: pl.ev.filter((e: string[]) => e[0] === 'rc').length })
-    k.shots.push(...faced.filter((x: Dict) => x.p).map((x: Dict) => [x.p, x.k === 'goal' ? 'g' : 's']))
-    k.conceded.push(...conc.map((g: Dict) => [g.min, g.by, g.kind, M.md, M[op]]))
-  }
-  // the same rules as outfield players, over every club game in order (a start counts as being in the squad)
-  const seq: Dict[] = games.map(M => { const g = k.games.find((x: Dict) => x.id === M.id), m = k.missed.find((x: any[]) => x[0] === M.id); return { id: M.id, md: M.md, st: g ? 'P' : m ? m[3] : '', rc: g?.rc } })
-  settle(seq, 'st', (x: Dict) => !!x.rc)
-  for (const x of seq) { const m = k.missed.find((y: any[]) => y[0] === x.id); if (m) m[3] = x.st === 'P' ? '' : x.st }
-  k.note = availNote(seq.map(x => x.st), seq.map(x => x.md), WHERE)
-  const sum = (f: string) => k.games.reduce((a: number, g: Dict) => a + g[f], 0)
-  Object.assign(k, { SV: sum('sv'), GA: sum('conc'), MIN: sum('min'), GP: k.games.length, APPS: k.games.length + k.missed.filter((x: any[]) => games.some(M => M.id === x[0] && (side(M) === 'h' ? M.home : M.away).players.some((p: Dict) => String(p.id) === String(sq.espnId)))).length, CS: k.games.filter((g: Dict) => g.conc === 0 && g.min >= 89).length, PF: sum('pf'), PS: sum('ps') })
-  k.PCT = k.SV + k.GA ? Math.round(1000 * k.SV / (k.SV + k.GA)) / 10 : null
-  return k
-}
+const CLUB: Club = { lg: LG, code: CODE, games, teams: T1, team }
 
 // ---------- the squad, most minutes played first (whatever the role) ----------
 const ROLE = ['G', 'D', 'M', 'F', 'C'], TAG: Record<string, string> = { G: 'GK', D: 'DEF', M: 'MID', F: 'FWD', C: 'COACH' }
 const minsOf = (x: Dict) => x.kind === 'gk' ? x.d.MIN : x.d.min
-const P: Dict[] = (team.squad as Dict[]).map(sq => sq.pos === 'G' ? { kind: 'gk', sq, d: keeper(sq) } : { kind: 'out', sq, d: outfield(sq) })
+const P: Dict[] = (team.squad as Dict[]).map(sq => sq.pos === 'G' ? { kind: 'gk', sq, d: keeperSeason(CLUB, sq) } : { kind: 'out', sq, d: outfieldSeason(CLUB, sq) })
   .sort((a, b) => minsOf(b) - minsOf(a) || (+a.sq.jersey || 99) - (+b.sq.jersey || 99))
 // the head coach (FotMob, src/film/coach.ts) comes after the players who have played, before those who haven't
 const played = games.map(M => { const me = side(M), op = me === 'h' ? 'a' : 'h'; return { id: M.id, md: M.md, opp: M[op], ha: me === 'h' ? 'H' : 'A', gf: M.score[me], ga: M.score[op] } })
 const ST = COACHES ? stints(COACHES, CODE, played) : [], HID = COACHES && ST.length ? headOf(COACHES, CODE, ST).id : null, HEAD = HID ? COACHES!.coaches[HID] : null
 if (HEAD) P.splice(P.filter(x => minsOf(x) > 0).length, 0, { kind: 'coach', sq: { name: HEAD.name, pos: 'C', nat: HEAD.nat }, d: {} })   // after the last player with league minutes
 
-const mark = (id: string) => { const v = avgVote(CTX, id); return v == null ? null : v.toFixed(2) }
-const fb = (sq: Dict) => sq.thumb || undefined
 function card(x: Dict) {
   if (x.kind === 'coach') return coachCard(CTX, COACHES!, LG, CODE, played, teamLine, games, (votes as Dict | null)?.VOTES?.c?.[CODE])
-  const { sq, d } = x, badge = TAG[sq.pos] || '', vm = LG === 'ITA' ? mark(sq.espnId) : null
-  const shirt: [string, string] = [sq.jersey || '–', '']   // the panel's big number: his shirt number (no word under it)
-  if (x.kind === 'gk') {
-    const nums = `
-      <div class="n big"><b>${d.SV}</b><span>Saves${d.PS ? ` · ${d.PS} pen${d.PS > 1 ? 's' : ''}` : ''}</span></div>
-      <div class="n"><b>${d.GA}</b><span>Conceded</span></div>
-      <div class="n"><b>${d.PCT ?? '–'}${d.PCT == null ? '' : '%'}</b><span>Save %</span></div>
-      <div class="n"><b>${d.CS}</b><span>Clean sheets</span></div>
-      <div class="n"><b>${d.MIN}'</b><span>Minutes</span></div>
-      ${gamesN(games.length, d.APPS, d.GP)}
-      ${vm ? `<div class="n"><b>${vm}</b><span>Avg mark</span></div>` : `<div class="n"><b>${d.PF ? `${d.PS}${n2(d.PF)}` : '–'}</b><span>Pens saved</span></div>`}`
-    return keeperCard(CTX, d, { badge, nums, photoFallback: fb(sq), big: shirt, noClub: true, note: d.note, story: SEASON === '2026-27' })
-  }
-  // the highlighted number: goals for a scorer, assists for a provider with no goal, minutes for everyone else
-  const goalsN = `<b>${d.G}</b><span>Goals${d.pens ? ` · ${d.pens} pen${d.pens > 1 ? 's' : ''}` : ''}</span>`, minsN = `<b>${d.min}'</b><span>Minutes</span>`
-  const astN = `<div class="n"><b>${d.A}</b><span>Assists</span></div>`   // no goals but assists: assists are the highlighted number, then minutes, then goals
-  const nums = `
-    ${d.G || !d.A ? `<div class="n big">${d.G ? goalsN : minsN}</div><div class="n">${d.G ? minsN : goalsN}</div>${astN}`
-      : `<div class="n big"><b>${d.A}</b><span>Assists</span></div><div class="n">${minsN}</div><div class="n">${goalsN}</div>`}
-    ${gamesN(games.length, d.apps, d.starts)}
-    <div class="n"><b>${d.YC}${d.RC ? n2(d.RC, 'r') : ''}</b><span>${d.RC ? 'Yellow / red' : 'Yellow cards'}</span></div>
-    <div class="n"><b>${vm ?? (d.G ? Math.round(d.min / d.G) + "'" : '–')}</b><span>${vm ? 'Avg mark' : 'Per goal'}</span></div>`
-  return scorerCard(CTX, d, { badge, big: shirt, nums, photoFallback: fb(sq), noGoals: d.apps ? 'No goals yet' : 'No league minutes yet', noClub: true, note: d.note, story: SEASON === '2026-27' })
+  return x.kind === 'gk' ? keeperFilmCard(CTX, x.d, { story: SEASON === '2026-27' }) : outfieldCard(CTX, x.d, { story: SEASON === '2026-27' })
 }
 
 const $ = (id: string) => document.getElementById(id)!

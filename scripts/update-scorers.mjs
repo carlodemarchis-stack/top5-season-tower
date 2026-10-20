@@ -24,6 +24,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { LEAGUES, CUR, get, pool, standIns, espn, squad, matchPlayer, savePhoto, getPhoto, photoUrls, clubPhoto, PHOTOS, DATA } from './lib/football.mjs'
+import { outfieldSeason } from '../src/film/season.ts'
 
 const __dir = path.dirname(fileURLToPath(import.meta.url))
 const PHOTO_CACHE = path.join(__dir, 'scorers-photo-cache.json')
@@ -38,62 +39,32 @@ const LEAGUE_N = 25         // each league's own film
 const LEAGUE_MIN_GOALS = 2  // early season: never let a league's list collapse into every one-goal scorer
 const errors = [], warns = []
 const readJS = (f, name) => JSON.parse(fs.readFileSync(path.join(DATA, f), 'utf8').match(new RegExp(`export const ${name} = ([\\[{][\\s\\S]*[\\]}])`))[1])
-const clock = (s) => { const m = String(s || '').match(/(\d+)'(?:\+(\d+))?/) || []; return +(m[1] || 0) + Math.min(+(m[2] || 0), 6) * .5 }
-// names compared without accents or case: the commentary has "Estéban Lepaul", the roster "Esteban Lepaul"
-const plain = (n) => String(n || '').replace(/ß/g, 'ss').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
-const lastWord = (n) => plain(n).split(/\s+/).pop()
 
-// ---------- 1. every player's season at each club, from the match cards ----------
-const lines = new Map()   // `${lg}:${code}:${espnId}` → { lg, code, id, name, matches: [] }
-const squadOf = {}, teamOf = {}
+// ---------- 1. every player's season at each club: src/film/season.ts, the same calculation as the squad film ----------
+const posOf = (p) => /^G/.test(p) ? 'G' : /^(CD|CB|LB|RB|LWB|RWB|SW|D)/.test(p) ? 'D' : /^(DM|CM|LM|RM|AM|M)/.test(p) ? 'M' : 'F'
+const seasons = []   // one per player per club
 for (const lg of Object.keys(LEAGUES)) {
-  for (const t of readJS(`teams-${lg}-${SEASON}.js`, 'TEAMCARDS').teams) { teamOf[`${lg}:${t.code}`] = t; for (const p of t.squad || []) squadOf[`${lg}:${t.code}:${p.espnId}`] = p }
-  const files = fs.readdirSync(DATA).filter(f => f.startsWith(`matches-${lg}-${SEASON}-md`)).sort()
-  for (const f of files) for (const M of readJS(f, 'MATCHES')) for (const side of ['h', 'a']) {
-    const T = side === 'h' ? M.home : M.away, code = M[side], op = side === 'h' ? 'a' : 'h'
-    for (const g of M.goals) if (g.s === side && g.kind !== 'og' && !T.players.some(p => String(p.id) === String(g.byId)))
-      errors.push(`${lg} MD${M.md} ${M.h}-${M.a}: goal by ${g.by} (${g.byId}) — not in ${code}'s line-up`)
-    for (const p of T.players) {
-      const on = p.st ? null : M.subs.find(s => String(s.on) === String(p.id)); if (!p.st && !on) continue
-      const off = M.subs.find(s => String(s.off) === String(p.id)), red = p.ev.find(e => e[0] === 'rc')
-      const start = p.st ? 0 : clock(on.min), end = Math.min(90, off ? clock(off.min) : red ? clock(red[1]) : 90)
-      const goals = M.goals.filter(g => String(g.byId) === String(p.id) && g.s === side && g.kind !== 'og').map(g => ({ min: g.min, kind: g.kind || '', ast: g.ast || null }))
-      // his shots: filed under his name in the commentary; else (a game with none) his surname, when only one shooter
-      // of his side has it ("Francesco Pio Esposito")
-      let sh = M.shots.filter(x => x.s === side && plain(x.who) === plain(p.name))
-      if (!sh.length) { const L = M.shots.filter(x => x.s === side && lastWord(x.who) === lastWord(p.name)); if (new Set(L.map(x => x.who)).size === 1) sh = L }
-      const n = (k) => p.ev.filter(e => e[0] === k).length
-      const key = `${lg}:${code}:${p.id}`
-      const L = lines.get(key) || { lg, code, id: String(p.id), name: p.name, matches: [], at: [] }
-      L.matches.push({ id: M.id, w: M.md, opp: M[op], ha: side === 'h' ? 'H' : 'A', gf: M.score[side], ga: M.score[op], role: p.st ? 'S' : 'B',
-        min: Math.max(1, Math.round(end - start)), G: goals.length, A: n('ast'),
-        // shots: the box score's totals (when the match card has them); the goal's dots come from the commentary
-        SH: p.sh ? p.sh[0] : sh.length, SOG: p.sh ? p.sh[1] : sh.filter(x => x.k === 'on' || x.k === 'goal').length,
-        YC: n('yc'), RC: n('rc'), goals, kick: M.kick || '' })
-      L.at.push(...sh.map(x => [x.p || '', x.k === 'goal' ? 'g' : x.k]))
-      lines.set(key, L)
+  const TEAMS = readJS(`schedule-${lg}-${SEASON}.js`, 'TEAMS'), cards = readJS(`teams-${lg}-${SEASON}.js`, 'TEAMCARDS').teams
+  const recs = fs.readdirSync(DATA).filter(f => f.startsWith(`matches-${lg}-${SEASON}-md`)).flatMap(f => readJS(f, 'MATCHES'))
+  for (const M of recs) for (const side of ['h', 'a']) for (const g of M.goals) if (g.s === side && g.kind !== 'og' && !(side === 'h' ? M.home : M.away).players.some(p => String(p.id) === String(g.byId)))
+    errors.push(`${lg} MD${M.md} ${M.h}-${M.a}: goal by ${g.by} (${g.byId}) — not in ${M[side]}'s line-up`)
+  for (const t of cards) {
+    const games = recs.filter(M => M.h === t.code || M.a === t.code).sort((a, b) => a.md - b.md), club = { lg, code: t.code, games, teams: TEAMS, team: t }
+    const squadBy = Object.fromEntries((t.squad || []).map(p => [String(p.espnId), p]))
+    const seen = new Map()   // everyone who played for the club: id → his match-card entry (last seen)
+    for (const M of games) for (const p of (M.h === t.code ? M.home : M.away).players) seen.set(String(p.id), p)
+    for (const [id, p] of seen) {
+      const sq = squadBy[id] || { espnId: id, name: p.name, jersey: p.n || null, pos: posOf(p.pos), _noSquad: true }
+      if (sq.pos === 'G') continue
+      const d = outfieldSeason(club, sq)
+      if (d.G > 0) seasons.push({ ...d, _noSquad: !!sq._noSquad, _last: games.filter(M => (M.h === t.code ? M.home : M.away).players.some(x => String(x.id) === id)).reduce((a, M) => M.kick > a ? M.kick : a, '') })
     }
   }
 }
-
 // ---------- 2. one record per person: his latest club (a transfer's goals elsewhere stay on that club's cards) ----------
 const latest = new Map()
-for (const L of lines.values()) { const k = L.id, last = L.matches.reduce((a, m) => m.kick > a ? m.kick : a, '')
-  const cur = latest.get(k); if (!cur || last > cur.last) latest.set(k, { L, last }) }
-const sum = (ms, k) => ms.reduce((s, m) => s + m[k], 0)
-const all = [...latest.values()].map(({ L }) => {
-  const ms = [...L.matches].sort((a, b) => a.w - b.w), sq = squadOf[`${L.lg}:${L.code}:${L.id}`] || {}, t = teamOf[`${L.lg}:${L.code}`] || {}
-  return {
-    espnId: L.id, name: sq.name || L.name, full: sq.name || L.name, lg: L.lg, team: L.code, jersey: sq.jersey || null,
-    pos: sq.pos || null, posName: null, age: sq.age ?? null, nat: sq.natName || null, natCode: sq.nat || null, heightCm: sq.heightCm ?? null,
-    G: sum(ms, 'G'), A: sum(ms, 'A'), apps: ms.length, starts: ms.filter(m => m.role === 'S').length, min: sum(ms, 'min'),
-    pens: ms.reduce((s, m) => s + m.goals.filter(g => g.kind === 'pen').length, 0),
-    shots: sum(ms, 'SH'), sog: sum(ms, 'SOG'), yc: sum(ms, 'YC'), rc: sum(ms, 'RC'), at: L.at,
-    teamLine: { pos: t.pos ?? null, pts: t.pts ?? 0, W: t.W ?? 0, D: t.D ?? 0, L: t.L ?? 0, GF: t.GF ?? 0, GA: t.GA ?? 0, played: (t.W ?? 0) + (t.D ?? 0) + (t.L ?? 0) },
-    matches: ms.map(({ kick, ...m }) => m),
-    _squad: !!sq.espnId,
-  }
-}).filter(p => p.G > 0)
+for (const d of seasons) { const cur = latest.get(d.espnId); if (!cur || d._last > cur._last) latest.set(d.espnId, d) }
+const all = [...latest.values()]
 
 // ---------- 3. the lists: top 50 across the five, each league's top 25 (ties at the cut included) ----------
 const order = (a, b) => b.G - a.G || b.A - a.A || a.min - b.min
@@ -106,7 +77,7 @@ for (const lg of Object.keys(LEAGUES)) {
   pickedBy[lg] = l.filter(p => p.G >= cuts[lg])
 }
 const players = [...new Map(Object.values(pickedBy).flat().map(p => [p.espnId, p])).values()].sort(order)
-for (const p of players) { if (!p._squad) warns.push(`${p.name} (${p.lg} ${p.team}): not in the team card's squad — bio from the match cards only`); delete p._squad }
+for (const p of players) { if (p._noSquad) warns.push(`${p.name} (${p.lg} ${p.team}): not in the team card's squad — bio from the match cards only`); delete p._noSquad; delete p._last }
 const lists = {}
 for (const [k, ps] of Object.entries(pickedBy)) lists[k] = ps.sort(order).map(p => [p.espnId, 1 + ps.filter(q => q.G > p.G).length])
 players.forEach(p => { p.rank = lists.ALL.find(x => x[0] === p.espnId)?.[1] ?? null })   // five-league rank (null = league list only)

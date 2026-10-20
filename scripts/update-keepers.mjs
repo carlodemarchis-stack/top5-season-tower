@@ -16,7 +16,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { LEAGUES, pool, squad, matchPlayer, savePhoto, getPhoto, photoUrls, standIns, loadLeague, clubPhoto, PHOTOS, DATA } from './lib/football.mjs'
+import { LEAGUES, pool, squad, matchPlayer, savePhoto, getPhoto, photoUrls, standIns, clubPhoto, PHOTOS, DATA } from './lib/football.mjs'
+import { keeperSeason } from '../src/film/season.ts'
 
 const args = process.argv.slice(2), has = (f) => args.includes(f)
 const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] ? args[i + 1] : d }
@@ -24,49 +25,29 @@ const SEASON = opt('--season', '2026-27'), DRY = has('--dry-run'), NO_PHOTOS = h
 const TOP_N = 25, MIN_STARTS = 3
 const PHOTO_CACHE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'scorers-photo-cache.json')   // shared with the scorer cards
 const OUT = path.join(DATA, `keepers-TOP5-${SEASON}.js`)
-const clock = (s) => { const m = String(s || '').match(/(\d+)'(?:\+(\d+))?/) || []; return +(m[1] || 0) + Math.min(+(m[2] || 0), 6) * .5 }
 const readJS = (f, name) => { const m = fs.readFileSync(f, 'utf8').match(new RegExp(`export const ${name} = ([\\[{][\\s\\S]*[\\]}])`)); return m ? JSON.parse(m[1]) : null }
 const warns = []
 
-const K = new Map(), squads = {}, tables = {}, clubGames = {}, subOn = {}   // subOn: games a keeper came on from the bench, per key   // clubGames: every played game of a club → [id, gf, ga]
+// ---------- every keeper's season at each club: src/film/season.ts, the same calculation as the squad film ----------
+// one card per keeper per club (a keeper who moved has one for each); everyone who started in goal at least once
+const keepers = []
 for (const lg of Object.keys(LEAGUES)) {
-  const tf = path.join(DATA, `teams-${lg}-${SEASON}.js`)
-  for (const t of fs.existsSync(tf) ? readJS(tf, 'TEAMCARDS').teams : []) for (const p of t.squad || []) squads[p.espnId] = { ...p, team: t.code }
-  const L = await loadLeague(lg, SEASON), mds = Object.keys(L.STANDINGS).map(Number).sort((a, b) => a - b)
-  tables[lg] = mds.length ? L.STANDINGS[mds[mds.length - 1]] : []
-  const files = fs.readdirSync(DATA).filter(f => f.startsWith(`matches-${lg}-${SEASON}-md`)).sort()
-  for (const f of files) for (const m of readJS(path.join(DATA, f), 'MATCHES')) for (const [me, op] of [['h', 'a'], ['a', 'h']]) {
-    const t = me === 'h' ? m.home : m.away, code = m[me], opp = m[op]
-    ;(clubGames[`${lg}-${code}`] ||= []).push([m.id, m.score[me], m.score[op]])
-    for (const p of t.players) if (!p.st && p.pos === 'G') subOn[`${p.id}-${code}`] = (subOn[`${p.id}-${code}`] || 0) + 1
-    const gk = t.players.find(p => p.st && p.pos === 'G'); if (!gk) { warns.push(`${m.id} ${code}: no starting keeper in the line-up`); continue }
-    const off = gk.ev.find(e => e[0] === 'sub'), until = off ? clock(off[1]) : 999
-    const on = (x) => x.min + Math.min(x.ex || 0, 6) * .5 <= until
-    const faced = m.shots.filter(x => x.s === op && (x.k === 'on' || x.k === 'goal') && on(x))
-    const conc = m.goals.filter(g => g.s === op && clock(g.min) <= until)
-    const pens = m.shots.filter(x => x.s === op && x.pen && on(x))
-    // one card per keeper per club: a keeper who moved (Robert Sánchez: Chelsea, then Como) gets one for each
-    const key = `${gk.id}-${code}`
-    const k = K.get(key) || { key, id: gk.id, name: gk.name, n: gk.n, lg, team: code, games: [], shots: [], conceded: [] }
-    k.n = gk.n || k.n
-    k.games.push({ id: m.id, md: m.md, opp, ha: me === 'h' ? 'H' : 'A', gf: m.score[me], ga: m.score[op], min: Math.round(Math.min(until, 90)),
-      sv: off ? faced.filter(x => x.k === 'on').length : (m.stats[me]?.saves ?? faced.filter(x => x.k === 'on').length), conc: conc.length, pf: pens.length, ps: pens.filter(x => x.k === 'on').length })
-    k.shots.push(...faced.filter(x => x.p).map(x => [x.p, x.k === 'goal' ? 'g' : 's']))
-    k.conceded.push(...conc.map(g => [g.min, g.by, g.kind, m.md, opp]))
-    K.set(key, k)
+  const tf = path.join(DATA, `teams-${lg}-${SEASON}.js`); if (!fs.existsSync(tf)) continue
+  const TEAMS = readJS(path.join(DATA, `schedule-${lg}-${SEASON}.js`), 'TEAMS'), cards = readJS(tf, 'TEAMCARDS').teams
+  const recs = fs.readdirSync(DATA).filter(f => f.startsWith(`matches-${lg}-${SEASON}-md`)).flatMap(f => readJS(path.join(DATA, f), 'MATCHES'))
+  for (const t of cards) {
+    const games = recs.filter(M => M.h === t.code || M.a === t.code).sort((a, b) => a.md - b.md), club = { lg, code: t.code, games, teams: TEAMS, team: t }
+    const squadBy = Object.fromEntries((t.squad || []).map(p => [String(p.espnId), p])), starters = new Map()
+    for (const M of games) for (const p of (M.h === t.code ? M.home : M.away).players) if (p.st && p.pos === 'G') starters.set(String(p.id), p)
+    for (const [id, p] of starters) {
+      const sq = squadBy[id] || { espnId: id, name: p.name, jersey: p.n || null, pos: 'G' }
+      const k = keeperSeason(club, sq)
+      // ESPN's season saves trail the match reports on match days: a note, never a block
+      if (sq.SV != null && sq.SV !== k.SV) warns.push(`${k.name} (${lg}): ${k.SV} saves from the match reports, ESPN's season stat says ${sq.SV}`)
+      keepers.push(k)
+    }
   }
 }
-
-// ---------- totals, bio, a check against ESPN's season stat ----------
-const keepers = [...K.values()].map(k => {
-  const sum = (f) => k.games.reduce((a, g) => a + g[f], 0), SV = sum('sv'), GA = sum('conc'), sq = squads[k.id] || {}
-  if (sq.SV != null && sq.SV !== SV && sq.team === k.team) warns.push(`${k.name} (${k.lg}): ${SV} saves from the match reports, ESPN's season stat says ${sq.SV}`)
-  k.games.sort((a, b) => a.md - b.md)
-  const pos = tables[k.lg].indexOf(k.team) + 1 || null, mine = new Set(k.games.map(g => g.id))
-  k.missed = (clubGames[`${k.lg}-${k.team}`] || []).filter(g => !mine.has(g[0]))   // his club's games he didn't start
-  return { ...k, age: sq.age ?? null, nat: sq.nat || null, SV, GA, MIN: sum('min'), GP: k.games.length, APPS: k.games.length + (subOn[k.key] || 0), CS: k.games.filter(g => g.conc === 0 && g.min >= 89).length,
-    PF: sum('pf'), PS: sum('ps'), PCT: SV + GA ? Math.round(1000 * SV / (SV + GA)) / 10 : null, tpos: pos }
-})
 const order = (a, b) => b.SV - a.SV || a.GA - b.GA || b.GP - a.GP
 keepers.sort(order)
 // lists: the top 25 across the five leagues (ties in) · per league, each club's first choice + anyone with 3+ starts

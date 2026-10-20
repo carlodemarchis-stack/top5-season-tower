@@ -3,7 +3,7 @@
 import '../film/film.css'
 import { initStory } from '../film/story'
 import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
-import { scorerCard, matchTip, esc, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
+import { outfieldCard, matchTip, esc, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
 type Dict = Record<string, any>
 // ?season=2025-26 loads a past season (data from `update-scorers-espn.mjs --season`)
 const QS = new URLSearchParams(location.search)
@@ -17,7 +17,8 @@ const VOTE_FILES = import.meta.glob('../data/votes-*.js')
 const VOTES: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as Dict | undefined)?.VOTES?.v || {}
 const TEAMS: Record<string, Dict> = { ITA: TL[0].TEAMS, ENG: TL[1].TEAMS, ESP: TL[2].TEAMS, FRA: TL[3].TEAMS, GER: TL[4].TEAMS }
 const CTX: Ctx = { TEAMS, SEASON, VOTES }
-const card = (p: Dict) => scorerCard(CTX, p, { href: SEASON === '2026-27' ? `player.html?lg=${p.lg}&team=${p.team}&p=${p.espnId}` : undefined, story: SEASON === '2026-27' })
+// the one player card (src/film/cards.ts): his rank in this list under his role, the name opens his squad card
+const card = (p: Dict) => outfieldCard(CTX, p, { rank: p.rank, href: SEASON === '2026-27' ? `player.html?lg=${p.lg}&team=${p.team}&p=${p.espnId}` : undefined, story: SEASON === '2026-27' })
 
 // ---------- the standard card-film chrome: top bar (league logos), control bar, search, modals, keys, restore ----------
 const LG_ORDER = ['ITA', 'ENG', 'ESP', 'FRA', 'GER']

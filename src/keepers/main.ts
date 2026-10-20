@@ -5,7 +5,7 @@
 import '../film/film.css'
 import { initStory } from '../film/story'
 import { initFilm, initHighlight, initLinks, initNav } from '../film/chrome'
-import { keeperCard, esc, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
+import { keeperFilmCard, esc, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -20,7 +20,8 @@ const TEAMS: Record<string, Dict> = Object.fromEntries(LG_ORDER.map((lg, i) => [
 const VOTE_FILES = import.meta.glob('../data/votes-*.js')
 const VOTES: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as Dict | undefined)?.VOTES?.v || {}
 const CTX: Ctx = { TEAMS, SEASON, VOTES }
-const card = (k: Dict) => keeperCard(CTX, k, { href: SEASON === '2026-27' ? `player.html?lg=${k.lg}&team=${k.team}&p=${k.id}` : undefined, story: SEASON === '2026-27' })
+// the one player card (src/film/cards.ts): his rank in this list under his role, the name opens his squad card
+const card = (k: Dict) => keeperFilmCard(CTX, k, { rank: k.rank, href: SEASON === '2026-27' ? `player.html?lg=${k.lg}&team=${k.team}&p=${k.id}` : undefined, story: SEASON === '2026-27' })
 
 // ---------- the lists, the film ----------
 const LIST = LG_ORDER.includes(QS.get('lg') || '') ? QS.get('lg')! : 'ALL'
