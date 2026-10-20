@@ -8,6 +8,7 @@ import { initFilm, initHighlight, initLinks, initNav, initHScroll } from '../fil
 import { esc, LEAGUE_NAME, fitBios, type Ctx } from '../film/cards'
 import { loadCoaches, coachCard, stints, headOf, coachHref } from '../film/coach'
 import { teamLineOf } from '../film/season'
+import { initStory } from '../film/story'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = '2026-27'   // coaches are kept for the current season only
@@ -104,4 +105,5 @@ initHScroll(film)
 fitBios(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
 initNav('coaches', LIST, SEASON)
+initStory(film, CTX)   // Season | Tactical
 initFilm({ label: i => nameOf(P[i]), count: P.length, key: 'top5.coaches.card' + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'coaches.html' })

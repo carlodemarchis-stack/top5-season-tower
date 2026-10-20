@@ -5,6 +5,7 @@
 // the tab is used (a league's at a time), and each card's pane is drawn when it comes into view.
 import { rowsOf } from './pitch'
 import { esc, type Ctx } from './cards'
+import { loadCoaches, stints, headOf, coachOf, surname } from './coach'
 type Dict = Record<string, any>
 
 const MATCH_FILES = import.meta.glob('../data/matches-*-*-md*.js')
@@ -89,6 +90,9 @@ const clock = (s: unknown) => { const m = String(s || '').match(/(\d+)'?(?:\+(\d
 // cards and the mark (an empty one, hidden, keeps the rows of the grid level where he didn't play)
 const statTable = (form: string, min: string, km: string, facts: string, mark: string, empty = false) =>
   `<div class="msx${empty ? ' none' : ''}"><div class="f"><span>${form || '&nbsp;'}</span><b>${min}</b></div><div class="m">${km || '&nbsp;'}</div><div class="e"><span>${facts}</span>${mark}</div></div>`
+// a line-up's XI on the mini pitch: rows from the formation, keeper at the bottom
+const spots = (T: Dict) => { const rows = rowsOf(T), n = rows.length
+  return rows.flatMap((r, i) => r.map((p, j) => ({ p, x: (j + 1) / (r.length + 1) * 100, y: 90 - i * (80 / Math.max(1, n - 1)) }))) }
 const sur = (n: string) => n.split(' ').slice(1).join(' ') || n
 const PL: Record<string, number[]> = { bl: [.17, .74], br: [.83, .74], tl: [.17, .27], tr: [.83, .27], c: [.5, .52], tc: [.5, .25], bc: [.5, .76] }
 
@@ -98,8 +102,6 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
   const GK = me?.pos === 'G', name = me?.name || ''
   // his role in a game: ESPN's position when it is a precise one (Serie A: "CF-L" → LS), else from his slot in the XI
   const roleOf = (p: Dict, T: Dict) => (p.pos && p.pos.length > 1 && SHORT[p.pos]) || slotRole(rowsOf(T), String(p.id)) || SHORT[p.pos] || p.pos || ''
-  const spots = (T: Dict) => { const rows = rowsOf(T), n = rows.length
-    return rows.flatMap((r, i) => r.map((p, j) => ({ p, x: (j + 1) / (r.length + 1) * 100, y: 90 - i * (80 / Math.max(1, n - 1)) }))) }
   // a start's pitch takes the match's result colour (as on the season strip), so the row reads as the run of results;
   // his team-mates are neutral dots, he is the big one in the club colour
   // his dot carries ↑ (came on) or ↓ (taken off) when he didn't play the whole game; a game off the bench puts him in
@@ -164,6 +166,44 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
       <span>↑ came on (on the pitch: in the place of the player he replaced) · ↓ went off · ● goal · ○ assist · <i class="yc"></i><i class="rc"></i> cards${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''}${Object.keys(run).length ? ' · km: distance run (hover a game for his top speed)' : ''}</span>${heat ? `<span>heat: his touches in the game (FotMob), ${GK ? 'the 36 m in front of his goal · the shots he faced, in the zone they came from: <b style="color:#b3323a">●</b> goal against' : 'attacking up · his shots, in the zone they came from: ● goal'} · ○ on target · × off · ▪ blocked</span>` : ''}</div>`
 }
 
+// ---------- the coach card's Tactical view: every game of the club, his XI on the pitch ----------
+// cid = the coach; his games are the ones he (or, for the head coach, a stand-in) was on the bench for — the others
+// are greyed with the coach then. On the pitch: the XI as numbered dots, ↓ on each player he took off; under it the
+// formation, his changes, his bookings and (Serie A) his Fantacalcio mark
+function coachStoryHTML(ctx: Ctx, lg: string, code: string, cid: string, recs: Dict[], C: Dict, marks: Dict) {
+  const club = ctx.TEAMS[lg]?.[code] || {}, mine = recs.filter(M => M.h === code || M.a === code), byId = Object.fromEntries(mine.map(M => [M.id, M]))
+  const played = mine.map(M => { const me = M.h === code ? 'h' : 'a', op = me === 'h' ? 'a' : 'h'; return { id: M.id, md: M.md, opp: M[op], ha: me === 'h' ? 'H' : 'A', gf: M.score[me], ga: M.score[op] } })
+  const S = stints(C, code, played), H = headOf(C, code, S), former = cid !== H.id
+  const counts = (who: string | null, md: number) => who === cid || (!former && H.standIn.some(s => s.id === who && md >= s.from! && md <= s.to!))
+  const href = (md: number, id: string) => ctx.SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
+  const fcount: Record<string, number> = {}
+  let nGames = 0, nSubs = 0
+  const cell = (g: Dict) => {
+    const M = byId[g.id], at = g.ha === 'A' ? '@' : ''
+    if (!M) return `<div class="msc up"><div class="mst"><span>${at}${esc(g.opp)}</span></div><div class="msp"></div></div>`
+    const side = M.h === code ? 'h' : 'a', op = side === 'h' ? 'a' : 'h', T = side === 'h' ? M.home : M.away, gf = M.score[side], ga = M.score[op]
+    const top = `<div class="mst"><span>${at}${esc(g.opp)}</span><b class="rs" style="background:${RES[res(gf, ga)]}">${gf}-${ga}</b></div>`
+    const who = coachOf(C, code, M[op], side === 'h' ? 'H' : 'A')
+    if (!counts(who, M.md)) return `<div class="msc out"${href(M.md, M.id)} title="${esc(`MD${M.md} · ${C.coaches[who!]?.name || 'another coach'} on the bench`)}">${top}<div class="msp ns">${esc(surname(C.coaches[who!]))}</div>${statTable('', '', '', '', '', true)}</div>`
+    nGames++; if (T.form) fcount[T.form] = (fcount[T.form] || 0) + 1
+    const P: Record<string, Dict> = Object.fromEntries((T.players as Dict[]).map(p => [String(p.id), p]))
+    const subs = (M.subs as Dict[]).filter(x => P[String(x.on)]); nSubs += subs.length
+    const offs = new Set(subs.map(x => String(x.off)))
+    const dots = spots(T).map(({ p, x, y }) => `<i style="left:${x}%;top:${y}%" title="${esc(p.name)}">${esc(p.n)}${offs.has(String(p.id)) ? '<b class="ar">↓</b>' : ''}</i>`).join('')
+    const bk = (C.cards?.[`${M.h}-${M.a}`] || []).filter((x: string[]) => x[0] === side && who === cid)
+    const facts = `${bk.some((x: string[]) => x[1] === 'y') ? '<i class="yc"></i>' : ''}${bk.some((x: string[]) => x[1] === 'r') ? '<i class="rc"></i>' : ''}`
+    const mk = who === cid ? marks?.[M.md] : null, mark = mk != null ? `<b class="mk${mk >= 7 ? ' hi' : mk < 6 ? ' lo' : ''}">${mk}</b>` : ''
+    const tip = `MD${M.md} · ${at ? 'at' : 'vs'} ${g.opp} ${gf}-${ga} · ${T.form || ''}${who !== cid ? ` · ${C.coaches[who!]?.name} on the bench (stand-in)` : ''}${subs.length ? ` · ${subs.map(x => `${x.min} ${sur(P[String(x.on)].name)} for ${sur(P[String(x.off)]?.name || '?')}`).join(', ')}` : ''}`
+    return `<div class="msc st" data-mid="${M.id}"${href(M.md, M.id)} title="${esc(tip)}">${top}<div class="msp res xi" style="--rc:${RES[res(gf, ga)]}">${dots}</div>${statTable(esc(T.form || ''), subs.length ? `⇄${esc(subs.sort((a, b) => parseInt(a.min) - parseInt(b.min))[0].min)}` : 'no subs', '', facts, mark)}</div>`
+  }
+  const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w)
+  const cells = all.map(cell).join('')
+  const forms = Object.entries(fcount).sort((a, b) => b[1] - a[1]).map(([f, n]) => `<span><b>${esc(f)}</b> ×${n}</span>`).join('')
+  return `<div class="msgrid coach nokm">${cells}</div>
+    <div class="msleg"><span><b>${nGames}</b> game${nGames === 1 ? '' : 's'} · <b>${nSubs}</b> changes</span>${forms}
+      <span>his XI in every game · ↓ taken off · ⇄ his first change (hover a game for all of them) · <i class="yc"></i><i class="rc"></i> his bookings${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''} · greyed: another coach on the bench</span></div>`
+}
+
 // the switch: one view for every card of the film, remembered; 't' toggles; a pane is drawn when its card comes into view
 export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view') {
   const VIEWS = ['season', 'tac', 'heat']
@@ -173,6 +213,9 @@ export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view')
     const want = view; if (pane.dataset.done === want) return; pane.dataset.done = want
     const [lg, code, id] = pane.dataset.story!.split('|')
     if (!pane.innerHTML) pane.innerHTML = '<p class="msload">Loading the match cards…</p>'
+    // a coach card: his Tactical view (the same for Heatmaps — a coach has none)
+    if (id.startsWith('coach:')) { const [recs, C] = await Promise.all([recsOf(lg, ctx.SEASON), loadCoaches(lg, ctx.SEASON)])
+      if (pane.dataset.done === want && C) pane.innerHTML = coachStoryHTML(ctx, lg, code, id.slice(6), recs, C, JSON.parse(pane.dataset.marks || '{}')); return }
     const [recs, heat, run] = await Promise.all([recsOf(lg, ctx.SEASON), want === 'heat' ? heatOf(lg, ctx.SEASON) : Promise.resolve(null), runOf(lg, ctx.SEASON)])
     if (pane.dataset.done === want) pane.innerHTML = storyHTML(ctx, lg, code, id, recs, heat, run)
   }
@@ -181,7 +224,8 @@ export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view')
   film.querySelectorAll<HTMLElement>('.pane-story').forEach(p => io.observe(p))
   const set = (v: string) => {
     view = v; document.body.classList.toggle('view-tac', v !== 'season')
-    film.querySelectorAll<HTMLElement>('.tacsw button').forEach(b => b.classList.toggle('on', b.dataset.view === v))
+    // a switch without Heatmaps (a coach card) shows Tactical while the film is on Heatmaps
+    film.querySelectorAll<HTMLElement>('.tacsw button').forEach(b => b.classList.toggle('on', b.dataset.view === v || (v === 'heat' && b.dataset.view === 'tac' && !b.parentElement!.querySelector('[data-view="heat"]'))))
     try { localStorage.setItem(key, v) } catch { }
     if (v !== 'season') film.querySelectorAll<HTMLElement>('.pane-story').forEach(p => { if (near(p)) fill(p) })
   }

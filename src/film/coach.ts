@@ -1,7 +1,7 @@
 // Head coaches (scripts/update-coaches.mjs, from FotMob — ESPN has none): who was on the bench in each game, each
 // club's coaches this season in order, the chip the team and match cards show, and the coach card that closes each
 // squad film (player.html). Photos are FotMob's 192px head crops → a round portrait, never stretched to a full panel.
-import { RES6, res6, esc, ord, logo, lum, bio, matchHrefOf, cardsHTML, n2, type Ctx } from './cards'
+import { RES6, res6, esc, ord, logo, lum, bio, matchHrefOf, cardsHTML, n2, tacSwitch, type Ctx } from './cards'
 type Dict = Record<string, any>
 export type Stint = { id: string; from: number | null; to: number | null; W: number; D: number; L: number; GF: number; GA: number; CS: number }
 
@@ -108,6 +108,7 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
   const former = cur.id !== H.id, myS = S.filter(s => s.id === cur.id && s.from != null)
   const sinceCell: [string, unknown] = former ? ['In charge', myS.length ? (myS[0].from === myS[myS.length - 1].to ? `MD ${myS[0].from}` : `MD ${myS[0].from}–${myS[myS.length - 1].to}`) : '–'] : ['Since', H.since.charAt(0).toUpperCase() + H.since.slice(1)]   // "Season start", "Just appointed" in the bio
   const club = ctx.TEAMS[lg][code] || {}
+  const tac = ctx.SEASON === '2026-27'   // the Season | Tactical switch (src/film/story.ts): the match cards exist for this season only
   const c = club.primary || '#555', light = lum(c) > 0.55, ink = light ? '#15181d' : '#fff', c2 = light ? '#15181d' : c, hlInk = lum(c) > 0.183 ? '#15181d' : '#fff'
   // a stand-in's games (Domenichini while Spalletti was out) are the head coach's: he is still the coach, only absent
   // from the bench — unlike a sacked coach's or an interim's before a new appointment, which stay greyed
@@ -152,7 +153,7 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
     <div class="body">
       <div><h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(k.name)} · his club's squad film"` : ''}>${esc(k.name)}</h1></div>
       <div class="club"><img src="${logo(lg, code)}" alt="" onerror="this.remove()">${esc(club.name || code)}
-        <span class="tl"><b>${teamLine.pos ? ord(teamLine.pos) : '–'}</b> · <b>${teamLine.pts ?? 0}</b> pts · ${teamLine.W ?? 0}-${teamLine.D ?? 0}-${teamLine.L ?? 0} · GD ${(teamLine.GF ?? 0) - (teamLine.GA ?? 0) >= 0 ? '+' : ''}${(teamLine.GF ?? 0) - (teamLine.GA ?? 0)}</span></div>
+        <span class="tl"><b>${teamLine.pos ? ord(teamLine.pos) : '–'}</b> · <b>${teamLine.pts ?? 0}</b> pts · ${teamLine.W ?? 0}-${teamLine.D ?? 0}-${teamLine.L ?? 0} · GD ${(teamLine.GF ?? 0) - (teamLine.GA ?? 0) >= 0 ? '+' : ''}${(teamLine.GF ?? 0) - (teamLine.GA ?? 0)}</span>${tac ? tacSwitch(false, false) : ''}</div>${tac ? '<div class="pane-season">' : ''}
       <div class="nums">
         <div class="n big"><b>${ppg}</b><span>Points per game</span></div>
         <div class="n"><b>${n('W')}-${n('D')}-${n('L')}</b><span>W-D-L</span></div>
@@ -168,6 +169,7 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
       <div class="s2">${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}</div>
       ${list}
       ${subsHTML(code, recs, countsM)}
+      ${tac ? `</div><div class="pane-story" data-story="${lg}|${code}|coach:${cur.id}" data-marks='${JSON.stringify(marks || {})}'></div>` : ''}
     </div>
   </section>`
 }
