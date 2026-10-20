@@ -294,3 +294,10 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 .hsc.l{left:4px}.hsc.r{right:4px}   /* inside the row: a parent with overflow:hidden (.subs) would clip them */
 .hsc:hover{background:#15181d;color:#fff}
 .hsc.off{display:none}
+/* scorer card bottom: the goals list left, his shots on one goal right */
+.gsplit{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:clamp(16px,2vw,30px);flex:1 1 auto;min-height:0}
+.gsplit>.glist{min-height:0}
+.shotg{display:flex;flex-direction:column;min-height:0}
+.shotg .sec{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px}.shotg .sec .gsum{margin-left:0;justify-content:flex-start}
+.shotg svg{width:100%;height:auto;max-height:200px;flex:0 1 auto;min-height:0}
+@media (max-width: 760px){ .gsplit{grid-template-columns:1fr} }

@@ -125,11 +125,13 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
       </div>
       ${opt.note ? `<div class="avail">${opt.note}</div>` : ''}
       ${strip2(ctx, p, club, !goals && opt.noGoals != null)}
-      ${goals || opt.noGoals == null ? `<div class="glist">
+      ${(() => { const list = goals || opt.noGoals == null ? `<div class="glist">
         <div class="sec">The goals</div>
         <div class="goals">${goals}</div>
       </div>` : assists ? `<div class="glist"><div class="sec">The assists</div><div class="goals">${assists}</div></div>`
-        : `<div class="glist"><div class="sec">The goals</div><div class="goals"><span style="color:#9aa0a8;font-size:12px">${opt.noGoals}</span></div></div>`}
+        : `<div class="glist"><div class="sec">The goals</div><div class="goals"><span style="color:#9aa0a8;font-size:12px">${opt.noGoals}</span></div></div>`
+        // his shots on one goal, at the bottom right — when the match reports have them
+        return p.at?.length ? `<div class="gsplit">${list}<div class="shotg"><div class="sec">His shots${shotLegend(p.at)}</div>${shotGoal(p.at, c2, p.espnId)}</div></div>` : list })()}
     </div>
   </section>`
 }
@@ -232,6 +234,26 @@ function bigGoal(k: Dict, c: string) {
     <path d="M${ox} ${oy + H}V${oy}H${ox + W}V${oy + H}" fill="none" stroke="#15181d" stroke-width="5" stroke-linejoin="round"/>
     <line x1="6" x2="354" y1="${oy + H}" y2="${oy + H}" stroke="#c9ced4" stroke-width="1.5"/>${zones}${pts}</svg>`
 }
+// ================= a scorer's shots on one goal (the shooter's view, like the keeper card's) =================
+// at = [[placement, g | on | off | blk]] from the match reports' commentary; off target lands round the frame
+const PLS: Record<string, number[]> = { ...PL, xl: [-.14, .62], xr: [1.14, .62], xh: [.5, -.24], xhl: [.14, -.24], xhr: [.86, -.24], ntl: [.05, -.1], ntr: [.95, -.1] }
+function shotLegend(at: string[][]) {
+  const n = (k: string) => at.filter(s => s[1] === k).length
+  return `<span class="gsum"><b>${n('g')}</b> scored · <b>${n('on')}</b> saved · <b>${n('off')}</b> off target${n('blk') ? ` · <b>${n('blk')}</b> blocked` : ''}</span>`
+}
+export function shotGoal(at: string[][], c: string, key: string) {
+  const W = 260, H = 86, ox = 50, oy = 34
+  const pts = at.filter(([p, k]) => PLS[p] && k !== 'blk').map(([p, k], i) => {
+    const [px, py] = PLS[p], x = ox + px * W + (rnd(i + 3) - .5) * 22, y = oy + py * H + (rnd(i + 9) - .5) * 14
+    return k === 'g' ? `<circle cx="${x}" cy="${y}" r="6" fill="${c}" stroke="#fff" stroke-width="2"/>`
+      : k === 'on' ? `<circle cx="${x}" cy="${y}" r="4.6" fill="#fff" stroke="${c}" stroke-width="2.2"/>`
+      : `<path d="M${x - 3.5} ${y - 3.5}l7 7M${x + 3.5} ${y - 3.5}l-7 7" stroke="#9aa0a8" stroke-width="2" stroke-linecap="round"/>` }).join('')
+  return `<svg viewBox="0 0 360 140" preserveAspectRatio="xMidYMid meet"><defs><pattern id="ns${key}" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" fill="none" stroke="#dfe3e6" stroke-width=".8"/></pattern></defs>
+    <rect x="${ox}" y="${oy}" width="${W}" height="${H}" fill="url(#ns${key})"/>
+    <path d="M${ox} ${oy + H}V${oy}H${ox + W}V${oy + H}" fill="none" stroke="#15181d" stroke-width="5" stroke-linejoin="round"/>
+    <line x1="4" x2="356" y1="${oy + H}" y2="${oy + H}" stroke="#c9ced4" stroke-width="1.5"/>${pts}</svg>`
+}
+
 // the season in two rows: one box per fixture of his club — result colour, his saves, goals against above
 function strip(ctx: Ctx, k: Dict, club: Dict) {
   const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w), byId: Dict = Object.fromEntries(k.games.map((g: Dict) => [g.id, g])), half = Math.ceil(all.length / 2)

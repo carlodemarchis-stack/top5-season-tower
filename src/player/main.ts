@@ -32,6 +32,8 @@ const clock = (s: string) => { const m = String(s || '').match(/(\d+)'(?:\+(\d+)
 const games = MATCHES.filter(M => M.h === CODE || M.a === CODE).sort((a, b) => a.md - b.md)
 const teamLine = { pos: team.pos, pts: team.pts, W: team.W, D: team.D, L: team.L, GF: team.GF, GA: team.GA }
 const side = (M: Dict) => M.h === CODE ? 'h' : 'a'
+const plain = (n: unknown) => String(n || '').replace(/ß/g, 'ss').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+const lastWord = (n: unknown) => plain(n).split(/\s+/).pop()
 
 // a game he didn't play, as far as the match report knows: 'U' on the bench (not used), 'X' not in the matchday squad,
 // '' unknown (a report saved before the bench was kept)
@@ -77,7 +79,13 @@ function outfield(sq: Dict) {
   })
   settle(matches, 'role', (m: Dict) => !!m.RC)
   const played = matches.filter(m => m.role === 'S' || m.role === 'B'), sum = (k: string) => played.reduce((a, m: Dict) => a + (m[k] || 0), 0)
-  return { ...sq, nat: sq.natName || sq.nat, lg: LG, team: CODE, teamLine, matches, photo: `players/${sq.espnId}.webp`, note: availNote(matches.map(m => m.role === 'S' || m.role === 'B' ? 'P' : m.role), matches.map(m => m.w), WHERE),
+  // his shots (the scorer card's goal): filed under his name in the commentary — compared without accents or case
+  // (else, in a game with none, his surname when only one shooter of his side has it: "Francesco Pio Esposito")
+  const at = games.flatMap(M => { const me = side(M), S = M.shots as Dict[]
+    let mine = S.filter(x => x.s === me && plain(x.who) === plain(sq.name))
+    if (!mine.length) { const L = S.filter(x => x.s === me && lastWord(x.who) === lastWord(sq.name)); if (new Set(L.map(x => x.who)).size === 1) mine = L }
+    return mine.map(x => [x.p || '', x.k === 'goal' ? 'g' : x.k]) })
+  return { ...sq, at, nat: sq.natName || sq.nat, lg: LG, team: CODE, teamLine, matches, photo: `players/${sq.espnId}.webp`, note: availNote(matches.map(m => m.role === 'S' || m.role === 'B' ? 'P' : m.role), matches.map(m => m.w), WHERE),
     G: sum('G'), A: sum('A'), YC: sum('YC'), RC: sum('RC'), min: sum('min'), apps: played.length, starts: played.filter(m => m.role === 'S').length,
     pens: played.reduce((a, m: Dict) => a + m.goals.filter((g: Dict) => g.kind === 'pen').length, 0) }
 }

@@ -77,6 +77,25 @@ function playerLine(sm, teamId, athleteId) {
     YC: st.YC || 0, RC: st.RC || 0, pens: goals.filter(g => g.kind === 'pen').length, goals }
 }
 
+// ---------- where each of his shots went, from our match cards (scorer card: the goal at the bottom right) ----------
+// a shot is filed under the shooter's name (ESPN's commentary), on his side: [placement, g | on | off | blk]
+const MREC = new Map()
+if (SEASON === CUR) for (const f of fs.readdirSync(DATA).filter(f => /^matches-[A-Z]+-\d{4}-\d{2}-md\d+\.js$/.test(f) && f.includes(SEASON)))
+  for (const m of JSON.parse(fs.readFileSync(path.join(DATA, f), 'utf8').match(/export const MATCHES = (\[[\s\S]*\])/)[1])) MREC.set(m.id, m)
+// names compared without accents or case: the commentary has "Estéban Lepaul", the roster "Esteban Lepaul"
+const plain = (n) => String(n || '').replace(/ß/g, 'ss').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+const lastWord = (n) => plain(n).split(/\s+/).pop()
+function shotsAt(code, name, matches) {
+  const out = [], me = plain(name)
+  for (const x of matches) { const m = MREC.get(x.id); if (!m) continue
+    const side = m.h === code ? 'h' : m.a === code ? 'a' : null; if (!side) continue
+    // the full name; else (a game with none) his surname, when only one shooter of his side has it ("Francesco Pio Esposito")
+    let mine = m.shots.filter(sh => sh.s === side && plain(sh.who) === me)
+    if (!mine.length) { const L = m.shots.filter(sh => sh.s === side && lastWord(sh.who) === lastWord(name)); if (new Set(L.map(sh => sh.who)).size === 1) mine = L }
+    for (const sh of mine) out.push([sh.p || '', sh.k === 'goal' ? 'g' : sh.k]) }
+  return out
+}
+
 // ---------- main ----------
 const errors = [], warns = []
 const league = {}
@@ -197,7 +216,7 @@ const players = (await pool(union, 4, async (pl) => {
     nat: bio.citizenship || null, natCode: bio.citizenshipCountry?.abbreviation || null,
     heightCm: bio.height ? Math.round(bio.height * 2.54) : null,
     G, A, apps, starts: matches.filter(m => m.role === 'S').length, min: sum('min'), pens: sum('pens'),
-    shots: sum('SH'), sog: sum('SOG'), yc: sum('YC'), rc: sum('RC'),
+    shots: sum('SH'), sog: sum('SOG'), yc: sum('YC'), rc: sum('RC'), at: shotsAt(code, pl.name, matches),
     teamLine: { pos, pts: W * 3 + D, W, D, L: Lo, GF, GA, played: W + D + Lo },
     matches: matches.map(({ id, w, opp, ha, gf, ga, role, min, G, A, SH, SOG, YC, RC, goals }) => ({ id, w, opp, ha, gf, ga, role, min, G, A, SH, SOG, YC, RC, goals })),
   }
