@@ -40,7 +40,7 @@ jobs:
           ref: main
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24   # 24: the scripts import src/film/season.ts directly (type stripping)
           cache: npm
       - run: npm ci
 
