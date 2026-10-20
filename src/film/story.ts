@@ -213,8 +213,12 @@ function coachStoryHTML(ctx: Ctx, lg: string, code: string, cid: string, recs: D
     const facts = `${bk.some((x: string[]) => x[1] === 'y') ? '<i class="yc"></i>' : ''}${bk.some((x: string[]) => x[1] === 'r') ? '<i class="rc"></i>' : ''}`
     const mk = who === cid ? marks?.[M.md] : null, mark = mk != null ? `<b class="mk${mk >= 7 ? ' hi' : mk < 6 ? ' lo' : ''}">${mk}</b>` : ''
     if (facts || mark) anyFacts = true
-    const tip = `MD${M.md} · ${at ? 'at' : 'vs'} ${g.opp} ${gf}-${ga} · ${T.form || ''}${who !== cid ? ` · ${C.coaches[who!]?.name} on the bench (stand-in)` : ''}${subs.length ? ` · ${subs.map(x => `${x.min} ${sur(P[String(x.on)].name)} for ${sur(P[String(x.off)]?.name || '?')}`).join(', ')}` : ''}`
-    return `<div class="msc st" data-mid="${M.id}"${href(M.md, M.id)} title="${esc(tip)}">${top}<div class="msp res xi" style="--rc:${RES[res(gf, ga)]}">${dots}</div>${statTable(esc(T.form || ''), subs.length ? `⇄${esc(subs.sort((a, b) => parseInt(a.min) - parseInt(b.min))[0].min)}` : 'no subs', '', facts, mark)}</div>`
+    // the game's hover card (the pitch, not a dot): formation, every change, his bookings
+    XI_TIPS.set(`${M.id}|game`, `<div class="mt-top">MD ${M.md} · ${at ? 'at' : 'vs'} ${esc(g.opp)} · ${gf}-${ga} · ${esc(T.form || '')}</div>
+      ${who !== cid ? `<div class="mt-foot" style="margin:0 0 6px">${esc(C.coaches[who!]?.name || '')} on the bench (stand-in)</div>` : ''}
+      ${subs.length ? `<div class="mt-goals">${subs.map(x => `<div class="mt-g"><span class="mt-min">${esc(x.min)}</span><span><b>${esc(sur(P[String(x.on)].name))}</b> for ${esc(sur(P[String(x.off)]?.name || '?'))}</span></div>`).join('')}</div>` : '<div class="mt-foot">no changes</div>'}
+      ${bk.length ? `<div class="mt-stats">${bk.map((x: string[]) => `<span>booked <i class="${x[1] === 'r' ? 'rc' : 'yc'}"></i> ${esc(x[2])}</span>`).join('')}</div>` : ''}`)
+    return `<div class="msc st" data-mid="${M.id}"${href(M.md, M.id)}>${top}<div class="msp res xi" style="--rc:${RES[res(gf, ga)]}">${dots}</div>${statTable(esc(T.form || ''), subs.length ? `⇄${esc(subs.sort((a, b) => parseInt(a.min) - parseInt(b.min))[0].min)}` : 'no subs', '', facts, mark)}</div>`
   }
   const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w)
   const cells = all.map(cell).join('')
@@ -256,7 +260,10 @@ export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view')
     film.querySelectorAll('.msgrid.hlp').forEach(g => { if (g !== grid || !dot) { g.classList.remove('hlp'); g.querySelectorAll('.on').forEach(x => x.classList.remove('on')) } })
     if (dot && grid) { grid.classList.add('hlp'); grid.querySelectorAll('i.on').forEach(x => x.classList.remove('on')); grid.querySelectorAll(`i[data-pid="${dot.dataset.pid}"]`).forEach(x => x.classList.add('on')) }
   })
-  initTip(film, '.msp.xi i[data-pid]', el => XI_TIPS.get(`${el.closest<HTMLElement>('[data-mid]')?.dataset.mid}|${el.dataset.pid}`) || '')
+  // one hover card, above the pitch: a dot = that player's game, the rest of the box = the game and his changes
+  initTip(film, '.msgrid.xig .msp.xi i[data-pid], .msgrid.xig .msc.st[data-mid]', el => {
+    const mid = el.closest<HTMLElement>('[data-mid]')?.dataset.mid
+    return XI_TIPS.get(`${mid}|${el.dataset.pid || 'game'}`) || '' }, el => el.closest<HTMLElement>('.msc') || el)   // above the game's opponent + score
   // 't' cycles Season → Tactical → Heatmaps
   addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector('.mod.on') && !e.metaKey && !e.ctrlKey && !(e.target as HTMLElement).closest?.('input')) set(VIEWS[(VIEWS.indexOf(view) + 1) % VIEWS.length]) })
   set(view)
