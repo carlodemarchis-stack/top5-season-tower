@@ -85,9 +85,10 @@ function slotRole(rows: Dict[][], id: string): string | null {
   return n === 1 ? 'DM' : n === 2 ? pick(['LCM', 'RCM']) : n === 3 ? pick(['LCM', 'CM', 'RCM']) : n === 4 ? pick(['LM', 'LCM', 'RCM', 'RM']) : pick(['LM', 'LCM', 'CM', 'RCM', 'RM'])
 }
 const clock = (s: unknown) => { const m = String(s || '').match(/(\d+)'?(?:\+(\d+))?/) || []; return +(m[1] || 0) + Math.min(+(m[2] || 0), 6) * .5 }
-// the table under a game's box (an empty one, hidden, keeps the rows of the grid level where he didn't play)
-const statTable = (form: string, min: string, facts: string, mark: string, empty = false) =>
-  `<div class="msx${empty ? ' none' : ''}"><div class="f">${form || '&nbsp;'}</div><div class="m">${min || '&nbsp;'}</div><div class="e"><span>${facts}</span>${mark}</div></div>`
+// the table under a game's box: the formation (left) and his minutes (right) · the km he ran (right) · goals, assists,
+// cards and the mark (an empty one, hidden, keeps the rows of the grid level where he didn't play)
+const statTable = (form: string, min: string, km: string, facts: string, mark: string, empty = false) =>
+  `<div class="msx${empty ? ' none' : ''}"><div class="f"><span>${form || '&nbsp;'}</span><b>${min}</b></div><div class="m">${km || '&nbsp;'}</div><div class="e"><span>${facts}</span>${mark}</div></div>`
 const sur = (n: string) => n.split(' ').slice(1).join(' ') || n
 const PL: Record<string, number[]> = { bl: [.17, .74], br: [.83, .74], tl: [.17, .27], tr: [.83, .27], c: [.5, .52], tc: [.5, .25], bc: [.5, .76] }
 
@@ -109,6 +110,7 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
       return x.k === 'goal' ? `<circle cx="${X}" cy="${Y}" r="3.6" fill="#b3323a" stroke="#fff" stroke-width="1"/>` : `<circle cx="${X}" cy="${Y}" r="3" fill="#fff" stroke="var(--c)" stroke-width="1.6"/>` }).join('')}</svg>` }
   const href = (md: number, id: string) => ctx.SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
   let anyFacts = false   // no goal, assist, card or mark all season: the table's third row is left out
+  let anyKm = false      // no tracking for him (LaLiga, Ligue 1, Bundesliga): no km row
   const cell = (g: Dict) => {
     const M = byId[g.id], at = g.ha === 'A' ? '@' : ''
     if (!M) return `<div class="msc up"><div class="mst"><span>${at}${esc(g.opp)}</span></div><div class="msp"></div></div>`
@@ -116,7 +118,7 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
     const top = `<div class="mst"><span>${at}${esc(g.opp)}</span><b class="rs" style="background:${RES[res(gf, ga)]}">${gf}-${ga}</b></div>`
     const p = (T.players as Dict[]).find(x => String(x.id) === ID)
     if (!p) { const bench = (T.bench || []).some((b: string[]) => String(b[0]) === ID)
-      return `<div class="msc out"${href(M.md, M.id)} title="${bench ? 'on the bench, not used' : 'not in the matchday squad'}">${top}<div class="msp ${bench ? 'bn' : 'ns'}">${bench ? 'bench' : ''}</div>${statTable('', '', '', '', true)}</div>` }
+      return `<div class="msc out"${href(M.md, M.id)} title="${bench ? 'on the bench, not used' : 'not in the matchday squad'}">${top}<div class="msp ${bench ? 'bn' : 'ns'}">${bench ? 'bench' : ''}</div>${statTable('', '', '', '', '', true)}</div>` }
     const on = p.st ? null : (M.subs as Dict[]).find(s => String(s.on) === ID), off = (M.subs as Dict[]).find(s => String(s.off) === ID), red = (p.ev as string[][]).find(e => e[0] === 'rc')
     const end = Math.min(90, off ? clock(off.min) : red ? clock(red[1]) : 90), mins = Math.max(1, Math.round(end - (p.st ? 0 : clock(on?.min))))
     const G = (M.goals as Dict[]).filter(x => String(x.byId) === ID && x.s === side && x.kind !== 'og').length, A = (p.ev as string[][]).filter(e => e[0] === 'ast').length
@@ -125,7 +127,8 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
     // with the Serie A mark in a badge on the right (his role is the dot)
     // the km he ran (Serie A, Premier League) left of the time
     const km = run[M.id]?.[ID] as number[] | undefined
-    const minTxt = `${km ? `<span class="km">${km[0].toFixed(1)} km</span>` : ''}${!p.st ? `↑${esc(on?.min || '')}` : off ? `↓${esc(off.min)}` : `${mins}'`}`
+    const minTxt = !p.st ? `↑${esc(on?.min || '')}` : off ? `↓${esc(off.min)}` : `${mins}'`, kmTxt = km ? `${km[0].toFixed(1)} km` : ''
+    if (km) anyKm = true
     const facts = `${'<i class="gl"></i>'.repeat(G)}${'<i class="as"></i>'.repeat(A)}${(p.ev as string[][]).some(e => e[0] === 'yc') ? '<i class="yc"></i>' : ''}${red ? '<i class="rc"></i>' : ''}`
     const mark = mk != null ? `<b class="mk${mk >= 7 ? ' hi' : mk < 6 ? ' lo' : ''}">${mk}</b>` : ''
     if (facts || mark) anyFacts = true
@@ -141,7 +144,7 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
       box = `<div class="msg">${goal(M, side, end)}<b class="sv">${sv}</b><span>save${sv === 1 ? '' : 's'}</span>${ga === 0 && mins >= 89 ? '<em class="cs">clean sheet</em>' : `<em>${ga} against</em>`}</div>` }
     else if (!p.st) box = `<div class="msp bn res" style="--rc:${RES[res(gf, ga)]}">off the bench<b>${esc(on?.min || '')}</b>${on ? `for ${esc(sur((T.players as Dict[]).find(x => String(x.id) === String(on.off))?.name || ''))}` : ''}</div>`
     else box = pitch(T, RES[res(gf, ga)])
-    return `<div class="msc${p.st ? ' st' : ' sub'}" data-mid="${M.id}"${href(M.md, M.id)} title="${esc(tip)}">${top}${box}${statTable(esc(T.form || ''), minTxt, facts, mark)}</div>`
+    return `<div class="msc${p.st ? ' st' : ' sub'}" data-mid="${M.id}"${href(M.md, M.id)} title="${esc(tip)}">${top}${box}${statTable(esc(T.form || ''), minTxt, kmTxt, facts, mark)}</div>`
   }
   const starts = mine.filter(M => (M.h === code ? M.home : M.away).players.some((x: Dict) => String(x.id) === ID && x.st))
   const subs = mine.filter(M => (M.h === code ? M.home : M.away).players.some((x: Dict) => String(x.id) === ID && !x.st))
@@ -149,7 +152,7 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
   for (const M of starts) { const T = M.h === code ? M.home : M.away, p = T.players.find((x: Dict) => String(x.id) === ID); (roles[roleOf(p, T)] ||= []).push(M.md) }
   const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w)
   const cells = all.map(cell).join('')
-  return `<div class="msgrid${anyFacts ? '' : ' nofacts'}">${cells}</div>
+  return `<div class="msgrid${anyFacts ? '' : ' nofacts'}${anyKm ? '' : ' nokm'}">${cells}</div>
     <div class="msleg"><span><b>${starts.length}</b> start${starts.length === 1 ? '' : 's'} · <b>${subs.length}</b> off the bench</span>${GK ? '' : Object.entries(roles).sort((a, b) => b[1].length - a[1].length).map(([r, mds]) => `<span><b>${NAMED[r] || esc(r)}</b> ×${mds.length}</span>`).join('')}
       <span>↑ came on · ↓ went off · ● goal · ○ assist · <i class="yc"></i><i class="rc"></i> cards${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''}${Object.keys(run).length ? ' · km: distance run (hover a game for his top speed)' : ''}</span>${heat ? `<span>heat: his touches in the game (FotMob), ${GK ? 'the 36 m in front of his goal · the shots he faced, in the zone they came from: <b style="color:#b3323a">●</b> goal against' : 'attacking up · his shots, in the zone they came from: ● goal'} · ○ on target · × off · ▪ blocked</span>` : ''}</div>`
 }
