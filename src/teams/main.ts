@@ -126,8 +126,9 @@ function tacPitch(t: Dict, M: Dict) {
   const me = M.h === t.code ? 'home' : 'away', T = M[me], opp = M[me === 'home' ? 'a' : 'h'], gf = M.score[me === 'home' ? 'h' : 'a'], ga = M.score[me === 'home' ? 'a' : 'h']
   const c = TEAMS_OF[t.lg][t.code]?.primary || '#555', ink = lum(c) > 0.55 ? '#15181d' : '#fff', ring = lum(c) > 0.75 ? '#c9ced4' : 'rgba(255,255,255,.9)'
   const rows = rowsOf(T), n = rows.length
-  const dot = (p: Dict, x: number, y: number) => `<div class="tp" style="left:${x}%;top:${y}%"><i style="background:${c};color:${ink};box-shadow:0 0 0 1.5px ${ring}">${esc(p.n || '')}</i><span>${esc(surnameOf(p.name))}</span></div>`
-  const xi = rows.map((r, i) => r.map((p, j) => dot(p, (j + 1) / (r.length + 1) * 100, 90 - i * (80 / Math.max(1, n - 1))))).flat().join('')
+  // a row of four or more: every other name drops a line, so neighbours' names can't run into each other
+  const dot = (p: Dict, x: number, y: number, low = false) => `<div class="tp${low ? ' lo' : ''}" style="left:${x}%;top:${y}%"><i style="background:${c};color:${ink};box-shadow:0 0 0 1.5px ${ring}">${esc(p.n || '')}</i><span>${esc(surnameOf(p.name))}</span></div>`
+  const xi = rows.map((r, i) => r.map((p, j) => dot(p, (j + 1) / (r.length + 1) * 100, 90 - i * (80 / Math.max(1, n - 1)), r.length >= 4 && j % 2 === 1))).flat().join('')
   // the bench: who came on (minute, for whom), then the unused substitutes — numbers from the squad list
   const jersey: Record<string, string> = Object.fromEntries((t.squad || []).map((p: Dict) => [String(p.espnId), p.jersey]))
   const subs = (M.subs as Dict[]).filter(s => T.players.some((p: Dict) => String(p.id) === String(s.on)))
@@ -141,6 +142,20 @@ function tacPitch(t: Dict, M: Dict) {
     <div class="tkb">${used}${unused}${!used && !unused ? '<span class="none">no bench in the report</span>' : ''}</div>
   </div>`
 }
+// the arrows: two games a click, each hidden at its end of the row
+function tacArrows(s: HTMLElement) {
+  const w = s.parentElement!
+  w.querySelector('.tsc.l')!.classList.toggle('off', s.scrollLeft < 4)
+  w.querySelector('.tsc.r')!.classList.toggle('off', s.scrollLeft + s.clientWidth > s.scrollWidth - 4)
+}
+function initTacArrows() {
+  film.addEventListener('click', e => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('.tsc'); if (!b) return
+    const s = b.parentElement!.querySelector<HTMLElement>('.tacs')!, step = (s.querySelector<HTMLElement>('.tac')?.offsetWidth || 228) + 14
+    s.scrollBy({ left: +b.dataset.dir! * step * 2, behavior: 'smooth' })
+  })
+  addEventListener('resize', () => film.querySelectorAll<HTMLElement>('.tacs').forEach(tacArrows))
+}
 let tacBusy = false
 async function fillTactics() {
   if (tacBusy) return; tacBusy = true
@@ -149,8 +164,10 @@ async function fillTactics() {
     const recs = await recsOf(lg)
     P.forEach((t, i) => { if (t.lg !== lg || panes[i].dataset.done) return
       const ms = recs.filter(M => M.h === t.code || M.a === t.code).sort((a, b) => b.md - a.md)
-      panes[i].innerHTML = ms.length ? `<div class="tacs">${ms.map(M => tacPitch(t, M)).join('')}</div>` : '<p class="none">No match reports yet.</p>'
-      panes[i].dataset.done = '1' })
+      panes[i].innerHTML = ms.length ? `<div class="tacw"><div class="tacs">${ms.map(M => tacPitch(t, M)).join('')}</div>
+        <button class="tsc l" data-dir="-1" title="Later games" aria-label="Scroll left">‹</button><button class="tsc r" data-dir="1" title="Earlier games" aria-label="Scroll right">›</button></div>` : '<p class="none">No match reports yet.</p>'
+      panes[i].dataset.done = '1'
+      const s = panes[i].querySelector<HTMLElement>('.tacs'); if (s) { s.addEventListener('scroll', () => tacArrows(s), { passive: true }); requestAnimationFrame(() => tacArrows(s)) } })
   }
   tacBusy = false
 }
@@ -550,6 +567,7 @@ film.addEventListener('click', e => {
   const b = (e.target as HTMLElement).closest<HTMLElement>('.sortby button'); if (!b) return
   if (b.classList.contains('u0')) { setShow0(!SHOW0); markShow0() } else setSort(b.dataset.sort!)
 })
+initTacArrows()
 setTab(TAB)
 film.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.tab'); if (b) setTab(b.dataset.tab!) })
 addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector('.mod.on') && !e.metaKey && !e.ctrlKey) setTab(TABS[(TABS.indexOf(TAB) + 1) % TABS.length]) })

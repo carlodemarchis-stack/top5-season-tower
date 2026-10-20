@@ -192,7 +192,12 @@
     body.tab-squad .pane-season,body:not(.tab-squad) .pane-squad{display:none}
     body.tab-tac .pane-season,body:not(.tab-tac) .pane-tac{display:none}
     /* Tactical tab: one half pitch per league game, newest first, scrolling sideways; the bench under each */
-    .tacs{display:flex;gap:14px;overflow:auto;flex:1 1 auto;min-height:0;padding-bottom:6px;align-items:flex-start}
+    .tacw{position:relative;flex:1 1 auto;min-height:0;display:flex;margin-top:14px}   /* a little air under the tabs */
+    .tacs{display:flex;gap:14px;overflow:auto;flex:1 1 auto;min-height:0;padding-bottom:6px;align-items:flex-start;scrollbar-width:thin}
+    .tsc{position:absolute;top:96px;z-index:4;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;color:#15181d;font:inherit;font-size:22px;font-weight:700;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(20,22,28,.18);display:grid;place-items:center;padding:0 0 3px}
+    .tsc.l{left:-6px}.tsc.r{right:-6px}
+    .tsc:hover{background:#15181d;color:#fff}
+    .tsc.off{display:none}
     .tac{flex:0 0 228px;display:flex;flex-direction:column;gap:6px}
     .tac .th{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#5b626c;white-space:nowrap;cursor:pointer}
     .tac .th b{color:#15181d;font-weight:900}
@@ -201,9 +206,10 @@
     .tpitch{position:relative;aspect-ratio:68/74;border-radius:8px;background:#e8eee8;border:1.5px solid #fff;box-shadow:inset 0 0 0 1px #d5ddd5;overflow:hidden}
     .tpitch::before{content:'';position:absolute;left:21%;right:21%;bottom:-1.5px;height:21%;border:1.5px solid #fff;border-bottom:0}   /* the penalty box */
     .tpitch::after{content:'';position:absolute;left:36%;right:36%;top:-14%;aspect-ratio:1;border:1.5px solid #fff;border-radius:50%}   /* half the centre circle */
-    .tp{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;z-index:1}
+    .tp{position:absolute;transform:translate(-50%,-11px);display:flex;flex-direction:column;align-items:center;gap:1px;z-index:1}
     .tp i{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:10px;font-weight:900;letter-spacing:-.03em}
     .tp span{font-size:9.5px;font-weight:800;color:#15181d;white-space:nowrap;text-shadow:0 0 3px #e8eee8,0 0 2px #e8eee8}
+    .tp.lo span{margin-top:10px}   /* the second name line in a row of four or more */
     .tkb{display:flex;flex-direction:column;gap:3px}
     .tkr{display:flex;align-items:center;gap:6px;font-size:11px;white-space:nowrap;overflow:hidden}
     .tkr i{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:9px;font-weight:900}
