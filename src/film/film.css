@@ -347,4 +347,5 @@ body.view-tac .pane-season,body:not(.view-tac) .pane-tac{display:none}
 @media (max-width: 760px){ .tacsw.corner{top:6px;right:8px} .tacsw button{padding:3px 8px;font-size:9.5px} .msgrid{grid-template-columns:repeat(4,minmax(0,1fr))} }
 .msp.bn.res{background:color-mix(in srgb,var(--rc) 30%,#fff);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--rc) 45%,#fff)}   /* off the bench: the result colour too */
 .pan .rk small{display:block;font-size:.42em;letter-spacing:0;margin-top:4px;opacity:.85}   /* a ranked film: his rank under the role */
-.msp.heat svg{position:absolute;inset:0;width:100%;height:100%}   /* the Heatmaps view: his touches over the result-tinted pitch */
+.msp.heat svg{position:absolute;inset:0;width:100%;height:100%}
+.msp.heat.gk::before{display:none}   /* a keeper's zoomed pitch draws its own boxes */   /* the Heatmaps view: his touches over the result-tinted pitch */

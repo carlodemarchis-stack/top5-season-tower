@@ -16,11 +16,45 @@ const recsOf = (lg: string, season: string) => RECS[lg + season] ??= Promise.all
 const HEAT_FILES = import.meta.glob('../data/heat-*.js')
 const HEATS: Record<string, Promise<Dict>> = {}
 const heatOf = (lg: string, season: string) => HEATS[lg + season] ??= (HEAT_FILES[`../data/heat-${lg}-${season}.js`]?.() ?? Promise.resolve({ HEAT: {} })).then(m => (m as Dict).HEAT || {})
-// his touches on the vertical mini pitch (attacking up): soft overlapping blobs, darker where he was most often
-function heatPitch(packed: string, tint: string) {
+// the Heatmaps pitch (68 × 92 like .msp, attacking up): a spot is [metres from his own goal line, metres from his left
+// touchline]. An outfield player gets the whole pitch; a keeper the 36 m in front of his goal, where all of his game is
+type Spot = (d: number, a: number) => number[]
+const FULL: Spot = (d, a) => [a, 92 - d * 92 / 105]
+const KEEP: Spot = (d, a) => [(a - 4) * 68 / 60, 92 - d * 92 / 36]
+const f1 = (v: number) => v.toFixed(1)
+// his touches: soft overlapping blobs, darker where he was most often; over them the shots (svg markup, see shotMarks)
+function heatPitch(packed: string, tint: string, P: Spot, shots = '') {
   const pts = packed.match(/../g) || []
-  const blobs = pts.map(c => { const x = parseInt(c[0], 36), y = parseInt(c[1], 36); return `<circle cx="${(y / 35 * 68).toFixed(1)}" cy="${((1 - x / 35) * 88).toFixed(1)}" r="9" fill="url(#hg)"/>` }).join('')
-  return `<div class="msp res heat" style="--rc:${tint}"><svg viewBox="0 0 68 88" preserveAspectRatio="none"><defs><radialGradient id="hg"><stop offset="0" stop-color="#15181d" stop-opacity=".3"/><stop offset="1" stop-color="#15181d" stop-opacity="0"/></radialGradient></defs><line x1="0" x2="68" y1="44" y2="44" stroke="#fff" stroke-width="1"/>${blobs}</svg></div>`
+  const blobs = pts.map(c => { const [x, y] = P(parseInt(c[0], 36) / 35 * 105, parseInt(c[1], 36) / 35 * 68); return `<circle cx="${f1(x)}" cy="${f1(y)}" r="9" fill="url(#hg)"/>` }).join('')
+  const box = (d0: number, d1: number, a0: number, a1: number) => { const [x0, y0] = P(d0, a0), [x1, y1] = P(d1, a1); return `<rect x="${f1(Math.min(x0, x1))}" y="${f1(Math.min(y0, y1))}" width="${f1(Math.abs(x1 - x0))}" height="${f1(Math.abs(y1 - y0))}"/>` }
+  // the lines: the full pitch has the halfway line + the box he attacks (.msp draws his own); the keeper's the box and the six-yard box
+  const lines = P === KEEP ? box(-1, 16.5, 13.84, 54.16) + box(-1, 5.5, 24.84, 43.16) : `<line x1="0" x2="68" y1="46" y2="46"/>${box(88.5, 106, 13.84, 54.16)}`
+  return `<div class="msp res heat${P === KEEP ? ' gk' : ''}" style="--rc:${tint}"><svg viewBox="0 0 68 92" preserveAspectRatio="none"><defs><radialGradient id="hg"><stop offset="0" stop-color="#15181d" stop-opacity=".3"/><stop offset="1" stop-color="#15181d" stop-opacity="0"/></radialGradient></defs><g fill="none" stroke="#fff" stroke-width="1">${lines}</g>${blobs}${shots}</svg></div>`
+}
+// shots in the zone they came from (the commentary gives a zone, not a spot: [metres from the goal line from–to, across
+// from–to, from the shooter's left], as on the match card), scattered inside it; the app's one vocabulary: ● goal ·
+// ○ on target · × off target · ▪ blocked. faced: shots at his own goal (a keeper's; a goal is one he let in, in red)
+const ZONE: Record<string, number[]> = { six: [1, 5, 27, 41], 'box-c': [6, 15, 24, 44], 'box-l': [6, 16, 14, 23], 'box-r': [6, 16, 45, 54], 'angle-l': [1, 5, 14, 21], 'angle-r': [1, 5, 47, 54], out: [17, 27, 18, 50], long: [29, 38, 20, 48], pen: [11, 11, 34, 34] }
+const rnd = (i: number) => { const v = Math.sin(i * 12.9898) * 43758.5453; return v - Math.floor(v) }
+function shotMarks(list: Dict[], P: Spot, faced: boolean) {
+  const ink = '#15181d'
+  return [...list].sort((a, b) => +(a.k === 'goal') - +(b.k === 'goal')).map((s, i) => {
+    const z = ZONE[s.z] || ZONE['box-c'], dd = z[0] + (z[1] - z[0]) * rnd(s.min * 7 + i + 1), aa = z[2] + (z[3] - z[2]) * rnd(s.min * 3 + i + 5)
+    // the shooter's left is a keeper's right
+    const [x, y] = faced ? P(dd, 68 - aa) : P(105 - dd, aa)
+    if (s.k === 'goal') return `<circle cx="${f1(x)}" cy="${f1(y)}" r="3" fill="${faced ? '#b3323a' : ink}" stroke="#fff" stroke-width="1"/>`
+    if (s.k === 'on') return `<circle cx="${f1(x)}" cy="${f1(y)}" r="2.4" fill="#fff" stroke="${ink}" stroke-width="1.1"/>`
+    if (s.k === 'blk') return `<rect x="${f1(x - 1.6)}" y="${f1(y - 1.6)}" width="3.2" height="3.2" fill="${ink}" stroke="#fff" stroke-width=".5"/>`
+    return `<g stroke="${ink}" stroke-width="1.1" stroke-linecap="round"><line x1="${f1(x - 2)}" y1="${f1(y - 2)}" x2="${f1(x + 2)}" y2="${f1(y + 2)}"/><line x1="${f1(x - 2)}" y1="${f1(y + 2)}" x2="${f1(x + 2)}" y2="${f1(y - 2)}"/></g>`
+  }).join('')
+}
+// names compared without accents or case; else his surname, when only one shooter of his side has it (as src/film/season.ts)
+const plain = (n: unknown) => String(n || '').replace(/ß/g, 'ss').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+function shotsBy(M: Dict, side: string, name: string) {
+  const S = (M.shots as Dict[]).filter(x => x.s === side), last = (n: unknown) => plain(n).split(/\s+/).pop()
+  let mine = S.filter(x => plain(x.who) === plain(name))
+  if (!mine.length) { const L = S.filter(x => last(x.who) === last(name)); if (new Set(L.map(x => x.who)).size === 1) mine = L }
+  return mine
 }
 
 const RES: Record<string, string> = { bigW: '#177a41', W1: '#3a9e62', D: '#EAB308', nil: '#9aa0a8', L1: '#dc5c5e', bigL: '#b3323a' }
@@ -85,7 +119,10 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
     let box = ''
     // the Heatmaps view: the same box, his touches in place of the XI (a game with no map yet falls back to the XI)
     const hm = heat?.[M.id]?.[ID]
-    if (heat && hm) box = heatPitch(hm, RES[res(gf, ga)])
+    // over it his shots at the goal he attacks; a keeper's: every shot he faced while on, at his own goal
+    if (heat && hm) box = GK
+      ? heatPitch(hm, RES[res(gf, ga)], KEEP, shotMarks((M.shots as Dict[]).filter(x => x.s === op && x.min + Math.min(x.ex || 0, 6) * .5 <= end && x.min >= (p.st ? 0 : clock(on?.min))), KEEP, true))
+      : heatPitch(hm, RES[res(gf, ga)], FULL, shotMarks(shotsBy(M, side, name), FULL, false))
     else if (GK && p.st) { const sv = M.stats?.[side]?.saves ?? 0
       box = `<div class="msg">${goal(M, side, end)}<b class="sv">${sv}</b><span>save${sv === 1 ? '' : 's'}</span>${ga === 0 && mins >= 89 ? '<em class="cs">clean sheet</em>' : `<em>${ga} against</em>`}</div>` }
     else if (!p.st) box = `<div class="msp bn res" style="--rc:${RES[res(gf, ga)]}">off the bench<b>${esc(on?.min || '')}</b>${on ? `for ${esc(sur((T.players as Dict[]).find(x => String(x.id) === String(on.off))?.name || ''))}` : ''}</div>`
@@ -99,7 +136,7 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
   const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w)
   return `<div class="msgrid">${all.map(cell).join('')}</div>
     <div class="msleg"><span><b>${starts.length}</b> start${starts.length === 1 ? '' : 's'} · <b>${subs.length}</b> off the bench</span>${GK ? '' : Object.entries(roles).sort((a, b) => b[1].length - a[1].length).map(([r, mds]) => `<span><b>${NAMED[r] || esc(r)}</b> ×${mds.length}</span>`).join('')}
-      <span>↑ came on · ↓ went off · ● goal · ○ assist · <i class="yc"></i><i class="rc"></i> cards${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''}</span>${heat ? '<span>heat: his touches in the game, attacking up (FotMob)</span>' : ''}</div>`
+      <span>↑ came on · ↓ went off · ● goal · ○ assist · <i class="yc"></i><i class="rc"></i> cards${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''}</span>${heat ? `<span>heat: his touches in the game (FotMob), ${GK ? 'the 36 m in front of his goal · the shots he faced, in the zone they came from: <b style="color:#b3323a">●</b> goal against' : 'attacking up · his shots, in the zone they came from: ● goal'} · ○ on target · × off · ▪ blocked</span>` : ''}</div>`
 }
 
 // the switch: one view for every card of the film, remembered; 't' toggles; a pane is drawn when its card comes into view
