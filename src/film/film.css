@@ -330,7 +330,7 @@ body.view-tac .pane-season,body:not(.view-tac) .pane-story{display:none}
 .msp.res i{background:#15181d;opacity:.32}
 .msp.res i.me{background:var(--c);opacity:1}
 .msp i.me b.ar{position:absolute;bottom:-6px;right:-7px;width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.12);font-size:8.5px;line-height:11px;text-align:center;font-weight:900}   /* ↑ came on · ↓ taken off */
-.msp i.me b.up{color:#177a41}.msp i.me b.dn{color:#b3323a}
+.msp i.me b.ar{color:#fff;box-shadow:0 0 0 1.5px #fff}.msp i.me b.up{background:#177a41}.msp i.me b.dn{background:#b3323a}   /* filled, white arrow */
 .msp i.me{width:18px;height:18px;margin:-9px 0 0 -9px;opacity:1;color:var(--ink,#fff);font-style:normal;font-size:9px;font-weight:900;display:grid;place-items:center;box-shadow:0 0 0 1.5px #fff,0 1px 4px rgba(0,0,0,.3);z-index:1}
 .msp.bn,.msp.ns{background:#fff;box-shadow:inset 0 0 0 1px #e3e6ea;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:9px;color:#8a9099;font-weight:700;text-align:center;line-height:1.2}
 .msp.bn::before,.msp.ns::before{display:none}.msp.bn b{font-size:14px;color:#15181d}
