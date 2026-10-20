@@ -90,7 +90,7 @@ function subsHTML(code: string, recs: Dict[], counts: (M: Dict) => boolean) {
   return `<div class="subs"><div class="sec">Substitutions<span class="gsum">${[`<b>${total}</b> changes in ${mine.length} game${mine.length === 1 ? '' : 's'}`, avgFirst != null && `first change at <b>${avgFirst}'</b> on average`,
       ht && `<b>${ht}</b> at half-time`, `subs scored <b>${G}</b>, assisted <b>${A}</b>`].filter(Boolean).map(c => `<span class="nw">${c}</span>`).join(' · ')}</span></div>
     ${chips('Most used off the bench', top)}${chips('Most taken off', offs)}${chips('Most repeated change', swaps)}
-    <div class="sgs">${games.slice(0, 8).join('')}</div></div>`
+    <div class="hsw"><div class="sgs hs">${games.join('')}</div><button class="hsc l" data-dir="-1" aria-label="Later games">‹</button><button class="hsc r" data-dir="1" aria-label="Earlier games">›</button></div></div>`
 }
 
 // a Fantacalcio mark under a box, as the player cards show it (green ≥ 7, red < 6)

@@ -3,7 +3,7 @@
 // and the league's match cards (who played, minutes, goals, assists, cards, saves, shots faced); Serie A adds the
 // Fantacalcio mark under each game. ?p=<espnId> opens on that player (the Squad tab's tiles link here).
 import '../film/film.css'
-import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
+import { initFilm, initHighlight, initTip, initLinks, initNav, initHScroll } from '../film/chrome'
 import { scorerCard, keeperCard, matchTip, avgVote, esc, ord, logo, n2, gamesN, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
 import { loadCoaches, coachCard, stints, headOf } from '../film/coach'
 type Dict = Record<string, any>
@@ -190,6 +190,7 @@ function jumpHTML(q: string) {
 }
 
 initLinks(film)
+initHScroll(film)
 fitBios(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
 initTip(film, '[data-gid]', el => { const x = P[[...film.children].indexOf(el.closest('.card')!)]; return x.kind === 'out' ? matchTip(CTX, x.d, el.dataset.gid!) : '' })

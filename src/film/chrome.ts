@@ -158,6 +158,20 @@ export function initLinks(film: HTMLElement) {
 // the films' shared navigation, centred in the top bar (it replaces the old "← Season Tower" pill): Season · Teams ·
 // Matches · Scorers · Keepers, the current one filled in its colour; every tab keeps the league on screen
 // (lg = a league code, or 'ALL') and opens its film at card 1
+// a sideways-scrolling row with ‹ › buttons — <div class="hsw"><div class="hs">…</div><button class="hsc l" data-dir="-1">
+// <button class="hsc r" data-dir="1"></div>: a click scrolls most of a view; each button hides at its end. Sizes come
+// late (cards render lazily: content-visibility), so a ResizeObserver re-checks every row when it gets laid out
+export function initHScroll(root: HTMLElement) {
+  const sync = (s: HTMLElement) => { const w = s.parentElement!
+    w.querySelector('.hsc.l')?.classList.toggle('off', s.scrollLeft < 4)
+    w.querySelector('.hsc.r')?.classList.toggle('off', s.scrollLeft + s.clientWidth > s.scrollWidth - 4) }
+  root.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.hsc'); if (!b) return
+    const s = b.parentElement!.querySelector<HTMLElement>('.hs')!; s.scrollBy({ left: +b.dataset.dir! * s.clientWidth * .8, behavior: 'smooth' }) })
+  root.addEventListener('scroll', e => { const s = e.target as HTMLElement; if (s.classList?.contains('hs')) sync(s) }, true)
+  const ro = new ResizeObserver(es => es.forEach(e => sync(e.target as HTMLElement)))
+  root.querySelectorAll<HTMLElement>('.hs').forEach(s => ro.observe(s))
+}
+
 export function initNav(self: 'teams' | 'matches' | 'scorers' | 'keepers' | 'coaches', lg: string, season = '2026-27') {
   const all = !lg || lg === 'ALL'
   const I = {

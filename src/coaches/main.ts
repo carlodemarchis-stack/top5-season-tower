@@ -4,7 +4,7 @@
 // Data: src/data/coaches-<LG>-<season>.js (scripts/update-coaches.mjs, FotMob), the match cards, the team cards (table),
 // the schedules (fixtures, colours); Serie A adds the coach's Fantacalcio mark (votes-ITA `c`).
 import '../film/film.css'
-import { initFilm, initHighlight, initLinks, initNav } from '../film/chrome'
+import { initFilm, initHighlight, initLinks, initNav, initHScroll } from '../film/chrome'
 import { esc, LEAGUE_NAME, fitBios, type Ctx } from '../film/cards'
 import { loadCoaches, coachCard, stints, headOf, coachHref } from '../film/coach'
 type Dict = Record<string, any>
@@ -99,6 +99,7 @@ function jumpHTML(q: string) {
 }
 
 initLinks(film)
+initHScroll(film)
 fitBios(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
 initNav('coaches', LIST, SEASON)
