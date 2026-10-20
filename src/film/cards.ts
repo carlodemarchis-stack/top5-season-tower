@@ -141,7 +141,7 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
         : `<div class="glist"><div class="sec">The goals</div><div class="goals"><span style="color:#9aa0a8;font-size:12px">${opt.noGoals}</span></div></div>`
         // his shots on one goal, at the bottom right — when the match reports have them
         return p.at?.length ? `<div class="gsplit">${list}<div class="shotg"><div class="sec">His shots${shotLegend(p.at)}</div>${shotGoal(p.at, c2, p.espnId)}</div></div>` : list })()}
-      ${opt.story ? `</div><div class="pane-tac" data-story="${p.lg}|${p.team}|${p.espnId}"></div>` : ''}
+      ${opt.story ? `</div><div class="pane-story" data-story="${p.lg}|${p.team}|${p.espnId}"></div>` : ''}
     </div>
   </section>`
 }
@@ -316,7 +316,7 @@ export function keeperCard(ctx: Ctx, k: Dict, opt: CardOpt = {}) {
           <div class="gleg"><span><i style="background:#fff;border:2.4px solid ${c}"></i>saved</span><span><i style="background:${goalInk(c)}"></i>goal</span><span style="color:#9aa0a8">· the shooter's view · each zone: saved / faced</span></div></div>
         <div><div class="sec">The goals against him · ${k.GA}</div><div class="clist">${conceded || '<span style="color:#9aa0a8;font-size:12px">none</span>'}</div></div>
       </div>
-      ${opt.story ? `</div><div class="pane-tac" data-story="${k.lg}|${k.team}|${k.id}"></div>` : ''}
+      ${opt.story ? `</div><div class="pane-story" data-story="${k.lg}|${k.team}|${k.id}"></div>` : ''}
     </div>
   </section>`
 }

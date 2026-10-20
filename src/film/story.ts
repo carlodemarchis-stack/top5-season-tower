@@ -171,12 +171,12 @@ export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view')
   }
   const near = (p: HTMLElement) => { const r = p.getBoundingClientRect(); return r.right > -innerWidth && r.left < innerWidth * 2 }
   const io = new IntersectionObserver(es => { if (view !== 'season') es.forEach(e => e.isIntersecting && fill(e.target as HTMLElement)) }, { rootMargin: '0px 100% 0px 100%' })
-  film.querySelectorAll<HTMLElement>('.pane-tac').forEach(p => io.observe(p))
+  film.querySelectorAll<HTMLElement>('.pane-story').forEach(p => io.observe(p))
   const set = (v: string) => {
     view = v; document.body.classList.toggle('view-tac', v !== 'season')
     film.querySelectorAll<HTMLElement>('.tacsw button').forEach(b => b.classList.toggle('on', b.dataset.view === v))
     try { localStorage.setItem(key, v) } catch { }
-    if (v !== 'season') film.querySelectorAll<HTMLElement>('.pane-tac').forEach(p => { if (near(p)) fill(p) })
+    if (v !== 'season') film.querySelectorAll<HTMLElement>('.pane-story').forEach(p => { if (near(p)) fill(p) })
   }
   film.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.tacsw button'); if (b) { e.stopPropagation(); set(b.dataset.view!) } })
   // 't' cycles Season → Tactical → Heatmaps

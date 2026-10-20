@@ -313,8 +313,9 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 .tacsw button.on{background:var(--c);color:var(--ink,#fff)}   /* white on the club colour unless it is really pale (like the photo panel) */
 .tacsw.corner{position:absolute;top:8px;right:14px;z-index:5}
 .pane-season{display:flex;flex-direction:column;gap:clamp(8px,1.5vh,18px);flex:1 1 auto;min-height:0}
-.pane-tac{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;padding-top:4px}
-body.view-tac .pane-season,body:not(.view-tac) .pane-tac{display:none}
+/* the player cards' Tactical / Heatmaps pane (not .pane-tac: that is the team cards' Tactical tab, which shares this file) */
+.pane-story{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;padding-top:4px}
+body.view-tac .pane-season,body:not(.view-tac) .pane-story{display:none}
 .msgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:12px 6px}
 .msload{color:#8a9099;font-size:13px}
 .msroles{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:12px;color:#4b5058}.msroles em{font-style:normal;color:#9aa0a8;font-size:11px}
