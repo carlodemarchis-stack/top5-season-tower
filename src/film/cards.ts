@@ -86,8 +86,9 @@ export function avgVote(ctx: Ctx, id: string) {
   return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 100) / 100 : null
 }
 
-// the Season | Tactical switch, top right of a player card (no height taken from the card); src/film/story.ts fills the
-// Tactical pane — every game of his club: where he lined up, role + formation, minutes, goals, assists, cards
+// the Season | Tactical | Heatmaps switch on a player card (no height taken from the card); src/film/story.ts fills the
+// pane — every game of his club: where he lined up (or, Heatmaps, where he touched the ball), role + formation,
+// minutes, goals, assists, cards
 // on the club line, right-aligned (it stays in both views); a card without a club line (squad film) floats it top right
 export const tacSwitch = (corner = false) => `<div class="tacsw${corner ? ' corner' : ''}" role="tablist"><button data-view="season" role="tab">Season</button><button data-view="tac" role="tab">Tactical</button><button data-view="heat" role="tab">Heatmaps</button></div>`
 
