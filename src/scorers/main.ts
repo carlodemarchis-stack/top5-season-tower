@@ -72,4 +72,4 @@ initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid
 
 initTip(film, '[data-gid]', el => matchTip(CTX, P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!))
 initNav('scorers', LIST, SEASON)
-initFilm({ count: P.length, key: 'top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON) + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'scorers.html' })
+initFilm({ label: i => P[i].name, count: P.length, key: 'top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON) + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'scorers.html' })

@@ -37,6 +37,9 @@ a.lgb{text-decoration:none}
 #counter{min-width:112px;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--dim);cursor:pointer;font:inherit;font-size:12px;font-variant-numeric:tabular-nums}
 #counter:hover{color:#15181d}
 #counter b{color:#15181d}
+#counter.named{width:280px;display:inline-flex;align-items:center;gap:10px;text-align:left}   /* a fixed width: the bar's buttons stay put whatever the name */
+#counter .cn{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800;color:#15181d;border-left:1px solid var(--line);padding-left:10px}
+@media (max-width: 760px){ #counter.named{width:min(46vw,200px)} }
 .mod{position:fixed;inset:0;z-index:60;background:rgba(21,24,29,.45);backdrop-filter:blur(6px);display:none;place-items:center;padding:22px}
 .mod.on{display:grid}
 .mbox{width:min(720px,94vw);max-height:84vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.18)}

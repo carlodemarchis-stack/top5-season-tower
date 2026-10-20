@@ -7,6 +7,7 @@ type Opts = {
   onPaint: (i: number) => void                  // page-specific: context line, top-bar marks, social meta
   jumpHTML: (q: string) => string               // page-specific search results: rows are .jrow[data-i]
   self: string                                  // this page's file, left out of the app list
+  label?: (i: number) => string                 // a name beside the counter (fixed width, so the bar's buttons never move)
 }
 const APPS: [string, string, string, string][] = [
   ['Season Tower', 'This app · the top-5 leagues, a whole season on one screen', '#0B8A3D', './#ALL/2026-27'],
@@ -33,7 +34,8 @@ export function initFilm(o: Opts) {
 
   let cur = 0, playing: number | null = null, target = -1
   function paint() {
-    $('counter').innerHTML = `<b>${cur + 1}</b> / ${o.count}`
+    $('counter').innerHTML = `<b>${cur + 1}</b> / ${o.count}${o.label ? `<span class="cn">${o.label(cur).replace(/[&<>"]/g, '')}</span>` : ''}`
+    $('counter').classList.toggle('named', !!o.label)
     history.replaceState(null, '', '#' + (cur + 1))
     try { localStorage.setItem(o.key, String(cur)) } catch { }
     o.onPaint(cur)
