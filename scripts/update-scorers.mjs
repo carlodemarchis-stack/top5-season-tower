@@ -83,12 +83,35 @@ const league = {}
 for (const lg of Object.keys(LEAGUES)) league[lg] = await loadLeague(lg, SEASON)
 
 const codeFor = makeCodeFor(league, SEASON, errors)
+const espnTeam = {}   // 'ITA:TOR' → ESPN's team object (for a scorer only our match cards know about yet)
 if (SEASON === CUR) for (const lg of Object.keys(LEAGUES)) {
   const r = await get(espn(lg, '/teams'))
-  for (const { team } of r.sports[0].leagues[0].teams) codeFor(lg, team)
+  for (const { team } of r.sports[0].leagues[0].teams) { const c = codeFor(lg, team); if (c) espnTeam[`${lg}:${c}`] = team }
 }
 
 const all = (await Promise.all(Object.keys(LEAGUES).map(leaders))).flat()
+// ESPN's season leaders run behind its match reports (Giovanni Simeone's two goals on a Monday night, missing the next
+// morning): count every scorer in our match cards too — one missing from the leaders is added, one with fewer goals
+// there is raised to the reports' count (the per-match lines below then verify every goal)
+if (SEASON === CUR) for (const lg of Object.keys(LEAGUES)) {
+  const tally = new Map()
+  for (const f of fs.readdirSync(DATA).filter(f => f.startsWith(`matches-${lg}-${SEASON}-md`)).sort()) {
+    const ms = JSON.parse(fs.readFileSync(path.join(DATA, f), 'utf8').match(/export const MATCHES = (\[[\s\S]*\])/)[1])
+    for (const m of ms) {
+      for (const g of m.goals) if (g.kind !== 'og' && g.byId) { const t = tally.get(String(g.byId)) || { name: g.by, code: m[g.s], G: 0, A: 0, at: {} }; t.G++; t.code = m[g.s]; t.at[m[g.s]] = (t.at[m[g.s]] || 0) + 1; tally.set(String(g.byId), t) }
+      for (const [side, T] of [['h', m.home], ['a', m.away]]) for (const p of T.players) { const a = p.ev.filter(e => e[0] === 'ast').length; if (a) { const t = tally.get(String(p.id)) || { name: p.name, code: m[side], G: 0, A: 0, at: {} }; t.A += a; tally.set(String(p.id), t) } }
+    }
+  }
+  for (const [id, t] of tally) {
+    if (!t.G) continue
+    const have = all.find(p => p.espnId === id)
+    if (have) { if (t.G > have.G) { warns.push(`${have.name} (${lg}): ${t.G} goals in the match reports, ${have.G} in ESPN's leaders — using ${t.G}`); have.G = t.G; have.A = Math.max(have.A, t.A) } continue }
+    // a new name gets a card for his current club, so only the goals there (Pablo García: one at Betis, one at Racing)
+    const team = espnTeam[`${lg}:${t.code}`], G = t.at[t.code] || 0; if (!team || !G) continue
+    warns.push(`${t.name} (${lg} ${t.code}): ${G} goals in the match reports, not yet in ESPN's leaders — added`)
+    all.push({ espnId: id, name: t.name, jersey: null, lg, espnTeam: team.id, espnTeamObj: team, espnAbbr: team.abbreviation, G, A: Object.keys(t.at).length > 1 ? 0 : t.A, APP: null })
+  }
+}
 all.sort((a, b) => b.G - a.G || b.A - a.A || (a.APP ?? 99) - (b.APP ?? 99))
 const cut = all[Math.min(TOP_N, all.length) - 1].G
 const picked = all.filter(p => p.G >= cut)

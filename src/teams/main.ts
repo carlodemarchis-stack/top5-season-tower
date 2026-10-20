@@ -127,8 +127,10 @@ function tacPitch(t: Dict, M: Dict) {
   const c = TEAMS_OF[t.lg][t.code]?.primary || '#555', ink = lum(c) > 0.55 ? '#15181d' : '#fff', ring = lum(c) > 0.75 ? '#c9ced4' : 'rgba(255,255,255,.9)'
   const rows = rowsOf(T), n = rows.length
   // a row of four or more: every other name drops a line, so neighbours' names can't run into each other
-  const dot = (p: Dict, x: number, y: number, low = false) => `<div class="tp${low ? ' lo' : ''}" style="left:${x}%;top:${y}%"><i style="background:${c};color:${ink};box-shadow:0 0 0 1.5px ${ring}">${esc(p.n || '')}</i><span>${esc(surnameOf(p.name))}</span></div>`
-  const xi = rows.map((r, i) => r.map((p, j) => dot(p, (j + 1) / (r.length + 1) * 100, 90 - i * (80 / Math.max(1, n - 1)), r.length >= 4 && j % 2 === 1))).flat().join('')
+  // and a long surname there keeps its last word only ("Holmgren Pedersen" → "Pedersen"; "de Roon" stays whole)
+  const label = (n: string, crowded: boolean) => { const s = surnameOf(n); return crowded && s.length > 10 && /\s/.test(s) ? s.split(/\s+/).pop()! : s }
+  const dot = (p: Dict, x: number, y: number, crowded = false, low = false) => `<div class="tp${low ? ' lo' : ''}" style="left:${x}%;top:${y}%"><i style="background:${c};color:${ink};box-shadow:0 0 0 1.5px ${ring}">${esc(p.n || '')}</i><span>${esc(label(p.name, crowded))}</span></div>`
+  const xi = rows.map((r, i) => r.map((p, j) => dot(p, (j + 1) / (r.length + 1) * 100, 90 - i * (80 / Math.max(1, n - 1)), r.length >= 4, r.length >= 4 && j % 2 === 1))).flat().join('')
   // the bench: who came on (minute, for whom), then the unused substitutes — numbers from the squad list
   const jersey: Record<string, string> = Object.fromEntries((t.squad || []).map((p: Dict) => [String(p.espnId), p.jersey]))
   const subs = (M.subs as Dict[]).filter(s => T.players.some((p: Dict) => String(p.id) === String(s.on)))
