@@ -128,7 +128,8 @@ export function initHighlight(film: HTMLElement, hoverSel: string, partners: (ke
 // a match card that follows the hovered / tapped element (sel); render(el) returns its HTML ('' = nothing to show).
 // It opens above the element (below when there is no room), takes the card's club colour, closes on leave / scroll.
 export function initTip(film: HTMLElement, sel: string, render: (el: HTMLElement) => string) {
-  const tip = document.createElement('div'); tip.id = 'mtip'; document.body.appendChild(tip)
+  // one card element for the page, shared when a film has more than one kind of hover card
+  const tip = document.getElementById('mtip') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'mtip' }))
   let cur: HTMLElement | null = null
   const show = (el: HTMLElement) => {
     const card = el.closest<HTMLElement>('.card'); const html = card ? render(el) : ''; if (!html) return hide()

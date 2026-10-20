@@ -6,6 +6,7 @@
 import { rowsOf } from './pitch'
 import { esc, type Ctx } from './cards'
 import { loadCoaches, stints, headOf, coachOf, surname } from './coach'
+import { initTip } from './chrome'
 type Dict = Record<string, any>
 
 const MATCH_FILES = import.meta.glob('../data/matches-*-*-md*.js')
@@ -170,7 +171,9 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
 // cid = the coach; his games are the ones he (or, for the head coach, a stand-in) was on the bench for — the others
 // are greyed with the coach then. On the pitch: the XI as numbered dots, ↓ on each player he took off; under it the
 // formation, his changes, his bookings and (Serie A) his Fantacalcio mark
-function coachStoryHTML(ctx: Ctx, lg: string, code: string, cid: string, recs: Dict[], C: Dict, marks: Dict) {
+// the hover card of a dot in the coach's XIs (match id|player id → its HTML), filled as each pane is drawn
+const XI_TIPS = new Map<string, string>()
+function coachStoryHTML(ctx: Ctx, lg: string, code: string, cid: string, recs: Dict[], C: Dict, marks: Dict, run: Dict = {}) {
   const club = ctx.TEAMS[lg]?.[code] || {}, mine = recs.filter(M => M.h === code || M.a === code), byId = Object.fromEntries(mine.map(M => [M.id, M]))
   const played = mine.map(M => { const me = M.h === code ? 'h' : 'a', op = me === 'h' ? 'a' : 'h'; return { id: M.id, md: M.md, opp: M[op], ha: me === 'h' ? 'H' : 'A', gf: M.score[me], ga: M.score[op] } })
   const S = stints(C, code, played), H = headOf(C, code, S), former = cid !== H.id
@@ -178,6 +181,10 @@ function coachStoryHTML(ctx: Ctx, lg: string, code: string, cid: string, recs: D
   const href = (md: number, id: string) => ctx.SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
   const fcount: Record<string, number> = {}
   let nGames = 0, nSubs = 0, anyFacts = false   // no booking and no mark all season: the table's last row is left out
+  // how many of his games each player started (for the hover card)
+  const his = mine.filter(M => counts(coachOf(C, code, M.h === code ? M.a : M.h, M.h === code ? 'H' : 'A'), M.md))
+  const starts: Record<string, number> = {}
+  for (const M of his) for (const p of (M.h === code ? M.home : M.away).players as Dict[]) if (p.st) starts[p.id] = (starts[p.id] || 0) + 1
   const cell = (g: Dict) => {
     const M = byId[g.id], at = g.ha === 'A' ? '@' : ''
     if (!M) return `<div class="msc up"><div class="mst"><span>${at}${esc(g.opp)}</span></div><div class="msp"></div></div>`
@@ -189,7 +196,19 @@ function coachStoryHTML(ctx: Ctx, lg: string, code: string, cid: string, recs: D
     const P: Record<string, Dict> = Object.fromEntries((T.players as Dict[]).map(p => [String(p.id), p]))
     const subs = (M.subs as Dict[]).filter(x => P[String(x.on)]); nSubs += subs.length
     const offs = new Set(subs.map(x => String(x.off)))
-    const dots = spots(T).map(({ p, x, y }) => `<i style="left:${x}%;top:${y}%" title="${esc(p.name)}">${esc(p.n)}${offs.has(String(p.id)) ? '<b class="ar">↓</b>' : ''}</i>`).join('')
+    const rows = rowsOf(T)
+    const dots = spots(T).map(({ p, x, y }) => {
+      // his game, for the hover card: role in the formation, minutes (or who replaced him), goals, assists, cards, km
+      const pid = String(p.id), sub = subs.find(x => String(x.off) === pid), red = (p.ev as string[][]).find(e => e[0] === 'rc')
+      const G = (M.goals as Dict[]).filter(q => String(q.byId) === pid && q.s === side && q.kind !== 'og').length, A = (p.ev as string[][]).filter(e => e[0] === 'ast').length
+      const yc = (p.ev as string[][]).some(e => e[0] === 'yc'), km = run[M.id]?.[pid] as number[] | undefined, mk = ctx.VOTES[pid]?.[M.md]
+      const role = NAMED[slotRole(rows, pid) || ''] || ROLE[p.pos] || ''
+      const st = (n: number | string, w: string) => `<span><b>${n}</b> ${w}</span>`
+      XI_TIPS.set(`${M.id}|${pid}`, `<div class="mt-top">MD ${M.md} · ${at ? 'at' : 'vs'} ${esc(g.opp)} · ${gf}-${ga}</div>
+        <div class="mt-me" style="margin-top:0;padding-top:0;border-top:0"><b>${esc(p.name)}</b> · #${esc(p.n)}${role ? ` · ${role}` : ''} · ${sub ? `replaced by <b>${esc(sur(P[String(sub.on)]?.name || ''))}</b> at <b>${esc(sub.min)}</b>` : red ? `sent off at <b>${esc(red[1])}</b>` : '<b>90′</b>'}</div>
+        <div class="mt-stats">${st(G, `goal${G === 1 ? '' : 's'}`)}${st(A, `assist${A === 1 ? '' : 's'}`)}${km ? st(km[0].toFixed(1), 'km') : ''}${mk != null ? st(mk, 'mark') : ''}${yc || red ? `<span><i class="${red ? 'rc' : 'yc'}"></i></span>` : ''}</div>
+        <div class="mt-foot">started ${starts[pid] || 0} of his ${his.length} games</div>`)
+      return `<i style="left:${x}%;top:${y}%" data-pid="${pid}">${esc(p.n)}${offs.has(pid) ? '<b class="ar">↓</b>' : ''}</i>` }).join('')
     const bk = (C.cards?.[`${M.h}-${M.a}`] || []).filter((x: string[]) => x[0] === side && who === cid)
     const facts = `${bk.some((x: string[]) => x[1] === 'y') ? '<i class="yc"></i>' : ''}${bk.some((x: string[]) => x[1] === 'r') ? '<i class="rc"></i>' : ''}`
     const mk = who === cid ? marks?.[M.md] : null, mark = mk != null ? `<b class="mk${mk >= 7 ? ' hi' : mk < 6 ? ' lo' : ''}">${mk}</b>` : ''
@@ -215,8 +234,8 @@ export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view')
     const [lg, code, id] = pane.dataset.story!.split('|')
     if (!pane.innerHTML) pane.innerHTML = '<p class="msload">Loading the match cards…</p>'
     // a coach card: his Tactical view (the same for Heatmaps — a coach has none)
-    if (id.startsWith('coach:')) { const [recs, C] = await Promise.all([recsOf(lg, ctx.SEASON), loadCoaches(lg, ctx.SEASON)])
-      if (pane.dataset.done === want && C) pane.innerHTML = coachStoryHTML(ctx, lg, code, id.slice(6), recs, C, JSON.parse(pane.dataset.marks || '{}')); return }
+    if (id.startsWith('coach:')) { const [recs, C, run] = await Promise.all([recsOf(lg, ctx.SEASON), loadCoaches(lg, ctx.SEASON), runOf(lg, ctx.SEASON)])
+      if (pane.dataset.done === want && C) pane.innerHTML = coachStoryHTML(ctx, lg, code, id.slice(6), recs, C, JSON.parse(pane.dataset.marks || '{}'), run); return }
     const [recs, heat, run] = await Promise.all([recsOf(lg, ctx.SEASON), want === 'heat' ? heatOf(lg, ctx.SEASON) : Promise.resolve(null), runOf(lg, ctx.SEASON)])
     if (pane.dataset.done === want) pane.innerHTML = storyHTML(ctx, lg, code, id, recs, heat, run)
   }
@@ -231,6 +250,13 @@ export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view')
     if (v !== 'season') film.querySelectorAll<HTMLElement>('.pane-story').forEach(p => { if (near(p)) fill(p) })
   }
   film.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.tacsw button'); if (b) { e.stopPropagation(); set(b.dataset.view!) } })
+  // a coach's XIs: hovering a player keeps him alone in every game of the grid, and opens his game's card
+  film.addEventListener('mouseover', e => {
+    const dot = (e.target as HTMLElement).closest<HTMLElement>('.msp.xi i[data-pid]'), grid = (e.target as HTMLElement).closest<HTMLElement>('.msgrid.xig')
+    film.querySelectorAll('.msgrid.hlp').forEach(g => { if (g !== grid || !dot) { g.classList.remove('hlp'); g.querySelectorAll('.on').forEach(x => x.classList.remove('on')) } })
+    if (dot && grid) { grid.classList.add('hlp'); grid.querySelectorAll('i.on').forEach(x => x.classList.remove('on')); grid.querySelectorAll(`i[data-pid="${dot.dataset.pid}"]`).forEach(x => x.classList.add('on')) }
+  })
+  initTip(film, '.msp.xi i[data-pid]', el => XI_TIPS.get(`${el.closest<HTMLElement>('[data-mid]')?.dataset.mid}|${el.dataset.pid}`) || '')
   // 't' cycles Season → Tactical → Heatmaps
   addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector('.mod.on') && !e.metaKey && !e.ctrlKey && !(e.target as HTMLElement).closest?.('input')) set(VIEWS[(VIEWS.indexOf(view) + 1) % VIEWS.length]) })
   set(view)
