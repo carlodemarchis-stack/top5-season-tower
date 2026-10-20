@@ -103,8 +103,8 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
   const t = p.teamLine
   const goals = p.matches.flatMap((m: Dict) => m.goals.map((g: Dict) => ({ ...g, m })))
     .map((g: Dict) => `<span class="g" data-mid="${g.m.id}"><b>${esc(g.min)}</b> ${g.m.ha === 'H' ? 'vs' : 'at'} ${esc(g.m.opp)}${g.kind === 'pen' ? '<em>PEN</em>' : g.kind === 'head' ? '<em>HEAD</em>' : g.kind === 'fk' ? '<em>FK</em>' : ''}${g.ast ? ` · ast ${esc(g.ast)}` : ''}</span>`).join('')
-  // no goals yet (squad film): the section lists his assists instead — minute, opponent, who scored
-  const assists = goals ? '' : p.matches.flatMap((m: Dict) => (m.assists || []).map((a: Dict) =>
+  // his assists — minute, opponent, who scored: under the goals, or on their own when he has none yet (squad film)
+  const assists = p.matches.flatMap((m: Dict) => (m.assists || []).map((a: Dict) =>
     `<span class="g" data-mid="${m.id}"><b>${esc(a.min)}</b> ${m.ha === 'H' ? 'vs' : 'at'} ${esc(m.opp)}${a.to ? ` · for ${esc(a.to)}` : ''}</span>`)).join('')
   const minPerGoal = p.G ? Math.round(p.min / p.G) : null
   const [bigN, bigW] = opt.big || [p.G, `goal${p.G === 1 ? '' : 's'}`]
@@ -134,7 +134,9 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
       ${strip2(ctx, p, club, !goals && opt.noGoals != null)}
       ${(() => { const list = goals || opt.noGoals == null ? `<div class="glist">
         <div class="sec">The goals</div>
-        <div class="goals">${goals}</div>
+        <div class="goals">${goals}</div>${goals && assists ? `
+        <div class="sec">The assists</div>
+        <div class="goals">${assists}</div>` : ''}
       </div>` : assists ? `<div class="glist"><div class="sec">The assists</div><div class="goals">${assists}</div></div>`
         : `<div class="glist"><div class="sec">The goals</div><div class="goals"><span style="color:#9aa0a8;font-size:12px">${opt.noGoals}</span></div></div>`
         // his shots on one goal, at the bottom right — when the match reports have them

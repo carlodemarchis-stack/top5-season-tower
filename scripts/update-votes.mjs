@@ -24,6 +24,8 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 const readJS = (f, name) => { const m = fs.readFileSync(f, 'utf8').match(new RegExp(`export const ${name} = ([\\[{][\\s\\S]*[\\]}])`)); return m ? JSON.parse(m[1]) : null }
 const TR = { 'ø': 'o', 'Ø': 'o', 'æ': 'ae', 'Æ': 'ae', 'ł': 'l', 'Ł': 'l', 'đ': 'd', 'Đ': 'd', 'ß': 'ss', 'ı': 'i', 'ð': 'd', 'þ': 'th' }
 const norm = (s) => String(s || '').replace(/['’]/g, '').replace(/[øØæÆłŁđĐßıðþ]/g, c => TR[c]).normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim()
+// a mark as the page writes it: "6", "5,5" — and sometimes "55" for 5,5 (a slip on fantacalcio.it: marks run 0–10)
+const markOf = (g) => !g || !/^\d+(,\d+)?$/.test(g) ? null : /^\d\d$/.test(g) && +g > 10 ? +g / 10 : +g.replace(',', '.')
 const decode = (s) => s.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d)).replace(/&amp;/g, '&').replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"')
 
 // our clubs (schedule names) + per club the squad and everyone who appeared for it in our match reports
@@ -77,7 +79,7 @@ for (const md of todo) {
     for (const row of block.split('class="player-name player-link"').slice(1)) {
       const id = (row.match(/\/(\d+)"/) || [])[1], name = decode((row.match(/<span>([^<]+)<\/span>/) || [])[1] || '').trim()
       const grade = (row.match(/class="player-grade[^"]*" data-value="([^"]*)"/) || [])[1]
-      const vote = grade && /^\d+(,\d+)?$/.test(grade) ? +grade.replace(',', '.') : null
+      const vote = markOf(grade)
       if (vote == null) continue   // s.v. — not rated (too few minutes)
       let espnId = ids[id]
       if (!espnId) { const p = matchPlayer(code, name); if (p) { espnId = p.espnId; ids[id] = espnId } }
@@ -87,7 +89,7 @@ for (const md of todo) {
     // the coach's row (role "all", no player link): one mark per club and match day
     for (const part of block.split('class="role" data-value="all"').slice(1)) {
       const row = part.split('</tr>')[0], grade = (row.match(/class="player-grade[^"]*" data-value="([^"]*)"/) || [])[1]
-      if (grade && /^\d+(,\d+)?$/.test(grade)) { (c[code] ||= {})[md] = +grade.replace(',', '.'); n++ }
+      if (markOf(grade) != null) { (c[code] ||= {})[md] = markOf(grade); n++ }
     }
   }
   console.log(`MD${md}: ${n} marks`)
