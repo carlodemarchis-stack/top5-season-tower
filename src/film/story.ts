@@ -46,7 +46,9 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[])
   const roleOf = (p: Dict, T: Dict) => (p.pos && p.pos.length > 1 && SHORT[p.pos]) || slotRole(rowsOf(T), String(p.id)) || SHORT[p.pos] || p.pos || ''
   const spots = (T: Dict) => { const rows = rowsOf(T), n = rows.length
     return rows.flatMap((r, i) => r.map((p, j) => ({ p, x: (j + 1) / (r.length + 1) * 100, y: 90 - i * (80 / Math.max(1, n - 1)) }))) }
-  const pitch = (T: Dict) => `<div class="msp">${spots(T).map(({ p, x, y }) => String(p.id) === ID ? `<i class="me" style="left:${x}%;top:${y}%">${esc(p.n)}</i>` : `<i style="left:${x}%;top:${y}%"></i>`).join('')}</div>`
+  // a start's pitch takes the match's result colour (as on the season strip), so the row reads as the run of results;
+  // his team-mates are neutral dots, he is the big one in the club colour
+  const pitch = (T: Dict, tint: string) => `<div class="msp res" style="--rc:${tint}">${spots(T).map(({ p, x, y }) => String(p.id) === ID ? `<i class="me" style="left:${x}%;top:${y}%">${esc(p.n)}</i>` : `<i style="left:${x}%;top:${y}%"></i>`).join('')}</div>`
   const goal = (M: Dict, side: string, until: number) => {
     const op = side === 'h' ? 'a' : 'h', faced = (M.shots as Dict[]).filter(x => x.s === op && (x.k === 'on' || x.k === 'goal') && x.min + Math.min(x.ex || 0, 6) * .5 <= until && PL[x.p])
     return `<svg viewBox="0 0 100 44"><path d="M6 40V8H94V40" fill="none" stroke="#15181d" stroke-width="2.4"/><line x1="0" x2="100" y1="40" y2="40" stroke="#c9ced4"/>${faced.map((x, i) => {
@@ -72,8 +74,8 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[])
     let box: string
     if (GK && p.st) { const sv = M.stats?.[side]?.saves ?? 0
       box = `<div class="msg">${goal(M, side, end)}<b class="sv">${sv}</b><span>save${sv === 1 ? '' : 's'}</span>${ga === 0 && mins >= 89 ? '<em class="cs">clean sheet</em>' : `<em>${ga} against</em>`}</div>` }
-    else if (!p.st) box = `<div class="msp bn">off the bench<b>${esc(on?.min || '')}</b>${on ? `for ${esc(sur((T.players as Dict[]).find(x => String(x.id) === String(on.off))?.name || ''))}` : ''}</div>`
-    else box = pitch(T)
+    else if (!p.st) box = `<div class="msp bn res" style="--rc:${RES[res(gf, ga)]}">off the bench<b>${esc(on?.min || '')}</b>${on ? `for ${esc(sur((T.players as Dict[]).find(x => String(x.id) === String(on.off))?.name || ''))}` : ''}</div>`
+    else box = pitch(T, RES[res(gf, ga)])
     return `<div class="msc${p.st ? ' st' : ' sub'}" data-mid="${M.id}"${href(M.md, M.id)} title="${esc(tip)}">${top}${box}<div class="msf">${esc(T.form || '')}</div><div class="msr"><b>${GK ? 'GK' : p.st ? esc(roleOf(p, T)) : 'SUB'}</b> ${minTxt}</div><div class="msl">${facts || '&nbsp;'}</div></div>`
   }
   const starts = mine.filter(M => (M.h === code ? M.home : M.away).players.some((x: Dict) => String(x.id) === ID && x.st))
