@@ -333,8 +333,7 @@ body.view-tac .pane-season,body:not(.view-tac) .pane-story{display:none}
 .msp.res i.me{background:var(--c);opacity:1}
 .msp i.me b.ar{position:absolute;bottom:-6px;right:-7px;width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.12);font-size:8.5px;line-height:11px;text-align:center;font-weight:900}   /* ↑ came on · ↓ taken off */
 .msp i.me b.ar{color:#fff;box-shadow:0 0 0 1.5px #fff}.msp.xi{container-type:inline-size}   /* a coach's XI: dots sized to the pitch, numbers where there is room */
-.msp.res.xi i{width:min(14px,15cqw);height:min(14px,15cqw);margin:0;transform:translate(-50%,-50%);background:var(--c);opacity:1;color:var(--ink,#fff);font-style:normal;font-size:7px;font-weight:900;letter-spacing:-.04em;display:grid;place-items:center;box-shadow:0 0 0 1px #fff}
-@container (max-width: 74px){ .msp.res.xi i{font-size:0} }
+.msp.res.xi i{width:min(15px,16.5cqw);height:min(15px,16.5cqw);margin:0;transform:translate(-50%,-50%);background:var(--c);opacity:1;color:var(--ink,#fff);font-style:normal;font-size:min(7.5px,9.5cqw);font-weight:900;letter-spacing:-.05em;display:grid;place-items:center;box-shadow:0 0 0 1px #fff}
 @media (min-width: 1600px){ .msgrid.xig{grid-template-columns:repeat(11,minmax(0,1fr));width:100%} }   /* 38 games in four rows, pitches big enough for the numbers */
 .msp.xi i b.ar{position:absolute;bottom:-35%;right:-40%;width:min(8px,9cqw);height:min(8px,9cqw);border-radius:50%;background:#b3323a;color:#fff;font-size:min(6px,6.5cqw);line-height:min(8px,9cqw);text-align:center;font-weight:900;box-shadow:0 0 0 1px #fff}   /* ↓ taken off */
 .msp i.me b.up{background:#177a41}.msp i.me b.dn{background:#b3323a}   /* filled, white arrow */

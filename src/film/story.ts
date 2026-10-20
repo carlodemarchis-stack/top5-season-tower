@@ -177,7 +177,7 @@ function coachStoryHTML(ctx: Ctx, lg: string, code: string, cid: string, recs: D
   const counts = (who: string | null, md: number) => who === cid || (!former && H.standIn.some(s => s.id === who && md >= s.from! && md <= s.to!))
   const href = (md: number, id: string) => ctx.SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
   const fcount: Record<string, number> = {}
-  let nGames = 0, nSubs = 0
+  let nGames = 0, nSubs = 0, anyFacts = false   // no booking and no mark all season: the table's last row is left out
   const cell = (g: Dict) => {
     const M = byId[g.id], at = g.ha === 'A' ? '@' : ''
     if (!M) return `<div class="msc up"><div class="mst"><span>${at}${esc(g.opp)}</span></div><div class="msp"></div></div>`
@@ -193,13 +193,14 @@ function coachStoryHTML(ctx: Ctx, lg: string, code: string, cid: string, recs: D
     const bk = (C.cards?.[`${M.h}-${M.a}`] || []).filter((x: string[]) => x[0] === side && who === cid)
     const facts = `${bk.some((x: string[]) => x[1] === 'y') ? '<i class="yc"></i>' : ''}${bk.some((x: string[]) => x[1] === 'r') ? '<i class="rc"></i>' : ''}`
     const mk = who === cid ? marks?.[M.md] : null, mark = mk != null ? `<b class="mk${mk >= 7 ? ' hi' : mk < 6 ? ' lo' : ''}">${mk}</b>` : ''
+    if (facts || mark) anyFacts = true
     const tip = `MD${M.md} · ${at ? 'at' : 'vs'} ${g.opp} ${gf}-${ga} · ${T.form || ''}${who !== cid ? ` · ${C.coaches[who!]?.name} on the bench (stand-in)` : ''}${subs.length ? ` · ${subs.map(x => `${x.min} ${sur(P[String(x.on)].name)} for ${sur(P[String(x.off)]?.name || '?')}`).join(', ')}` : ''}`
     return `<div class="msc st" data-mid="${M.id}"${href(M.md, M.id)} title="${esc(tip)}">${top}<div class="msp res xi" style="--rc:${RES[res(gf, ga)]}">${dots}</div>${statTable(esc(T.form || ''), subs.length ? `⇄${esc(subs.sort((a, b) => parseInt(a.min) - parseInt(b.min))[0].min)}` : 'no subs', '', facts, mark)}</div>`
   }
   const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w)
   const cells = all.map(cell).join('')
   const forms = Object.entries(fcount).sort((a, b) => b[1] - a[1]).map(([f, n]) => `<span><b>${esc(f)}</b> ×${n}</span>`).join('')
-  return `<div class="msgrid xig nokm">${cells}</div>
+  return `<div class="msgrid xig nokm${anyFacts ? '' : ' nofacts'}">${cells}</div>
     <div class="msleg"><span><b>${nGames}</b> game${nGames === 1 ? '' : 's'} · <b>${nSubs}</b> changes</span>${forms}
       <span>his XI in every game · ↓ taken off · ⇄ his first change (hover a game for all of them) · <i class="yc"></i><i class="rc"></i> his bookings${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''} · greyed: another coach on the bench</span></div>`
 }
