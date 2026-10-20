@@ -77,7 +77,7 @@ const BUNDES_SLUG = { FCB: 'fc-bayern-muenchen', BVB: 'borussia-dortmund', RBL: 
   HSV: 'hamburger-sv', SVW: 'sv-werder-bremen', S04: 'fc-schalke-04', ELV: 'sv-elversberg', SCP: 'sc-paderborn-07', KOE: '1-fc-koeln',
   FCU: '1-fc-union-berlin', M05: '1-fsv-mainz-05' }
 const L1_TRIGRAM = { SCO: 'ANG', NIC: 'OGC', REN: 'SR' }
-const LEGA_SEASON = { '2026-27': 'serie-a::Football_Season::ed7fdc2a3e7b408b942ec177b7b956b5' }
+export const LEGA_SEASON = { '2026-27': 'serie-a::Football_Season::ed7fdc2a3e7b408b942ec177b7b956b5' }
 const LALIGA_KEY = 'c13c3a8e2f6b46da9c5c425cf61fab3e'   // public key the laliga.com page itself sends
 
 // each returns { CODE: [{ num, names:[...], src }] } lazily per club

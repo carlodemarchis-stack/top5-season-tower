@@ -119,6 +119,11 @@ jobs:
       - name: Heatmaps (FotMob)
         run: node scripts/update-heatmaps.mjs || echo "::warning::heatmaps not updated — will retry on the next trigger"
 
+      # distance run + top speed per player (Serie A: the league's API; Premier League: FotMob) for the player cards'
+      # tables: only the finished matches not on file yet (tracking published late is picked up on the next trigger)
+      - name: Distance run (Lega Serie A + FotMob)
+        run: node scripts/update-runs.mjs || echo "::warning::distance run not updated — will retry on the next trigger"
+
       # Serie A player marks (Fantacalcio · Redazione) for the player cards. Published hours after the games, often
       # after the results, so it runs on every trigger (two small pages: the last two played match days); it writes
       # only when a mark changed.
@@ -130,7 +135,7 @@ jobs:
         run: |
           git config user.name "results-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/data/results-*-2026-27.js src/data/standings-*-2026-27.js src/data/highlights-*-2026-27.js src/data/schedule-CL-2026-27.js src/data/schedule-EL-2026-27.js src/data/schedule-ECL-2026-27.js src/data/scorers-TOP5-2026-27.js public/players scripts/scorers-photo-cache.json src/data/teams-*-2026-27.js public/flags public/squad scripts/squad-photo-cache.json src/data/matches-*-2026-27-md*.js src/data/keepers-TOP5-2026-27.js src/data/votes-ITA-2026-27.js scripts/votes-ids-ITA.json src/data/coaches-*-2026-27.js scripts/coaches-cache.json public/coaches src/data/heat-*-2026-27.js
+          git add src/data/results-*-2026-27.js src/data/standings-*-2026-27.js src/data/highlights-*-2026-27.js src/data/schedule-CL-2026-27.js src/data/schedule-EL-2026-27.js src/data/schedule-ECL-2026-27.js src/data/scorers-TOP5-2026-27.js public/players scripts/scorers-photo-cache.json src/data/teams-*-2026-27.js public/flags public/squad scripts/squad-photo-cache.json src/data/matches-*-2026-27-md*.js src/data/keepers-TOP5-2026-27.js src/data/votes-ITA-2026-27.js scripts/votes-ids-ITA.json src/data/coaches-*-2026-27.js scripts/coaches-cache.json public/coaches src/data/heat-*-2026-27.js src/data/run-*-2026-27.js
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No new results — nothing to deploy."

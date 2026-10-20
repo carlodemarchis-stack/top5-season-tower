@@ -14,6 +14,10 @@ const recsOf = (lg: string, season: string) => RECS[lg + season] ??= Promise.all
 
 // the Heatmaps view: per match, each player's touches (FotMob), packed by scripts/update-heatmaps.mjs
 const HEAT_FILES = import.meta.glob('../data/heat-*.js')
+// distance run + top speed per match (Serie A and Premier League tracking), by scripts/update-runs.mjs
+const RUN_FILES = import.meta.glob('../data/run-*.js')
+const RUNS: Record<string, Promise<Dict>> = {}
+const runOf = (lg: string, season: string) => RUNS[lg + season] ??= (RUN_FILES[`../data/run-${lg}-${season}.js`]?.() ?? Promise.resolve({ RUN: {} })).then(m => (m as Dict).RUN || {})
 const HEATS: Record<string, Promise<Dict>> = {}
 const heatOf = (lg: string, season: string) => HEATS[lg + season] ??= (HEAT_FILES[`../data/heat-${lg}-${season}.js`]?.() ?? Promise.resolve({ HEAT: {} })).then(m => (m as Dict).HEAT || {})
 // the Heatmaps pitch (68 × 92 like .msp, attacking up): a spot is [metres from his own goal line, metres from his left
@@ -87,7 +91,7 @@ const statTable = (form: string, min: string, facts: string, mark: string, empty
 const sur = (n: string) => n.split(' ').slice(1).join(' ') || n
 const PL: Record<string, number[]> = { bl: [.17, .74], br: [.83, .74], tl: [.17, .27], tr: [.83, .27], c: [.5, .52], tc: [.5, .25], bc: [.5, .76] }
 
-function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[], heat: Dict | null = null) {
+function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[], heat: Dict | null = null, run: Dict = {}) {
   const club = ctx.TEAMS[lg]?.[code] || {}, mine = recs.filter(M => M.h === code || M.a === code), byId = Object.fromEntries(mine.map(M => [M.id, M]))
   const me = mine.flatMap(M => (M.h === code ? M.home : M.away).players).find((p: Dict) => String(p.id) === ID)
   const GK = me?.pos === 'G', name = me?.name || ''
@@ -119,11 +123,13 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
     const mk = ctx.VOTES[ID]?.[M.md]
     // a small table under the box, one row each: the formation · his minutes (↑ on / ↓ off) · goals, assists and cards,
     // with the Serie A mark in a badge on the right (his role is the dot)
-    const minTxt = !p.st ? `↑${esc(on?.min || '')}` : off ? `↓${esc(off.min)}` : `${mins}'`
+    // the km he ran (Serie A, Premier League) left of the time
+    const km = run[M.id]?.[ID] as number[] | undefined
+    const minTxt = `${km ? `<span class="km">${km[0].toFixed(1)} km</span>` : ''}${!p.st ? `↑${esc(on?.min || '')}` : off ? `↓${esc(off.min)}` : `${mins}'`}`
     const facts = `${'<i class="gl"></i>'.repeat(G)}${'<i class="as"></i>'.repeat(A)}${(p.ev as string[][]).some(e => e[0] === 'yc') ? '<i class="yc"></i>' : ''}${red ? '<i class="rc"></i>' : ''}`
     const mark = mk != null ? `<b class="mk${mk >= 7 ? ' hi' : mk < 6 ? ' lo' : ''}">${mk}</b>` : ''
     if (facts || mark) anyFacts = true
-    const tip = `MD${M.md} · ${at ? 'at' : 'vs'} ${g.opp} ${gf}-${ga} · ${ROLE[p.pos] || p.pos || ''} · ${T.form || ''} · ${mins}'`
+    const tip = `MD${M.md} · ${at ? 'at' : 'vs'} ${g.opp} ${gf}-${ga} · ${ROLE[p.pos] || p.pos || ''} · ${T.form || ''} · ${mins}'${km ? ` · ${km[0].toFixed(1)} km, top speed ${km[1].toFixed(1)} km/h` : ''}`
     let box = ''
     // the Heatmaps view: the same box, his touches in place of the XI (a game with no map yet falls back to the XI)
     const hm = heat?.[M.id]?.[ID]
@@ -145,7 +151,7 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
   const cells = all.map(cell).join('')
   return `<div class="msgrid${anyFacts ? '' : ' nofacts'}">${cells}</div>
     <div class="msleg"><span><b>${starts.length}</b> start${starts.length === 1 ? '' : 's'} · <b>${subs.length}</b> off the bench</span>${GK ? '' : Object.entries(roles).sort((a, b) => b[1].length - a[1].length).map(([r, mds]) => `<span><b>${NAMED[r] || esc(r)}</b> ×${mds.length}</span>`).join('')}
-      <span>↑ came on · ↓ went off · ● goal · ○ assist · <i class="yc"></i><i class="rc"></i> cards${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''}</span>${heat ? `<span>heat: his touches in the game (FotMob), ${GK ? 'the 36 m in front of his goal · the shots he faced, in the zone they came from: <b style="color:#b3323a">●</b> goal against' : 'attacking up · his shots, in the zone they came from: ● goal'} · ○ on target · × off · ▪ blocked</span>` : ''}</div>`
+      <span>↑ came on · ↓ went off · ● goal · ○ assist · <i class="yc"></i><i class="rc"></i> cards${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''}${Object.keys(run).length ? ' · km: distance run (hover a game for his top speed)' : ''}</span>${heat ? `<span>heat: his touches in the game (FotMob), ${GK ? 'the 36 m in front of his goal · the shots he faced, in the zone they came from: <b style="color:#b3323a">●</b> goal against' : 'attacking up · his shots, in the zone they came from: ● goal'} · ○ on target · × off · ▪ blocked</span>` : ''}</div>`
 }
 
 // the switch: one view for every card of the film, remembered; 't' toggles; a pane is drawn when its card comes into view
@@ -157,8 +163,8 @@ export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view')
     const want = view; if (pane.dataset.done === want) return; pane.dataset.done = want
     const [lg, code, id] = pane.dataset.story!.split('|')
     if (!pane.innerHTML) pane.innerHTML = '<p class="msload">Loading the match cards…</p>'
-    const [recs, heat] = await Promise.all([recsOf(lg, ctx.SEASON), want === 'heat' ? heatOf(lg, ctx.SEASON) : Promise.resolve(null)])
-    if (pane.dataset.done === want) pane.innerHTML = storyHTML(ctx, lg, code, id, recs, heat)
+    const [recs, heat, run] = await Promise.all([recsOf(lg, ctx.SEASON), want === 'heat' ? heatOf(lg, ctx.SEASON) : Promise.resolve(null), runOf(lg, ctx.SEASON)])
+    if (pane.dataset.done === want) pane.innerHTML = storyHTML(ctx, lg, code, id, recs, heat, run)
   }
   const near = (p: HTMLElement) => { const r = p.getBoundingClientRect(); return r.right > -innerWidth && r.left < innerWidth * 2 }
   const io = new IntersectionObserver(es => { if (view !== 'season') es.forEach(e => e.isIntersecting && fill(e.target as HTMLElement)) }, { rootMargin: '0px 100% 0px 100%' })
