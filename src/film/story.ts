@@ -102,8 +102,9 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
     return rows.flatMap((r, i) => r.map((p, j) => ({ p, x: (j + 1) / (r.length + 1) * 100, y: 90 - i * (80 / Math.max(1, n - 1)) }))) }
   // a start's pitch takes the match's result colour (as on the season strip), so the row reads as the run of results;
   // his team-mates are neutral dots, he is the big one in the club colour
-  // a game off the bench: the same pitch, him (dashed ring) in the slot of the starter he replaced (slot, num)
-  const pitch = (T: Dict, tint: string, slot = ID, num = '', sub = false) => `<div class="msp res" style="--rc:${tint}">${spots(T).map(({ p, x, y }) => String(p.id) === slot ? `<i class="me${sub ? ' in' : ''}" style="left:${x}%;top:${y}%">${esc(num || p.n)}</i>` : `<i style="left:${x}%;top:${y}%"></i>`).join('')}</div>`
+  // his dot carries ↑ (came on) or ↓ (taken off) when he didn't play the whole game; a game off the bench puts him in
+  // the slot of the starter he replaced (slot, num)
+  const pitch = (T: Dict, tint: string, arrow = '', slot = ID, num = '') => `<div class="msp res" style="--rc:${tint}">${spots(T).map(({ p, x, y }) => String(p.id) === slot ? `<i class="me" style="left:${x}%;top:${y}%">${esc(num || p.n)}${arrow ? `<b class="ar ${arrow === '↑' ? 'up' : 'dn'}">${arrow}</b>` : ''}</i>` : `<i style="left:${x}%;top:${y}%"></i>`).join('')}</div>`
   // the starter whose place he took: the player he replaced, or — a sub for a sub — back up the chain to the XI
   const starterFor = (M: Dict, T: Dict, id: unknown) => { for (let i = 0; i < 5 && id != null; i++) { const q = (T.players as Dict[]).find(x => String(x.id) === String(id)); if (q?.st) return String(q.id); id = (M.subs as Dict[]).find(s => String(s.on) === String(id))?.off } return null }
   const goal = (M: Dict, side: string, until: number) => {
@@ -146,9 +147,9 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
       : heatPitch(hm, RES[res(gf, ga)], FULL, shotMarks(shotsBy(M, side, name), FULL, false))
     else if (GK && p.st) { const sv = M.stats?.[side]?.saves ?? 0
       box = `<div class="msg">${goal(M, side, end)}<b class="sv">${sv}</b><span>save${sv === 1 ? '' : 's'}</span>${ga === 0 && mins >= 89 ? '<em class="cs">clean sheet</em>' : `<em>${ga} against</em>`}</div>` }
-    else if (!p.st && on && starterFor(M, T, on.off)) box = pitch(T, RES[res(gf, ga)], starterFor(M, T, on.off)!, p.n, true)
+    else if (!p.st && on && starterFor(M, T, on.off)) box = pitch(T, RES[res(gf, ga)], '↑', starterFor(M, T, on.off)!, p.n)
     else if (!p.st) box = `<div class="msp bn res" style="--rc:${RES[res(gf, ga)]}">off the bench<b>${esc(on?.min || '')}</b>${on ? `for ${esc(sur((T.players as Dict[]).find(x => String(x.id) === String(on.off))?.name || ''))}` : ''}</div>`
-    else box = pitch(T, RES[res(gf, ga)])
+    else box = pitch(T, RES[res(gf, ga)], off ? '↓' : '')
     return `<div class="msc${p.st ? ' st' : ' sub'}" data-mid="${M.id}"${href(M.md, M.id)} title="${esc(tip)}">${top}${box}${statTable(esc(T.form || ''), minTxt, kmTxt, facts, mark)}</div>`
   }
   const starts = mine.filter(M => (M.h === code ? M.home : M.away).players.some((x: Dict) => String(x.id) === ID && x.st))
@@ -159,7 +160,7 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
   const cells = all.map(cell).join('')
   return `<div class="msgrid${anyFacts ? '' : ' nofacts'}${anyKm ? '' : ' nokm'}">${cells}</div>
     <div class="msleg"><span><b>${starts.length}</b> start${starts.length === 1 ? '' : 's'} · <b>${subs.length}</b> off the bench</span>${GK ? '' : Object.entries(roles).sort((a, b) => b[1].length - a[1].length).map(([r, mds]) => `<span><b>${NAMED[r] || esc(r)}</b> ×${mds.length}</span>`).join('')}
-      <span>↑ came on (dashed ring: in the place of the player he replaced) · ↓ went off · ● goal · ○ assist · <i class="yc"></i><i class="rc"></i> cards${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''}${Object.keys(run).length ? ' · km: distance run (hover a game for his top speed)' : ''}</span>${heat ? `<span>heat: his touches in the game (FotMob), ${GK ? 'the 36 m in front of his goal · the shots he faced, in the zone they came from: <b style="color:#b3323a">●</b> goal against' : 'attacking up · his shots, in the zone they came from: ● goal'} · ○ on target · × off · ▪ blocked</span>` : ''}</div>`
+      <span>↑ came on (on the pitch: in the place of the player he replaced) · ↓ went off · ● goal · ○ assist · <i class="yc"></i><i class="rc"></i> cards${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''}${Object.keys(run).length ? ' · km: distance run (hover a game for his top speed)' : ''}</span>${heat ? `<span>heat: his touches in the game (FotMob), ${GK ? 'the 36 m in front of his goal · the shots he faced, in the zone they came from: <b style="color:#b3323a">●</b> goal against' : 'attacking up · his shots, in the zone they came from: ● goal'} · ○ on target · × off · ▪ blocked</span>` : ''}</div>`
 }
 
 // the switch: one view for every card of the film, remembered; 't' toggles; a pane is drawn when its card comes into view
