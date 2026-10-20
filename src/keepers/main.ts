@@ -3,6 +3,7 @@
 // Data: src/data/keepers-TOP5-<season>.js (scripts/update-keepers.mjs, from the match cards); club colours / fixtures
 // from the schedules.
 import '../film/film.css'
+import { initStory } from '../film/story'
 import { initFilm, initHighlight, initLinks, initNav } from '../film/chrome'
 import { keeperCard, esc, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
 type Dict = Record<string, any>
@@ -19,7 +20,7 @@ const TEAMS: Record<string, Dict> = Object.fromEntries(LG_ORDER.map((lg, i) => [
 const VOTE_FILES = import.meta.glob('../data/votes-*.js')
 const VOTES: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as Dict | undefined)?.VOTES?.v || {}
 const CTX: Ctx = { TEAMS, SEASON, VOTES }
-const card = (k: Dict) => keeperCard(CTX, k, { href: SEASON === '2026-27' ? `player.html?lg=${k.lg}&team=${k.team}&p=${k.id}` : undefined })
+const card = (k: Dict) => keeperCard(CTX, k, { href: SEASON === '2026-27' ? `player.html?lg=${k.lg}&team=${k.team}&p=${k.id}` : undefined, story: SEASON === '2026-27' })
 
 // ---------- the lists, the film ----------
 const LIST = LG_ORDER.includes(QS.get('lg') || '') ? QS.get('lg')! : 'ALL'
@@ -55,6 +56,7 @@ function jumpHTML(q: string) {
 
 // hover / tap a game: its goals against light up in the club colour
 initLinks(film)
+if (SEASON === '2026-27') initStory(film, CTX)
 fitBios(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
 initNav('keepers', LIST, SEASON)

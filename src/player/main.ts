@@ -3,6 +3,7 @@
 // and the league's match cards (who played, minutes, goals, assists, cards, saves, shots faced); Serie A adds the
 // Fantacalcio mark under each game. ?p=<espnId> opens on that player (the Squad tab's tiles link here).
 import '../film/film.css'
+import { initStory } from '../film/story'
 import { initFilm, initHighlight, initTip, initLinks, initNav, initHScroll } from '../film/chrome'
 import { scorerCard, keeperCard, matchTip, avgVote, esc, ord, logo, n2, gamesN, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
 import { loadCoaches, coachCard, stints, headOf } from '../film/coach'
@@ -146,7 +147,7 @@ function card(x: Dict) {
       <div class="n"><b>${d.MIN}'</b><span>Minutes</span></div>
       ${gamesN(games.length, d.APPS, d.GP)}
       ${vm ? `<div class="n"><b>${vm}</b><span>Avg mark</span></div>` : `<div class="n"><b>${d.PF ? `${d.PS}${n2(d.PF)}` : '–'}</b><span>Pens saved</span></div>`}`
-    return keeperCard(CTX, d, { badge, nums, photoFallback: fb(sq), big: shirt, noClub: true, note: d.note })
+    return keeperCard(CTX, d, { badge, nums, photoFallback: fb(sq), big: shirt, noClub: true, note: d.note, story: SEASON === '2026-27' })
   }
   // the highlighted number: goals for a scorer, assists for a provider with no goal, minutes for everyone else
   const goalsN = `<b>${d.G}</b><span>Goals${d.pens ? ` · ${d.pens} pen${d.pens > 1 ? 's' : ''}` : ''}</span>`, minsN = `<b>${d.min}'</b><span>Minutes</span>`
@@ -157,7 +158,7 @@ function card(x: Dict) {
     ${gamesN(games.length, d.apps, d.starts)}
     <div class="n"><b>${d.YC}${d.RC ? n2(d.RC, 'r') : ''}</b><span>${d.RC ? 'Yellow / red' : 'Yellow cards'}</span></div>
     <div class="n"><b>${vm ?? (d.G ? Math.round(d.min / d.G) + "'" : '–')}</b><span>${vm ? 'Avg mark' : 'Per goal'}</span></div>`
-  return scorerCard(CTX, d, { badge, big: shirt, nums, photoFallback: fb(sq), noGoals: d.apps ? 'No goals yet' : 'No league minutes yet', noClub: true, note: d.note })
+  return scorerCard(CTX, d, { badge, big: shirt, nums, photoFallback: fb(sq), noGoals: d.apps ? 'No goals yet' : 'No league minutes yet', noClub: true, note: d.note, story: SEASON === '2026-27' })
 }
 
 const $ = (id: string) => document.getElementById(id)!
@@ -198,6 +199,7 @@ function jumpHTML(q: string) {
 }
 
 initLinks(film)
+if (SEASON === '2026-27') initStory(film, CTX)
 initHScroll(film)
 fitBios(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)

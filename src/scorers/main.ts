@@ -1,6 +1,7 @@
 // Top-scorers card film: one full-screen card per player (top 50 by goals across the top 5 leagues, ties included).
 // Data: src/data/scorers-TOP5-<season>.js (scripts/update-scorers.mjs, from our match cards; back seasons: update-scorers-espn.mjs); club colours/names from the schedules.
 import '../film/film.css'
+import { initStory } from '../film/story'
 import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
 import { scorerCard, matchTip, esc, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
 type Dict = Record<string, any>
@@ -16,7 +17,7 @@ const VOTE_FILES = import.meta.glob('../data/votes-*.js')
 const VOTES: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as Dict | undefined)?.VOTES?.v || {}
 const TEAMS: Record<string, Dict> = { ITA: TL[0].TEAMS, ENG: TL[1].TEAMS, ESP: TL[2].TEAMS, FRA: TL[3].TEAMS, GER: TL[4].TEAMS }
 const CTX: Ctx = { TEAMS, SEASON, VOTES }
-const card = (p: Dict) => scorerCard(CTX, p, { href: SEASON === '2026-27' ? `player.html?lg=${p.lg}&team=${p.team}&p=${p.espnId}` : undefined })
+const card = (p: Dict) => scorerCard(CTX, p, { href: SEASON === '2026-27' ? `player.html?lg=${p.lg}&team=${p.team}&p=${p.espnId}` : undefined, story: SEASON === '2026-27' })
 
 // ---------- the standard card-film chrome: top bar (league logos), control bar, search, modals, keys, restore ----------
 const LG_ORDER = ['ITA', 'ENG', 'ESP', 'FRA', 'GER']
@@ -65,6 +66,7 @@ function jumpHTML(q: string) {
 
 // hover / tap a match → its goals light up in the minute line and the goal list (and the other way round); the rest dims
 initLinks(film)
+if (SEASON === '2026-27') initStory(film, CTX)
 fitBios(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
 

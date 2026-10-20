@@ -13,6 +13,7 @@ export type CardOpt = {
   noClub?: boolean                       // no club line under the name (the squad film is one club, named in its top bar)
   href?: string                          // the player's card in his squad film: the name and the photo open it
   note?: string                          // a line over the season strip (the squad film: a run of games out of the matchday squad)
+  story?: boolean                        // the "Match story" button (src/film/story.ts opens it over the card)
 }
 // a game he didn't play, when the match report says why it can (squad film): on the bench and not used, or not in the
 // matchday squad at all — never a guessed reason; 'XR' = not in the squad right after a red card: the ban, the one reason we can know
@@ -85,6 +86,10 @@ export function avgVote(ctx: Ctx, id: string) {
   return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 100) / 100 : null
 }
 
+// the "Match story" button, top right of the card (src/film/story.ts opens the story over the card)
+export const storyButton = (lg: string, code: string, id: string) =>
+  `<button class="storyb" data-story="${lg}|${code}|${id}" title="Match story: his season, game by game"><svg viewBox="0 0 20 16" aria-hidden><rect x="1" y="1" width="5" height="6" rx="1"/><rect x="7.5" y="1" width="5" height="6" rx="1"/><rect x="14" y="1" width="5" height="6" rx="1"/><rect x="1" y="9" width="5" height="6" rx="1"/><rect x="7.5" y="9" width="5" height="6" rx="1"/><rect x="14" y="9" width="5" height="6" rx="1"/></svg>Match story</button>`
+
 // ================= the scorer card (outfield players) =================
 export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
   const club = ctx.TEAMS[p.lg][p.team] || {}
@@ -112,7 +117,7 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
     <div class="body">
       <div>
         <h1 style="--len:${[...p.name].length};--word:${Math.max(...p.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(p.name)} · his card in the squad"` : ''}>${esc(p.name)}</h1>
-      </div>
+      </div>${opt.story ? storyButton(p.lg, p.team, p.espnId) : ''}
       ${opt.noClub ? '' : `<div class="club"><img src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">${esc(club.name || p.team)}
         <span class="tl"><b>${t.pos ? ord(t.pos) : '–'}</b> · <b>${t.pts}</b> pts · ${t.W}-${t.D}-${t.L} · GD ${t.GF - t.GA >= 0 ? '+' : ''}${t.GF - t.GA}</span></div>`}
       <div class="nums">${opt.nums ?? `
@@ -288,7 +293,7 @@ export function keeperCard(ctx: Ctx, k: Dict, opt: CardOpt = {}) {
     <div class="body">
       <div>
         <h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(k.name)} · his card in the squad"` : ''}>${esc(k.name)}</h1>
-      </div>
+      </div>${opt.story ? storyButton(k.lg, k.team, k.id) : ''}
       ${opt.noClub ? '' : `<div class="club"><img src="${logo(k.lg, k.team)}" alt="" onerror="this.remove()">${esc(club.name || k.team)}
         <span class="tl">${LEAGUE_NAME[k.lg]}${k.tpos ? ` · <b>${ord(k.tpos)}</b>` : ''}</span></div>`}
       <div class="nums">${opt.nums ?? `
