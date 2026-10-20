@@ -58,7 +58,10 @@ export function outfieldSeason(c: Club, sq: Dict): Dict {
     // his assists: the minute from his own events, the scorer from our side's goal at that minute
     const assists = pl.ev.filter((e: string[]) => e[0] === 'ast').map((e: string[]) => ({ min: e[1], to: M.goals.find((g: Dict) => g.s === me && g.min === e[1])?.by || '' }))
     const sh = shotsIn(M, me, sq.name)
-    return { ...base, role: pl.st ? 'S' : 'B', min: Math.max(1, Math.round(end - start)), goals, assists, G: goals.length, A: n('ast'),
+    // the substitution: who he came on for, or who replaced him, and when
+    const nameOf = (pid: unknown) => T.players.find((x: Dict) => String(x.id) === String(pid))?.name || ''
+    const sub = on ? { min: on.min, who: nameOf(on.off) } : off ? { min: off.min, who: nameOf(off.on) } : null
+    return { ...base, role: pl.st ? 'S' : 'B', min: Math.max(1, Math.round(end - start)), sub, goals, assists, G: goals.length, A: n('ast'),
       // shots: the box score's totals (the match card keeps them per player); the goal's dots come from the commentary
       SH: pl.sh ? pl.sh[0] : sh.length, SOG: pl.sh ? pl.sh[1] : sh.filter(x => x.k === 'on' || x.k === 'goal').length, YC: n('yc'), RC: n('rc') }
   })

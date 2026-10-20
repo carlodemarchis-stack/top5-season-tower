@@ -217,7 +217,7 @@ export function matchTip(ctx: Ctx, p: Dict, gid: string) {
   const [bg, fg] = RES6[res6(m.gf, m.ga)], hs = g.ha === 'H' ? `${m.gf}–${m.ga}` : `${m.ga}–${m.gf}`
   const nm = p.name, stat = (n: number | undefined, w: string) => n == null ? '' : `<span><b>${n}</b> ${w}</span>`
   const part = !(m.role === 'S' || m.role === 'B') ? `<div class="mt-foot">${esc(nm)} ${OUT_TITLE[m.role] ? OUT_TITLE[m.role].replace(/^not/, 'was not').replace(/^on the bench/, 'was on the bench').replace(/^suspended/, 'was suspended') : 'did not play'}</div>`
-    : `<div class="mt-me"><b>${esc(nm)}</b> · ${m.role === 'B' ? 'off the bench' : 'started'} · <b>${m.min}′</b></div>
+    : `<div class="mt-me"><b>${esc(nm)}</b> · ${m.role === 'B' ? `off the bench${m.sub ? ` for ${esc(m.sub.who)} at ${esc(m.sub.min)}` : ''}` : `started${m.RC ? ' · sent off' : ''}`}${m.role === 'S' && m.sub ? ` · replaced by <b>${esc(m.sub.who)}</b> at <b>${esc(m.sub.min)}</b>` : ` · <b>${m.min}′</b>`}</div>
       ${m.goals.length ? `<div class="mt-goals">${m.goals.map((x: Dict) => `<div class="mt-g"><span class="mt-min">${esc(x.min)}</span><span>goal${x.kind ? ` <em>${KIND[x.kind] || x.kind}</em>` : ''}${x.ast ? ` <i>· ${esc(x.ast)}</i>` : ''}</span></div>`).join('')}</div>` : ''}
       <div class="mt-stats">${stat(m.G, `goal${m.G === 1 ? '' : 's'}`)}${stat(m.A, `assist${m.A === 1 ? '' : 's'}`)}${stat(m.SH, 'shots')}${stat(m.SOG, 'on target')}${m.YC || m.RC ? `<span><b>${m.YC || m.RC}</b><i class="${m.RC ? 'rc' : 'yc'}"></i></span>` : ''}</div>`
   return `${head}<div class="mt-score">${side(...home)}<b class="mt-res" style="background:${bg};color:${fg}">${hs}</b>${side(...away)}</div>${part}`
