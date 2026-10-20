@@ -88,7 +88,8 @@ export function avgVote(ctx: Ctx, id: string) {
 
 // the Season | Tactical switch, top right of a player card (no height taken from the card); src/film/story.ts fills the
 // Tactical pane — every game of his club: where he lined up, role + formation, minutes, goals, assists, cards
-export const tacSwitch = () => `<div class="tacsw" role="tablist"><button data-view="season" role="tab">Season</button><button data-view="tac" role="tab">Tactical</button></div>`
+// on the club line, right-aligned (it stays in both views); a card without a club line (squad film) floats it top right
+export const tacSwitch = (corner = false) => `<div class="tacsw${corner ? ' corner' : ''}" role="tablist"><button data-view="season" role="tab">Season</button><button data-view="tac" role="tab">Tactical</button></div>`
 
 // ================= the scorer card (outfield players) =================
 export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
@@ -117,9 +118,9 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
     <div class="body">
       <div>
         <h1 style="--len:${[...p.name].length};--word:${Math.max(...p.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(p.name)} · his card in the squad"` : ''}>${esc(p.name)}</h1>
-      </div>${opt.story ? `${tacSwitch()}<div class="pane-season">` : ''}
-      ${opt.noClub ? '' : `<div class="club"><img src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">${esc(club.name || p.team)}
-        <span class="tl"><b>${t.pos ? ord(t.pos) : '–'}</b> · <b>${t.pts}</b> pts · ${t.W}-${t.D}-${t.L} · GD ${t.GF - t.GA >= 0 ? '+' : ''}${t.GF - t.GA}</span></div>`}
+      </div>
+      ${opt.noClub ? (opt.story ? tacSwitch(true) : '') : `<div class="club"><img src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">${esc(club.name || p.team)}
+        <span class="tl"><b>${t.pos ? ord(t.pos) : '–'}</b> · <b>${t.pts}</b> pts · ${t.W}-${t.D}-${t.L} · GD ${t.GF - t.GA >= 0 ? '+' : ''}${t.GF - t.GA}</span>${opt.story ? tacSwitch() : ''}</div>`}${opt.story ? '<div class="pane-season">' : ''}
       <div class="nums">${opt.nums ?? `
         <div class="n big"><b>${p.G}</b><span>Goals${p.pens ? ` · ${p.pens} pen${p.pens > 1 ? 's' : ''}` : ''}</span></div>
         <div class="n"><b>${p.A}</b><span>Assists</span></div>
@@ -294,9 +295,9 @@ export function keeperCard(ctx: Ctx, k: Dict, opt: CardOpt = {}) {
     <div class="body">
       <div>
         <h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(k.name)} · his card in the squad"` : ''}>${esc(k.name)}</h1>
-      </div>${opt.story ? `${tacSwitch()}<div class="pane-season">` : ''}
-      ${opt.noClub ? '' : `<div class="club"><img src="${logo(k.lg, k.team)}" alt="" onerror="this.remove()">${esc(club.name || k.team)}
-        <span class="tl">${LEAGUE_NAME[k.lg]}${k.tpos ? ` · <b>${ord(k.tpos)}</b>` : ''}</span></div>`}
+      </div>
+      ${opt.noClub ? (opt.story ? tacSwitch(true) : '') : `<div class="club"><img src="${logo(k.lg, k.team)}" alt="" onerror="this.remove()">${esc(club.name || k.team)}
+        <span class="tl">${LEAGUE_NAME[k.lg]}${k.tpos ? ` · <b>${ord(k.tpos)}</b>` : ''}</span>${opt.story ? tacSwitch() : ''}</div>`}${opt.story ? '<div class="pane-season">' : ''}
       <div class="nums">${opt.nums ?? `
         <div class="n big"><b>${k.SV}</b><span>Saves${k.PS ? ` · ${k.PS} pen${k.PS > 1 ? 's' : ''}` : ''}</span></div>
         <div class="n"><b>${k.GA}</b><span>Conceded</span></div>

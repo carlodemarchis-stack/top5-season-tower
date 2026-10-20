@@ -307,9 +307,10 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 /* ---------- the Tactical tab of a player card (src/film/story.ts): Season | Tactical switch top right, no height taken ---------- */
 .card{position:relative}
 .card .body{position:relative}
-.tacsw{position:absolute;top:8px;right:14px;z-index:5;display:flex;padding:2px;border:1px solid var(--line);border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(20,22,28,.08)}
+.tacsw{margin-left:auto;display:flex;padding:2px;border:1px solid var(--line);border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(20,22,28,.08)}
 .tacsw button{font:inherit;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8a9099;background:none;border:0;border-radius:999px;padding:4px 11px;cursor:pointer}
 .tacsw button.on{background:var(--c);color:var(--hlink,#fff)}
+.tacsw.corner{position:absolute;top:8px;right:14px;z-index:5}
 .pane-season{display:flex;flex-direction:column;gap:clamp(8px,1.5vh,18px);flex:1 1 auto;min-height:0}
 .pane-tac{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;padding-top:4px}
 body.view-tac .pane-season,body:not(.view-tac) .pane-tac{display:none}
@@ -331,6 +332,7 @@ body.view-tac .pane-season,body:not(.view-tac) .pane-tac{display:none}
 .msg{aspect-ratio:68/92;border-radius:6px;background:#fff;box-shadow:inset 0 0 0 1px #e3e6ea;display:flex;flex-direction:column;align-items:center;padding:6px 3px 4px;gap:1px}.msg svg{width:100%}
 .msg .sv{font-size:24px;font-weight:900;line-height:1;margin-top:4px;color:var(--c2)}.msg span{font-size:9px;font-weight:800;color:#8a9099;text-transform:uppercase;letter-spacing:.08em}
 .msg em{font-style:normal;font-size:9.5px;font-weight:800;color:#b3323a;margin-top:auto}.msg em.cs{color:#177a41}
+.msf{font-size:9.5px;font-weight:700;color:#8a9099;text-align:center;white-space:nowrap;overflow:hidden}
 .msr{font-size:9.5px;font-weight:700;color:#8a9099;text-align:center;white-space:nowrap;overflow:hidden}.msr b{color:#15181d;font-weight:900}
 .msl{display:flex;align-items:center;justify-content:center;gap:2px;min-height:14px;font-size:9.5px}
 .msl .mn{font-weight:800;color:#4b5058;margin-right:2px}
@@ -339,4 +341,4 @@ body.view-tac .pane-season,body:not(.view-tac) .pane-tac{display:none}
 .msl .mk{margin-left:3px;font-weight:900;color:#4b5058}.msl .mk.hi{color:#177a41}.msl .mk.lo{color:#b3323a}
 .msc[data-href]{cursor:pointer}.msc[data-href]:hover .msp,.msc[data-href]:hover .msg{box-shadow:inset 0 0 0 2px var(--c2)}
 .msleg{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:11px;color:#8a9099;margin-top:auto;padding-top:8px}
-@media (max-width: 760px){ .tacsw{top:6px;right:8px} .tacsw button{padding:3px 8px;font-size:9.5px} .msgrid{grid-template-columns:repeat(4,minmax(0,1fr))} }
+@media (max-width: 760px){ .tacsw.corner{top:6px;right:8px} .tacsw button{padding:3px 8px;font-size:9.5px} .msgrid{grid-template-columns:repeat(4,minmax(0,1fr))} }
