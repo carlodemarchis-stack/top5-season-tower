@@ -131,7 +131,8 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
     // with the Serie A mark in a badge on the right (his role is the dot)
     // the km he ran (Serie A, Premier League) left of the time
     const km = run[M.id]?.[ID] as number[] | undefined
-    const minTxt = !p.st ? `↑${esc(on?.min || '')}` : off ? `↓${esc(off.min)}` : `${mins}'`, kmTxt = km ? `${km[0].toFixed(1)} km` : ''
+    // the whole game (started, not taken off, not sent off): the minutes reversed, so a full 90 stands out
+    const minTxt = !p.st ? `↑${esc(on?.min || '')}` : off ? `↓${esc(off.min)}` : red ? `${mins}'` : `<span class="m90">${mins}'</span>`, kmTxt = km ? `${km[0].toFixed(1)} km` : ''
     if (km) anyKm = true
     const facts = `${'<i class="gl"></i>'.repeat(G)}${'<i class="as"></i>'.repeat(A)}${(p.ev as string[][]).some(e => e[0] === 'yc') ? '<i class="yc"></i>' : ''}${red ? '<i class="rc"></i>' : ''}`
     const mark = mk != null ? `<b class="mk${mk >= 7 ? ' hi' : mk < 6 ? ' lo' : ''}">${mk}</b>` : ''
