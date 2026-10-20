@@ -68,18 +68,6 @@ jobs:
           node scripts/gen-uefa.mjs --comp EL  --season 2026-27 || true
           node scripts/gen-uefa.mjs --comp ECL --season 2026-27 || true
 
-      # Top-scorers card film (scorers.html): ESPN match reports + official league photos. Runs when this
-      # run brought new league results, on the 08:00 daily sweep, and on a manual run — not on every poll.
-      # The script verifies every player's match-by-match totals against ESPN's season totals and writes
-      # nothing if anything disagrees (e.g. ESPN not caught up yet) — the next trigger retries.
-      - name: Top scorers (ESPN + league photos)
-        run: |
-          if ! git diff --quiet -- 'src/data/results-*-2026-27.js' || [ "${{ github.event.schedule }}" = "0 8 * * *" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            node scripts/update-scorers.mjs --season 2026-27 || echo "::warning::scorers not updated (verification failed) — will retry on the next trigger"
-          else
-            echo "No new league results — scorers unchanged."
-          fi
-
       # Team cards (teams.html), one data file per league: ESPN match reports + rosters, official squad photos.
       # Same trigger as the scorers; each league is verified (every match's goals = its score) and skipped on failure.
       - name: Team cards (ESPN + league photos)
@@ -99,6 +87,15 @@ jobs:
             done
           else
             echo "No new league results — match cards unchanged."
+          fi
+      # Top scorers (scorers.html), built from OUR match cards (the step above): goals, assists, minutes, shots,
+      # cards — no ESPN totals in the way (they lag a day); ESPN's season leaders only as a cross-check note.
+      - name: Top scorers (from the match cards + league photos)
+        run: |
+          if ! git diff --quiet -- 'src/data/results-*-2026-27.js' || [ "${{ github.event.schedule }}" = "0 8 * * *" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            node scripts/update-scorers.mjs || echo "::warning::scorers not updated — will retry on the next trigger"
+          else
+            echo "No new league results — scorers unchanged."
           fi
       - name: Goalkeeper cards (from the match cards)
         run: |

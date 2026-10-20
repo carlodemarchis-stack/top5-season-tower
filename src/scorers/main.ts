@@ -1,10 +1,10 @@
 // Top-scorers card film: one full-screen card per player (top 50 by goals across the top 5 leagues, ties included).
-// Data: src/data/scorers-TOP5-<season>.js (built + verified by scripts/update-scorers.mjs); club colours/names from the schedules.
+// Data: src/data/scorers-TOP5-<season>.js (scripts/update-scorers.mjs, from our match cards; back seasons: update-scorers-espn.mjs); club colours/names from the schedules.
 import '../film/film.css'
 import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
 import { scorerCard, matchTip, esc, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
 type Dict = Record<string, any>
-// ?season=2025-26 loads a past season (data from `update-scorers.mjs --season`)
+// ?season=2025-26 loads a past season (data from `update-scorers-espn.mjs --season`)
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
 const [{ SCORERS }, ...TL] = await Promise.all([

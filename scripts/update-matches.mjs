@@ -84,6 +84,8 @@ async function build({ ev, g, hc, ac }) {
       id: p.athlete.id, name: p.athlete.displayName, n: p.jersey || '', pos: p.position?.abbreviation || '', fp: +(p.formationPlace || 0), st: p.starter ? 1 : 0,
       ph: fs.existsSync(path.join(ROOT, 'public', 'squad', `${p.athlete.id}.webp`)) ? 1 : 0,
       ev: (p.plays || []).map(x => [x.didScore ? 'goal' : x.didAssist ? 'ast' : x.redCard ? 'rc' : x.yellowCard ? 'yc' : x.substitution ? 'sub' : '', x.clock?.displayValue || '']).filter(e => e[0]),
+      // the box score's shots / on target (the commentary misses the odd one) — only when he had one
+      ...(() => { const st = Object.fromEntries((p.stats || []).map(s => [s.abbreviation, Number(s.displayValue) || 0])); return st.SHOT ? { sh: [st.SHOT, st.SOG || 0] } : {} })(),
     })),
     // the unused substitutes [id, name]: with them the squad cards can tell "on the bench" from "not in the matchday squad"
     bench: r.roster.filter(p => !p.starter && !p.subbedIn).map(p => [p.athlete.id, p.athlete.displayName]),
