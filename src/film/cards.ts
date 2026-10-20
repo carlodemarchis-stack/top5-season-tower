@@ -89,7 +89,7 @@ export function avgVote(ctx: Ctx, id: string) {
 // the Season | Tactical switch, top right of a player card (no height taken from the card); src/film/story.ts fills the
 // Tactical pane — every game of his club: where he lined up, role + formation, minutes, goals, assists, cards
 // on the club line, right-aligned (it stays in both views); a card without a club line (squad film) floats it top right
-export const tacSwitch = (corner = false) => `<div class="tacsw${corner ? ' corner' : ''}" role="tablist"><button data-view="season" role="tab">Season</button><button data-view="tac" role="tab">Tactical</button></div>`
+export const tacSwitch = (corner = false) => `<div class="tacsw${corner ? ' corner' : ''}" role="tablist"><button data-view="season" role="tab">Season</button><button data-view="tac" role="tab">Tactical</button><button data-view="heat" role="tab">Heatmaps</button></div>`
 
 // ================= the scorer card (outfield players) =================
 export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {

@@ -261,3 +261,20 @@ export function standIns(dir, ids) {
 }
 import * as nodeCrypto from 'node:crypto'
 function require_crypto() { return nodeCrypto }
+
+// FotMob clubs → our codes, from a FotMob league page (api/data/leagues?id=): most shared name words (or word starts:
+// Lyon ~ Lyonnais), each code once; a single leftover pair is matched too (Rennes ~ Stade Rennais). Returns
+// { CODE: fotmobTeamId → our code, lost: unmatched FotMob clubs } — callers then check it against our match cards.
+export function fotmobClubs(L, TEAMS) {
+  const fmClubs = L.table[0].data.table.all.map(t => ({ id: String(t.id), name: t.name }))
+  const pairs = fmClubs.flatMap(f => Object.keys(TEAMS).map(c => {
+    const a = new Set(nameKey(f.name).split(' ')), b = nameKey(TEAMS[c].name).split(' ')
+    const near = (w) => a.has(w) || (w.length >= 4 && [...a].some(x => x.length >= 4 && (x.startsWith(w) || w.startsWith(x))))
+    return { f, c, score: b.filter(near).length + (nameKey(f.name) === nameKey(TEAMS[c].name) ? 5 : 0) }
+  })).filter(p => p.score > 0).sort((x, y) => y.score - x.score)
+  const CODE = {}, used = new Set()
+  for (const p of pairs) if (!CODE[p.f.id] && !used.has(p.c)) { CODE[p.f.id] = p.c; used.add(p.c) }
+  const rest = Object.keys(TEAMS).filter(c => !used.has(c)), left = fmClubs.filter(f => !CODE[f.id])
+  if (left.length === 1 && rest.length === 1) CODE[left[0].id] = rest[0]
+  return { CODE, fmClubs, lost: fmClubs.filter(f => !CODE[f.id]) }
+}

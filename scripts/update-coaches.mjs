@@ -17,7 +17,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { DATA, ROOT, get, pool, nameKey } from './lib/football.mjs'
+import { DATA, ROOT, get, pool, fotmobClubs } from './lib/football.mjs'
 
 const args = process.argv.slice(2), has = (f) => args.includes(f), arg = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null }
 const SEASON = '2026-27', DRY = has('--dry-run')
@@ -39,18 +39,8 @@ for (const lg of LGS) {
   if (L?.details?.selectedSeason !== SEASON.replace('-', '/20')) { console.error(`  ✗ FotMob season is ${L?.details?.selectedSeason}`); failed = true; continue }
   const { TEAMS } = await import(path.join(DATA, `schedule-${lg}-${SEASON}.js`))
 
-  // FotMob club → our code: most shared name words (or word starts), each code used once
-  const fmClubs = L.table[0].data.table.all.map(t => ({ id: String(t.id), name: t.name }))
-  const pairs = fmClubs.flatMap(f => Object.keys(TEAMS).map(c => {
-    const a = new Set(nameKey(f.name).split(' ')), b = nameKey(TEAMS[c].name).split(' ')
-    const near = (w) => a.has(w) || (w.length >= 4 && [...a].some(x => x.length >= 4 && (x.startsWith(w) || w.startsWith(x))))   // Lyon ~ Lyonnais
-    return { f, c, score: b.filter(near).length + (nameKey(f.name) === nameKey(TEAMS[c].name) ? 5 : 0) }
-  })).filter(p => p.score > 0).sort((x, y) => y.score - x.score)
-  const CODE = {}, used = new Set()
-  for (const p of pairs) if (!CODE[p.f.id] && !used.has(p.c)) { CODE[p.f.id] = p.c; used.add(p.c) }
-  const rest = Object.keys(TEAMS).filter(c => !used.has(c)), left = fmClubs.filter(f => !CODE[f.id])
-  if (left.length === 1 && rest.length === 1) CODE[left[0].id] = rest[0]   // the last one (Rennes ~ Stade Rennais) — the fixture check below confirms it
-  const lost = fmClubs.filter(f => !CODE[f.id])
+  // FotMob club → our code (lib/football.mjs fotmobClubs), checked against our match cards below
+  const { CODE, fmClubs, lost } = fotmobClubs(L, TEAMS)
   if (lost.length) { console.error(`  ✗ unmatched FotMob clubs: ${lost.map(f => f.name).join(', ')}`); failed = true; continue }
 
   // the check: every match in our reports is a FotMob fixture with the same home side

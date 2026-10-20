@@ -12,6 +12,17 @@ const RECS: Record<string, Promise<Dict[]>> = {}
 const recsOf = (lg: string, season: string) => RECS[lg + season] ??= Promise.all(Object.keys(MATCH_FILES).filter(f => f.includes(`/matches-${lg}-${season}-md`)).map(f => MATCH_FILES[f]()))
   .then(fs => (fs as Dict[]).flatMap(f => f.MATCHES))
 
+// the Heatmaps view: per match, each player's touches (FotMob), packed by scripts/update-heatmaps.mjs
+const HEAT_FILES = import.meta.glob('../data/heat-*.js')
+const HEATS: Record<string, Promise<Dict>> = {}
+const heatOf = (lg: string, season: string) => HEATS[lg + season] ??= (HEAT_FILES[`../data/heat-${lg}-${season}.js`]?.() ?? Promise.resolve({ HEAT: {} })).then(m => (m as Dict).HEAT || {})
+// his touches on the vertical mini pitch (attacking up): soft overlapping blobs, darker where he was most often
+function heatPitch(packed: string, tint: string) {
+  const pts = packed.match(/../g) || []
+  const blobs = pts.map(c => { const x = parseInt(c[0], 36), y = parseInt(c[1], 36); return `<circle cx="${(y / 35 * 68).toFixed(1)}" cy="${((1 - x / 35) * 88).toFixed(1)}" r="9" fill="url(#hg)"/>` }).join('')
+  return `<div class="msp res heat" style="--rc:${tint}"><svg viewBox="0 0 68 88" preserveAspectRatio="none"><defs><radialGradient id="hg"><stop offset="0" stop-color="#15181d" stop-opacity=".3"/><stop offset="1" stop-color="#15181d" stop-opacity="0"/></radialGradient></defs><line x1="0" x2="68" y1="44" y2="44" stroke="#fff" stroke-width="1"/>${blobs}</svg></div>`
+}
+
 const RES: Record<string, string> = { bigW: '#177a41', W1: '#3a9e62', D: '#EAB308', nil: '#9aa0a8', L1: '#dc5c5e', bigL: '#b3323a' }
 const res = (gf: number, ga: number) => { const d = gf - ga; return d >= 2 ? 'bigW' : d === 1 ? 'W1' : d === 0 ? (gf ? 'D' : 'nil') : d === -1 ? 'L1' : 'bigL' }
 const ROLE: Record<string, string> = { G: 'goalkeeper', CD: 'centre-back', 'CD-L': 'left centre-back', 'CD-R': 'right centre-back', LB: 'left-back', RB: 'right-back', LWB: 'left wing-back', RWB: 'right wing-back',
@@ -38,7 +49,7 @@ const clock = (s: unknown) => { const m = String(s || '').match(/(\d+)'?(?:\+(\d
 const sur = (n: string) => n.split(' ').slice(1).join(' ') || n
 const PL: Record<string, number[]> = { bl: [.17, .74], br: [.83, .74], tl: [.17, .27], tr: [.83, .27], c: [.5, .52], tc: [.5, .25], bc: [.5, .76] }
 
-function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[]) {
+function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[], heat: Dict | null = null) {
   const club = ctx.TEAMS[lg]?.[code] || {}, mine = recs.filter(M => M.h === code || M.a === code), byId = Object.fromEntries(mine.map(M => [M.id, M]))
   const me = mine.flatMap(M => (M.h === code ? M.home : M.away).players).find((p: Dict) => String(p.id) === ID)
   const GK = me?.pos === 'G', name = me?.name || ''
@@ -71,8 +82,11 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[])
     const minTxt = !p.st ? `↑${esc(on?.min || '')}` : off ? `↓${esc(off.min)}` : `${mins}'`
     const facts = `${'<i class="gl"></i>'.repeat(G)}${'<i class="as"></i>'.repeat(A)}${(p.ev as string[][]).some(e => e[0] === 'yc') ? '<i class="yc"></i>' : ''}${red ? '<i class="rc"></i>' : ''}${mk != null ? `<b class="mk${mk >= 7 ? ' hi' : mk < 6 ? ' lo' : ''}">${mk}</b>` : ''}`
     const tip = `MD${M.md} · ${at ? 'at' : 'vs'} ${g.opp} ${gf}-${ga} · ${ROLE[p.pos] || p.pos || ''} · ${T.form || ''} · ${mins}'`
-    let box: string
-    if (GK && p.st) { const sv = M.stats?.[side]?.saves ?? 0
+    let box = ''
+    // the Heatmaps view: the same box, his touches in place of the XI (a game with no map yet falls back to the XI)
+    const hm = heat?.[M.id]?.[ID]
+    if (heat && hm) box = heatPitch(hm, RES[res(gf, ga)])
+    else if (GK && p.st) { const sv = M.stats?.[side]?.saves ?? 0
       box = `<div class="msg">${goal(M, side, end)}<b class="sv">${sv}</b><span>save${sv === 1 ? '' : 's'}</span>${ga === 0 && mins >= 89 ? '<em class="cs">clean sheet</em>' : `<em>${ga} against</em>`}</div>` }
     else if (!p.st) box = `<div class="msp bn res" style="--rc:${RES[res(gf, ga)]}">off the bench<b>${esc(on?.min || '')}</b>${on ? `for ${esc(sur((T.players as Dict[]).find(x => String(x.id) === String(on.off))?.name || ''))}` : ''}</div>`
     else box = pitch(T, RES[res(gf, ga)])
@@ -85,27 +99,32 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[])
   const all: Dict[] = [...(club.games || [])].sort((a, b) => a.w - b.w)
   return `<div class="msgrid">${all.map(cell).join('')}</div>
     <div class="msleg"><span><b>${starts.length}</b> start${starts.length === 1 ? '' : 's'} · <b>${subs.length}</b> off the bench</span>${GK ? '' : Object.entries(roles).sort((a, b) => b[1].length - a[1].length).map(([r, mds]) => `<span><b>${NAMED[r] || esc(r)}</b> ×${mds.length}</span>`).join('')}
-      <span>↑ came on · ↓ went off · ● goal · ○ assist · <i class="yc"></i><i class="rc"></i> cards${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''}</span></div>`
+      <span>↑ came on · ↓ went off · ● goal · ○ assist · <i class="yc"></i><i class="rc"></i> cards${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''}</span>${heat ? '<span>heat: his touches in the game, attacking up (FotMob)</span>' : ''}</div>`
 }
 
 // the switch: one view for every card of the film, remembered; 't' toggles; a pane is drawn when its card comes into view
 export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view') {
-  let view = 'season'; try { if (localStorage.getItem(key) === 'tac') view = 'tac' } catch { }
+  const VIEWS = ['season', 'tac', 'heat']
+  let view = 'season'; try { const v = localStorage.getItem(key) || ''; if (VIEWS.includes(v)) view = v } catch { }
+  // a pane is drawn for the view on show (Tactical or Heatmaps), redrawn when the view changes
   const fill = async (pane: HTMLElement) => {
-    if (pane.dataset.done) return; pane.dataset.done = '1'
+    const want = view; if (pane.dataset.done === want) return; pane.dataset.done = want
     const [lg, code, id] = pane.dataset.story!.split('|')
-    pane.innerHTML = '<p class="msload">Loading the match cards…</p>'
-    pane.innerHTML = storyHTML(ctx, lg, code, id, await recsOf(lg, ctx.SEASON))
+    if (!pane.innerHTML) pane.innerHTML = '<p class="msload">Loading the match cards…</p>'
+    const [recs, heat] = await Promise.all([recsOf(lg, ctx.SEASON), want === 'heat' ? heatOf(lg, ctx.SEASON) : Promise.resolve(null)])
+    if (pane.dataset.done === want) pane.innerHTML = storyHTML(ctx, lg, code, id, recs, heat)
   }
-  const io = new IntersectionObserver(es => { if (view === 'tac') es.forEach(e => e.isIntersecting && fill(e.target as HTMLElement)) }, { rootMargin: '0px 100% 0px 100%' })
+  const near = (p: HTMLElement) => { const r = p.getBoundingClientRect(); return r.right > -innerWidth && r.left < innerWidth * 2 }
+  const io = new IntersectionObserver(es => { if (view !== 'season') es.forEach(e => e.isIntersecting && fill(e.target as HTMLElement)) }, { rootMargin: '0px 100% 0px 100%' })
   film.querySelectorAll<HTMLElement>('.pane-tac').forEach(p => io.observe(p))
   const set = (v: string) => {
-    view = v; document.body.classList.toggle('view-tac', v === 'tac')
+    view = v; document.body.classList.toggle('view-tac', v !== 'season')
     film.querySelectorAll<HTMLElement>('.tacsw button').forEach(b => b.classList.toggle('on', b.dataset.view === v))
     try { localStorage.setItem(key, v) } catch { }
-    if (v === 'tac') film.querySelectorAll<HTMLElement>('.pane-tac').forEach(p => { const r = p.getBoundingClientRect(); if (r.right > -innerWidth && r.left < innerWidth * 2) fill(p) })
+    if (v !== 'season') film.querySelectorAll<HTMLElement>('.pane-tac').forEach(p => { if (near(p)) fill(p) })
   }
   film.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.tacsw button'); if (b) { e.stopPropagation(); set(b.dataset.view!) } })
-  addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector('.mod.on') && !e.metaKey && !e.ctrlKey && !(e.target as HTMLElement).closest?.('input')) set(view === 'tac' ? 'season' : 'tac') })
+  // 't' cycles Season → Tactical → Heatmaps
+  addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector('.mod.on') && !e.metaKey && !e.ctrlKey && !(e.target as HTMLElement).closest?.('input')) set(VIEWS[(VIEWS.indexOf(view) + 1) % VIEWS.length]) })
   set(view)
 }
