@@ -217,6 +217,10 @@
     .tkr em{font-style:normal;color:#8a9099;overflow:hidden;text-overflow:ellipsis}
     .tkr.un i{background:#e3e6ea;color:#6b717a}.tkr.un b{font-weight:600;color:#8a9099}
     .pane-tac .none{font-size:12px;color:#9aa0a8}
+    .tp,.tkr[data-p]{cursor:pointer;transition:opacity .12s}
+    .tacs.pon .tp:not(.on),.tacs.pon .tkr:not(.on){opacity:.16}   /* hover a player: only him, in every game */
+    .tp.on{z-index:2}.tp.on i{box-shadow:0 0 0 3px #15181d !important}
+    .tkr.on b{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:2px}
     @media (max-width: 760px){ .card .pane-tac{flex:none} .tacs{overflow-y:visible} }
     /* Squad and Tactical tabs: the panel (rank, big number) stays down to where the tab's content starts; from there
        the tiles / pitches run the whole width, sliding under the panel's column and covering it with the page background */

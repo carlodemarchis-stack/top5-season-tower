@@ -129,15 +129,17 @@ function tacPitch(t: Dict, M: Dict) {
   // a row of four or more: every other name drops a line, so neighbours' names can't run into each other
   // and a long surname there keeps its last word only ("Holmgren Pedersen" → "Pedersen"; "de Roon" stays whole)
   const label = (n: string, crowded: boolean) => { const s = surnameOf(n); return crowded && s.length > 10 && /\s/.test(s) ? s.split(/\s+/).pop()! : s }
-  const dot = (p: Dict, x: number, y: number, crowded = false, low = false) => `<div class="tp${low ? ' lo' : ''}" style="left:${x}%;top:${y}%"><i style="background:${c};color:${ink};box-shadow:0 0 0 1.5px ${ring}">${esc(p.n || '')}</i><span>${esc(label(p.name, crowded))}</span></div>`
+  // every player (pitch or bench) carries his id: hover lights him up in every game, a click opens his card
+  const pa = (id: unknown, name: string) => ` data-p="${id}" data-href="player.html?lg=${t.lg}&team=${t.code}&p=${id}" title="${esc(name)} · his card"`
+  const dot = (p: Dict, x: number, y: number, crowded = false, low = false) => `<div class="tp${low ? ' lo' : ''}"${pa(p.id, p.name)} style="left:${x}%;top:${y}%"><i style="background:${c};color:${ink};box-shadow:0 0 0 1.5px ${ring}">${esc(p.n || '')}</i><span>${esc(label(p.name, crowded))}</span></div>`
   const xi = rows.map((r, i) => r.map((p, j) => dot(p, (j + 1) / (r.length + 1) * 100, 90 - i * (80 / Math.max(1, n - 1)), r.length >= 4, r.length >= 4 && j % 2 === 1))).flat().join('')
   // the bench: who came on (minute, for whom), then the unused substitutes — numbers from the squad list
   const jersey: Record<string, string> = Object.fromEntries((t.squad || []).map((p: Dict) => [String(p.espnId), p.jersey]))
   const subs = (M.subs as Dict[]).filter(s => T.players.some((p: Dict) => String(p.id) === String(s.on)))
   const byId = (id: string) => T.players.find((p: Dict) => String(p.id) === String(id))
   const used = subs.map(s => { const on = byId(s.on), off = byId(s.off)
-    return `<div class="tkr"><i style="background:${c};color:${ink}">${esc(on?.n || '')}</i><b>${esc(surnameOf(on?.name || ''))}</b><em>${esc(s.min)}${off ? ` for ${esc(surnameOf(off.name))}` : ''}</em></div>` }).join('')
-  const unused = (T.bench || []).map(([id, nm]: string[]) => `<div class="tkr un"><i>${esc(jersey[String(id)] || '')}</i><b>${esc(surnameOf(nm))}</b></div>`).join('')
+    return `<div class="tkr"${on ? pa(on.id, on.name) : ''}><i style="background:${c};color:${ink}">${esc(on?.n || '')}</i><b>${esc(surnameOf(on?.name || ''))}</b><em>${esc(s.min)}${off ? ` for ${esc(surnameOf(off.name))}` : ''}</em></div>` }).join('')
+  const unused = (T.bench || []).map(([id, nm]: string[]) => `<div class="tkr un"${pa(id, nm)}><i>${esc(jersey[String(id)] || '')}</i><b>${esc(surnameOf(nm))}</b></div>`).join('')
   return `<div class="tac" data-mid="${M.id}">
     <div class="th"${matchHref(t.lg, M.md, M.id)} title="the match card"><b>MD ${M.md}</b> ${M.h === t.code ? 'vs' : 'at'} ${esc(opp)} <span class="rs" style="background:${RES6[res6(gf, ga)][0]}">${gf}-${ga}</span><em>${esc(T.form || '')}</em></div>
     <div class="tpitch">${xi}</div>
@@ -151,6 +153,16 @@ function tacArrows(s: HTMLElement) {
   w.querySelector('.tsc.r')!.classList.toggle('off', s.scrollLeft + s.clientWidth > s.scrollWidth - 4)
 }
 function initTacArrows() {
+  // hover a player: him in every game of the club, everyone else faded
+  film.addEventListener('mouseover', e => {
+    const t = e.target as HTMLElement, tacs = t.closest<HTMLElement>('.tacs')
+    film.querySelectorAll('.tacs.pon').forEach(x => { if (x !== tacs) { x.classList.remove('pon'); x.querySelectorAll('.on').forEach(o => o.classList.remove('on')) } })
+    if (!tacs) return
+    const el = t.closest<HTMLElement>('[data-p]')
+    tacs.querySelectorAll('.on').forEach(o => o.classList.remove('on'))
+    tacs.classList.toggle('pon', !!el)
+    if (el) tacs.querySelectorAll(`[data-p="${el.dataset.p}"]`).forEach(o => o.classList.add('on'))
+  })
   film.addEventListener('click', e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('.tsc'); if (!b) return
     const s = b.parentElement!.querySelector<HTMLElement>('.tacs')!, step = (s.querySelector<HTMLElement>('.tac')?.offsetWidth || 228) + 14
