@@ -355,8 +355,8 @@ function squadGrid(t: Dict) {
     const tip = `${p.name}${p.jersey ? ` · #${p.jersey}` : ''}${p.age ? ` · ${p.age}` : ''}${p.nat ? ` · ${p.nat}` : ''} — ${p.apps ? `${p.apps} games (${p.starts} starts), ${p.min}'` : 'no league minutes yet'}${p.YC ? ` · ${p.YC} yellow` : ''}${p.RC ? ` · ${p.RC} red` : ''}${p.inj ? ` · ${p.inj}` : ''}`
     const open = `<a class="pm${p.apps ? '' : ' unused'} has-card" href="player.html?lg=${t.lg}&team=${t.code}&p=${p.espnId}" title="${esc(tip)} — open his card">`
     return `${open}
-      <span class="pmshot">${tag}<i class="pmfb">${esc(ini(p.name))}</i>${p.thumb ? `<img src="${p.thumb}" alt="" loading="lazy">` : ''}${p.jersey ? `<b class="pmwm">${esc(p.jersey)}</b>` : ''}${p.inj ? '<i class="inj" title="injured">+</i>' : ''}${p.flag ? `<img class="pmflag" src="flags/${p.flag}.webp" alt="${esc(p.natName || '')}" title="${esc(p.natName || '')}" loading="lazy" onerror="this.remove()">` : ''}
-        <span class="pmpills">${pills.map(([v, k]) => `<b title="${k}">${v}</b>`).join('')}</span></span>
+      <span class="pmshot">${tag}<i class="pmfb">${esc(ini(p.name))}</i>${p.thumb ? `<img src="${p.thumb}" alt="" loading="lazy">` : ''}${p.jersey ? `<b class="pmwm">${esc(p.jersey)}</b>` : ''}${p.inj ? '<i class="inj" title="injured">+</i>' : ''}
+        <span class="pmpills">${pills.map(([v, k]) => `<b title="${k}">${v}</b>`).join('')}${p.flag ? `<img class="pmflag" src="flags/${p.flag}.webp" alt="${esc(p.natName || '')}" title="${esc(p.natName || '')}" loading="lazy" onerror="this.remove()">` : ''}</span></span>
       <span class="pmname"><span data-f="${esc(p.name)}" data-s="${esc(initialName(p.name))}">${esc(p.name)}</span>${p.RC ? '<i class="rc"></i>' : p.YC ? '<i class="yc"></i>' : ''}</span></a>`
   }
   // Minutes / Age: one run in that order

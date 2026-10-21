@@ -176,7 +176,8 @@ const FLAGS = path.join(ROOT, 'public', 'flags'); if (!DRY) fs.mkdirSync(FLAGS, 
 const flagSrc = new Map(teams.flatMap(t => t.squad.filter(p => p._flag).map(p => [p.flag, p._flag])))
 await pool([...flagSrc].filter(([c]) => !fs.existsSync(path.join(FLAGS, `${c}.webp`))), 4, async ([c, href]) => {
   const buf = await get(href, { json: false }); if (!buf || DRY) return
-  await (await import('sharp')).default(buf).resize({ width: 48 }).webp({ quality: 88 }).toFile(path.join(FLAGS, `${c}.webp`))
+  // ESPN's flags sit in a transparent square: trimmed to the flag itself (no empty band above and below it)
+  await (await import('sharp')).default(buf).trim().resize({ width: 48 }).webp({ quality: 88 }).toFile(path.join(FLAGS, `${c}.webp`))
 })
 for (const t of teams) for (const p of t.squad) { delete p._src; delete p._flag }
 for (const t of teams) console.log(`${String(t.pos).padStart(2)}. ${t.code.padEnd(4)} ${String(t.pts).padStart(2)} pts ${t.W}-${t.D}-${t.L} ${t.GF}:${t.GA} · poss ${t.avg.poss}% · ${t.matches.length} reports · panel: ${t.panel.map(p => `${p.name} ${p.G}g ${p.A}a`).join(', ')}`)

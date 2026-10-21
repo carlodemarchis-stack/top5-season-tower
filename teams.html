@@ -269,7 +269,7 @@
     .pmname span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .pm.unused{opacity:.45}
     a.pm{text-decoration:none;color:inherit}
-    .pmshot img.pmflag{left:auto;right:5px;bottom:calc(44px * var(--k,1));transform:none;height:auto;width:calc(19px * var(--k,1));z-index:3;border-radius:2px;box-shadow:0 0 0 1px rgba(255,255,255,.85),0 1px 3px rgba(0,0,0,.3)}   /* nationality, bottom right of the photo */
+    .pmshot .pmpills img.pmflag{position:absolute;left:auto;right:4px;bottom:calc(100% - 12px);transform:none;height:auto;max-width:none;width:calc(19px * var(--k,1));z-index:3;border-radius:2px;box-shadow:0 0 0 .5px rgba(0,0,0,.25)}   /* nationality: bottom right, resting on the stat strip */
     .pm .inj{position:absolute;left:5px;bottom:44px;z-index:3;display:grid;place-items:center;width:14px;height:14px;border-radius:3px;background:#b3323a;color:#fff;font-size:12px;font-weight:900;font-style:normal;line-height:1}
     .pmname .yc,.pmname .rc{flex:0 0 auto;width:6px;height:9px;border-radius:1px;background:#EAB308}
     .pmname .rc{background:#d92d20}
