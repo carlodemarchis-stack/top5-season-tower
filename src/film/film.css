@@ -285,16 +285,17 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 @media (max-width: 760px){ .subs .sub-top .lb{width:auto;flex-basis:100%} }
 .subs .sec{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 16px}   /* the summary right after the title, one line */
 .subs .sec .gsum{margin-left:0;justify-content:flex-start}
-/* the coach card's Season view: his style under the strip (aligned with its boxes), then his core */
-.sty-b,.core-b{margin-top:12px}
-.row2.sty{margin-top:2px}.row2.sty .rl{padding-bottom:0}
-.sc{display:flex;flex-direction:column;align-items:center}.sc svg{width:100%;height:30px;display:block}.sc span{font-size:9px;font-weight:700;color:#8a9099;line-height:1.1;min-height:10px}
-.sc.dnp{opacity:.3}
-.sty-b .k{display:inline-block;width:7px;height:9px;margin-right:3px;vertical-align:-1px}.sty-b .k.up{background:var(--c2)}.sty-b .k.dn{background:#b9bec5}
+/* the coach card's Season view: his team's numbers, then his core */
+.team-b,.core-b{margin-top:12px}
+.team-b,.coachc .glist.bench{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:6px 20px;text-align:left}
+.team-b>.sec,.coachc .glist.bench>.sec{margin:0;flex:none;width:auto}.coachc .glist.bench>.goals{flex:1;min-width:0}   /* title and content on one line */
+.coachc .glist.bench{margin-top:12px}
+.k2s{display:flex;flex-wrap:wrap;gap:6px 22px;flex:1;min-width:0}.k2 b{font-size:20px;font-weight:900;color:#15181d;line-height:1.1}.k2 b i{font-style:normal;font-size:.65em;color:#8a9099}
+.k2{display:flex;align-items:baseline;gap:6px}.k2 span{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8a9099}
 .core{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;max-width:1040px;margin-top:4px}
 .core-t{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;min-width:0}
-.core-t img,.core-t .ini{width:46px;height:46px;border-radius:50%;object-fit:cover;object-position:50% 15%;background:#fff;box-shadow:0 0 0 1px #e3e6ea}
-.core-t .ini{display:grid;place-items:center;font-weight:800;color:#8a9099}
+.core-t img{height:58px;width:auto;max-width:100%;object-fit:contain}   /* the cutout as it is, no circle */
+.core-t .ini{height:58px;display:grid;place-items:center;font-weight:800;color:#8a9099}
 .core-t b{font-weight:800;color:#15181d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .core-t .mb{width:80%;height:4px;border-radius:2px;background:#e3e6ea;overflow:hidden}.core-t .mb i{display:block;height:100%;background:var(--c2)}
 .core-t em{font-style:normal;font-size:10px;color:#8a9099;font-weight:700}

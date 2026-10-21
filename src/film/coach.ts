@@ -155,23 +155,16 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
       <div class="op">${at}${esc(g.opp)}</div>${his && !si ? markHTML(marks?.[g.w]) : `<div class="vt${si ? ' si' : ''}">${esc(tag(C.coaches[who!]))}</div>`}</div>`
   }
   const row = (gs: Dict[], lbl: string) => `<div class="row2"><div class="rl">${lbl}</div><div class="cells" style="--n:${half};--mk:1.4">${gs.map(cell).join('')}</div></div>`
-  // ---- his style, game by game, under the strip and aligned with it: shots for (up) and against (down), possession ----
-  const recBy: Record<string, Dict> = Object.fromEntries(recs.map(M => [M.id, M]))
-  const sty: Dict[] = []
-  const styCell = (g: Dict) => {
-    const M = recBy[g.id]; if (!M || !byId[g.id]) return '<div class="sc"></div>'
-    const me = M.h === code ? 'h' : 'a', op = me === 'h' ? 'a' : 'h', mine = countsM(M), S = M.stats?.[me] || {}
-    const sf = M.shots.filter((x: Dict) => x.s === me).length, sa = M.shots.filter((x: Dict) => x.s === op).length, poss = S.possessionPct != null ? Math.round(S.possessionPct) : null
-    const acc = S.totalPasses ? Math.round(100 * S.accuratePasses / S.totalPasses) : null
-    if (mine) sty.push({ sf, sa, poss, acc })
-    const h = (n: number) => (Math.min(n, 30) / 30 * 17).toFixed(1)
-    return `<div class="sc${mine ? '' : ' dnp'}" data-mid="${g.id}" title="${esc(`MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${g.opp} · shots ${sf}–${sa}${poss != null ? ` · possession ${poss}%` : ''}${acc != null ? ` · pass accuracy ${acc}%` : ''}`)}">
-      <svg viewBox="0 0 20 36" preserveAspectRatio="none"><rect x="5" y="${(18 - +h(sf)).toFixed(1)}" width="10" height="${h(sf)}" fill="var(--c2)"/><rect x="5" y="18" width="10" height="${h(sa)}" fill="#b9bec5"/><line x1="0" x2="20" y1="18" y2="18" stroke="#15181d" stroke-width=".6"/></svg><span>${poss ?? ''}</span></div>` }
-  const styRow = (gs: Dict[]) => `<div class="row2 sty"><div class="rl"></div><div class="cells" style="--n:${half}">${gs.map(styCell).join('')}</div></div>`
-  const styBlock = () => { const rows = styRow(all.slice(0, half)) + styRow(all.slice(half)), n = sty.length; if (!n) return ''
-    const avg = (k: string) => { const v = sty.filter(x => x[k] != null); return v.length ? v.reduce((a, x) => a + x[k], 0) / v.length : null }
-    const P = avg('poss'), Acc = avg('acc'), out = sty.filter(x => x.sa > x.sf).length
-    return `<div class="sty-b"><div class="sec">His style<span class="gsum"><span class="nw"><i class="k up"></i>shots for <b>${avg('sf')!.toFixed(1)}</b> · <i class="k dn"></i>against <b>${avg('sa')!.toFixed(1)}</b> a game</span>${P != null ? ` · <span class="nw">possession <b>${Math.round(P)}%</b> (the number under each game)</span>` : ''}${Acc != null ? ` · <span class="nw">pass accuracy <b>${Math.round(Acc)}%</b></span>` : ''} · <span class="nw">outshot in <b>${out}</b> of ${n}</span></span></div>${rows}</div>` }
+  // ---- his team in his games: a short row of numbers (possession, shots, pass accuracy, how often outshot) ----
+  const teamBlock = () => {
+    const st = recs.filter(countsM).map(M => { const me = M.h === code ? 'h' : 'a', S = M.stats?.[me] || {}
+      return { sf: M.shots.filter((x: Dict) => x.s === me).length, sa: M.shots.filter((x: Dict) => x.s !== me).length,
+        poss: S.possessionPct ?? null, acc: S.totalPasses ? 100 * S.accuratePasses / S.totalPasses : null } })
+    if (!st.length) return ''
+    const avg = (k: string) => { const v = st.filter((x: Dict) => x[k] != null); return v.length ? v.reduce((a, x: Dict) => a + x[k], 0) / v.length : null }
+    const k = (v: string, l: string) => `<div class="k2"><b>${v}</b><span>${l}</span></div>`, P = avg('poss'), A = avg('acc')
+    return `<div class="team-b"><div class="sec">His team, a game</div><div class="k2s">${[P != null && k(`${Math.round(P)}%`, 'possession'), k(avg('sf')!.toFixed(1), 'shots for'), k(avg('sa')!.toFixed(1), 'against'),
+      A != null && k(`${Math.round(A)}%`, 'pass acc.'), k(`${st.filter(x => x.sa > x.sf).length}<i>/${st.length}</i>`, 'outshot')].filter(Boolean).join('')}</div></div>` }
 
   // ---- his core: the players he gives the most minutes, how many he has used, how young his XIs are ----
   const coreBlock = () => {
@@ -194,7 +187,7 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
       return `<div class="core-t">${ph ? `<img src="${ph}" alt="" loading="lazy">` : `<span class="ini">${esc(names[id].split(' ').map(w => w[0]).slice(0, 2).join(''))}</span>`}<b>${esc(short(names[id]))}</b><span class="mb"><i style="width:${Math.round(m / max * 100)}%"></i></span><em>${m}' · ${starts[id] || 0} st</em></div>` }
     return `<div class="core-b"><div class="sec">His core<span class="gsum"><span class="nw"><b>${Object.keys(mins).length}</b> players used</span>${avgAge != null ? ` · <span class="nw">his XI's average age <b>${avgAge.toFixed(1)}</b></span>` : ''}${young ? ` · <span class="nw">youngest XI <b>${young.age.toFixed(1)}</b> (MD ${young.md} v ${esc(young.opp)})</span>` : ''}</span></div>
       <div class="core">${top.map(tile).join('')}</div></div>` }
-  const list = S.length > 1 ? `<div class="glist"><div class="sec">The bench this season</div><div class="goals">${S.map(s => { const x = C.coaches[s.id]
+  const list = S.length > 1 ? `<div class="glist bench"><div class="sec">The bench this season</div><div class="goals">${S.map(s => { const x = C.coaches[s.id]
     return `<span class="g${s.id === cur.id ? ' on' : ''}">${x.ph ? `<img class="cf" src="${coachPhoto(s.id)}" alt="">` : ''}<b>${esc(x.name)}</b> ${span(s)}${s.from == null ? '' : ` · ${s.W}-${s.D}-${s.L} · ${pts(s)} pts`}${H.standIn.includes(s) ? ' · stand-in' : ''}</span>` }).join('')}</div></div>` : ''
   return `<section class="card coachc" id="${opt.id || 'coach'}" style="--c:${c};--c2:${c2};--ink:${ink};--hlink:${hlInk}">
     <div class="pan">
@@ -221,8 +214,8 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
           grey && `greyed: games with another coach in charge, tagged under the box`].filter(Boolean)
         return parts.length ? `<div class="avail"><span>${parts.join(' · ')}</span></div>` : '' })()}
       <div class="s2">${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}</div>
-      ${tac ? styBlock() + coreBlock() : ''}
       ${list}
+      ${tac ? teamBlock() + coreBlock() : ''}
       ${tac ? `</div><div class="pane-story" data-story="${lg}|${code}|coach:${cur.id}" data-marks='${JSON.stringify(marks || {})}'></div>
       <div class="pane-subs">${subsHTML(code, recs, countsM, true)}</div>` : subsHTML(code, recs, countsM)}
     </div>
