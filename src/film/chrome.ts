@@ -206,3 +206,28 @@ export function initNav(self: 'teams' | 'matches' | 'scorers' | 'keepers' | 'coa
   bar.appendChild(nav)
 }
 
+// ---------- Order by: a button after the card selector, a small menu of orders; the choice is remembered ----------
+// sorts: key → label (the first is the default); notes: a word after a label ("youngest first"). The page reads the
+// order with readSort, builds its list in it, and gives here how to find the card on screen in another order — a new
+// order reloads the page on the same card.
+export function readSort(store: string, sorts: Record<string, string>) {
+  const def = Object.keys(sorts)[0]; try { const v = localStorage.getItem(store) || ''; if (sorts[v]) return v } catch { }
+  return def
+}
+export function initSort<T>(o: { store: string; sorts: Record<string, string>; notes?: Record<string, string>; current: string; list: T[]; inOrder: (k: string) => T[]; same: (a: T, b: T) => boolean }) {
+  const def = Object.keys(o.sorts)[0]
+  const btn = document.createElement('button'); btn.className = 'ic sortb'; btn.title = `Order: ${o.sorts[o.current]}`
+  btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M7 4v16M3.5 16.5L7 20l3.5-3.5M14 6h7M14 11h5M14 16h3"/></svg>'
+  const menu = document.createElement('div'); menu.className = 'sortm'
+  menu.innerHTML = `<div class="sortt">Order by</div>${Object.entries(o.sorts).map(([k, l]) => `<button data-s="${k}" class="${k === o.current ? 'on' : ''}">${l[0].toUpperCase() + l.slice(1)}${k === def ? ' <small>default</small>' : o.notes?.[k] ? ` <small>${o.notes[k]}</small>` : ''}</button>`).join('')}`
+  const wrap = document.createElement('span'); wrap.className = 'sortw'; wrap.append(btn, menu); document.getElementById('counter')!.after(wrap)
+  btn.addEventListener('click', e => { e.stopPropagation(); menu.classList.toggle('on') })
+  addEventListener('click', () => menu.classList.remove('on'))
+  menu.addEventListener('click', e => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-s]'); if (!b) return
+    const m = location.hash.match(/#(\d+)/), keep = m ? o.list[+m[1] - 1] : null
+    try { localStorage.setItem(o.store, b.dataset.s!) } catch { }
+    const i = keep ? o.inOrder(b.dataset.s!).findIndex(x => o.same(x, keep)) : 0
+    location.hash = `#${Math.max(0, i) + 1}`; location.reload()
+  })
+}

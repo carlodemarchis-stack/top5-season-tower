@@ -4,7 +4,7 @@
 // Data: src/data/coaches-<LG>-<season>.js (scripts/update-coaches.mjs, FotMob), the match cards, the team cards (table),
 // the schedules (fixtures, colours); Serie A adds the coach's Fantacalcio mark (votes-ITA `c`).
 import '../film/film.css'
-import { initFilm, initHighlight, initLinks, initNav, initHScroll } from '../film/chrome'
+import { initFilm, initHighlight, initLinks, initNav, initHScroll, initSort, readSort } from '../film/chrome'
 import { esc, LEAGUE_NAME, fitBios, type Ctx } from '../film/cards'
 import { loadCoaches, coachCard, stints, headOf, coachHref, ageOf } from '../film/coach'
 import { teamLineOf } from '../film/season'
@@ -54,7 +54,7 @@ for (const lg of FULL) {
 // the order (the sort button in the control bar, remembered): points per game (the default) or his side's goals per
 // game, best first — under three games after everyone else; or age, youngest first (no date of birth: last)
 const SORTS: Record<string, string> = { ppg: 'points per game', gpg: 'goals per game', age: 'age' }
-let SORT = 'ppg'; try { const v = localStorage.getItem('top5.coaches.sort') || ''; if (SORTS[v]) SORT = v } catch { }
+let SORT = readSort('top5.coaches.sort', SORTS)
 const byPpg = (a: Entry, b: Entry) => +(b.G >= MIN_GAMES) - +(a.G >= MIN_GAMES) || b.ppg - a.ppg || b.P - a.P || b.GD - a.GD
 const order = (a: Entry, b: Entry) => SORT === 'gpg' ? +(b.G >= MIN_GAMES) - +(a.G >= MIN_GAMES) || b.gpg - a.gpg || byPpg(a, b)
   : SORT === 'age' ? (a.age ?? 999) - (b.age ?? 999) || byPpg(a, b) : byPpg(a, b)
@@ -112,19 +112,7 @@ fitBios(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
 initNav('coaches', LIST, SEASON)
 initStory(film, CTX)   // Season | Tactical
-// the sort button, after the coach selector: a small menu of the three orders; a new order keeps the coach on screen
-{
-  const cur = () => { const m = location.hash.match(/#(\d+)/); return m ? P[+m[1] - 1] : null }
-  const btn = document.createElement('button'); btn.className = 'ic sortb'; btn.title = `Order: ${SORTS[SORT]}`
-  btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M7 4v16M3.5 16.5L7 20l3.5-3.5M14 6h7M14 11h5M14 16h3"/></svg>'
-  const menu = document.createElement('div'); menu.className = 'sortm'
-  menu.innerHTML = `<div class="sortt">Order by</div>${Object.entries(SORTS).map(([k, l]) => `<button data-s="${k}" class="${k === SORT ? 'on' : ''}">${l[0].toUpperCase() + l.slice(1)}${k === 'age' ? ' <small>youngest first</small>' : k === 'ppg' ? ' <small>default</small>' : ''}</button>`).join('')}`
-  const wrap = document.createElement('span'); wrap.className = 'sortw'; wrap.append(btn, menu); $('counter').after(wrap)
-  btn.addEventListener('click', e => { e.stopPropagation(); menu.classList.toggle('on') })
-  addEventListener('click', () => menu.classList.remove('on'))
-  menu.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('[data-s]'); if (!b) return
-    const keep = cur(); try { localStorage.setItem('top5.coaches.sort', b.dataset.s!) } catch { }
-    SORT = b.dataset.s!; const i = keep ? listOf(LIST).findIndex(x => x.lg === keep.lg && x.code === keep.code && x.id === keep.id) : 0
-    location.hash = `#${Math.max(0, i) + 1}`; location.reload() })
-}
+// Order by (src/film/chrome.ts): a new order keeps the coach on screen
+initSort({ store: 'top5.coaches.sort', sorts: SORTS, notes: { age: 'youngest first' }, current: SORT, list: P, inOrder: k => { SORT = k; return listOf(LIST) },
+  same: (a, b) => a.lg === b.lg && a.code === b.code && a.id === b.id })
 initFilm({ label: i => nameOf(P[i]), count: P.length, key: 'top5.coaches.card' + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'coaches.html' })

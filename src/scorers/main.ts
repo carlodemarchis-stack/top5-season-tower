@@ -2,7 +2,7 @@
 // Data: src/data/scorers-TOP5-<season>.js (scripts/update-scorers.mjs, from our match cards; back seasons: update-scorers-espn.mjs); club colours/names from the schedules.
 import '../film/film.css'
 import { initStory } from '../film/story'
-import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
+import { initFilm, initHighlight, initTip, initLinks, initNav, initSort, readSort } from '../film/chrome'
 import { outfieldCard, matchTip, esc, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
 type Dict = Record<string, any>
 // ?season=2025-26 loads a past season (data from `update-scorers-espn.mjs --season`)
@@ -18,15 +18,23 @@ const VOTES: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as
 const TEAMS: Record<string, Dict> = { ITA: TL[0].TEAMS, ENG: TL[1].TEAMS, ESP: TL[2].TEAMS, FRA: TL[3].TEAMS, GER: TL[4].TEAMS }
 const CTX: Ctx = { TEAMS, SEASON, VOTES }
 // the one player card (src/film/cards.ts): his rank in this list under his role, the name opens his squad card
-const card = (p: Dict) => outfieldCard(CTX, p, { rank: p.rank, href: SEASON === '2026-27' ? `player.html?lg=${p.lg}&team=${p.team}&p=${p.espnId}` : undefined, story: SEASON === '2026-27' })
+const card = (p: Dict) => outfieldCard(CTX, p, { rank: p.rank, sort: SORT, href: SEASON === '2026-27' ? `player.html?lg=${p.lg}&team=${p.team}&p=${p.espnId}` : undefined, story: SEASON === '2026-27' })
 
 // ---------- the standard card-film chrome: top bar (league logos), control bar, search, modals, keys, restore ----------
 const LG_ORDER = ['ITA', 'ENG', 'ESP', 'FRA', 'GER']
 // which film: ?lg=ITA = that league's own top 25 (ties), none = the five-league top 50; each list carries its own ranks
 const LIST = LG_ORDER.includes(QS.get('lg') || '') ? QS.get('lg')! : 'ALL'
 const BYID: Record<string, Dict> = Object.fromEntries(SCORERS.players.map((p: Dict) => [p.espnId, p]))
-const listOf = (k: string): Dict[] => SCORERS.lists ? SCORERS.lists[k].map(([id, rank]: [string, number]) => ({ ...BYID[id], rank })) : SCORERS.players
+const byGoals = (k: string): Dict[] => SCORERS.lists ? SCORERS.lists[k].map(([id, rank]: [string, number]) => ({ ...BYID[id], rank })) : SCORERS.players
+// the order (Order by, remembered): goals (the list's own ranks), minutes per goal — fewest first, under 3 goals last —
+// or age, youngest first; the same players either way, the rank badge their place in this order
+const SORTS: Record<string, string> = { goals: 'goals', mpg: 'minutes per goal', age: 'age' }
+let SORT = SCORERS.lists ? readSort('top5.scorers.sort', SORTS) : 'goals'   // a back season (ESPN, one list): by goals only
+const listOf = (k: string, sort = SORT): Dict[] => { const L = byGoals(k); if (sort === 'goals') return L
+  const v = (p: Dict) => sort === 'mpg' ? (p.G >= 3 ? p.min / p.G : 1e6 + (p.G ? p.min / p.G : 1e6)) : p.age ?? 999
+  return [...L].sort((a, b) => v(a) - v(b) || a.rank - b.rank).map((p, i) => ({ ...p, rank: i + 1 })) }
 const P: Dict[] = listOf(LIST)
+const sortVal = (p: Dict) => SORT === 'mpg' ? `${p.G ? Math.round(p.min / p.G) : '–'}' a goal` : SORT === 'age' ? `${p.age ?? '–'}` : `${p.G} goals`
 const listName = (k: string) => k === 'ALL' ? 'Top 50 scorers' : `${LEAGUE_NAME[k]} top scorers`
 const listUrl = (k: string) => { const q = new URLSearchParams(location.search); k === 'ALL' ? q.delete('lg') : q.set('lg', k); const qs = q.toString(); return location.pathname + (qs ? '?' + qs : '') + '#1' }   // a top-bar switch starts at card 1
 const LG_IG: Record<string, string> = { ITA: 'seriea', ENG: 'premierleague', ESP: 'laliga', FRA: 'ligue1', GER: 'bundesliga' }
@@ -35,16 +43,16 @@ const film = $('film')
 film.innerHTML = P.map(card).join('')
 
 // top bar: "All Leagues" + the five leagues switch between the six lists; the number is each list's size
-const lsize = (k: string) => listOf(k).length
+const lsize = (k: string) => byGoals(k).length
 $('lgs').innerHTML = `<a class="lgb all${LIST === 'ALL' ? ' on' : ''}" href="${listUrl('ALL')}" title="Top 50 across the five leagues · ${lsize('ALL')} players"><b>All Leagues</b><span>${lsize('ALL')}</span></a>` +
   LG_ORDER.map(lg => `<a class="lgb${LIST === lg ? ' on' : ''}" data-lg="${lg}" href="${listUrl(lg)}" title="${LEAGUE_NAME[lg]} top scorers · ${lsize(lg)} players"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"><span>${lsize(lg)}</span></a>`).join('')
 const upd = new Date(SCORERS.updated)
-$('cnote').innerHTML = `${P.length} players: ${LIST === 'ALL' ? 'the top 50 by goals across the five leagues' : `${LEAGUE_NAME[LIST]}'s top 25 by goals`}, plus everyone tied on ${SCORERS.cuts?.[LIST] ?? SCORERS.cut} goals. Season ${SCORERS.season.replace('-', '/')}, updated ${upd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
+$('cnote').innerHTML = `${P.length} players: ${LIST === 'ALL' ? 'the top 50 by goals across the five leagues' : `${LEAGUE_NAME[LIST]}'s top 25 by goals`}, plus everyone tied on ${SCORERS.cuts?.[LIST] ?? SCORERS.cut} goals${SORT === 'goals' ? '' : `, ordered by ${SORTS[SORT]}${SORT === 'age' ? ' (youngest first)' : ' (fewest first; under three goals last)'}`}. Season ${SCORERS.season.replace('-', '/')}, updated ${upd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
 
 // page-specific part of every card change: the context line, the five-league mark, the social-capture meta
 function onPaint(i: number) {
   const p = P[i]
-  $('ctx').innerHTML = `${listName(LIST)} ${SCORERS.season.replace('-', '/')} · <b>${esc(p.name)}</b> · ${p.G} goals`
+  $('ctx').innerHTML = `${listName(LIST)} ${SCORERS.season.replace('-', '/')}${SORT === 'goals' ? '' : ` · by ${SORTS[SORT]}`} · <b>${esc(p.name)}</b> · ${sortVal(p)}`
   if (LIST === 'ALL') $('lgs').querySelectorAll<HTMLElement>('.lgb[data-lg]').forEach(b => b.classList.toggle('cur', b.dataset.lg === p.lg))   // five-league film: mark this card's league
   const meta = (n: string, v: string) => document.querySelector(`meta[name="agwas:${n}"]`)?.setAttribute('content', v)
   meta('mentions', LG_IG[p.lg]); meta('title', `${p.name} · ${p.G} goals · ${LIST === 'ALL' ? 'top 50 scorers, top-5 leagues' : `${LEAGUE_NAME[LIST]} top scorers`}`)
@@ -73,4 +81,6 @@ initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid
 
 initTip(film, '[data-gid]', el => matchTip(CTX, P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!))
 initNav('scorers', LIST, SEASON)
+if (SCORERS.lists) initSort({ store: 'top5.scorers.sort', sorts: SORTS, notes: { mpg: 'fewest first', age: 'youngest first' }, current: SORT, list: P,
+  inOrder: k => listOf(LIST, k), same: (a, b) => a.espnId === b.espnId })
 initFilm({ label: i => P[i].name, count: P.length, key: 'top5.scorers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON) + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'scorers.html' })

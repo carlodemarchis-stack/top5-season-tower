@@ -4,7 +4,7 @@
 // from the schedules.
 import '../film/film.css'
 import { initStory } from '../film/story'
-import { initFilm, initHighlight, initLinks, initNav } from '../film/chrome'
+import { initFilm, initHighlight, initLinks, initNav, initSort, readSort } from '../film/chrome'
 import { keeperFilmCard, esc, LEAGUE_NAME, type Ctx, fitBios } from '../film/cards'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
@@ -21,25 +21,35 @@ const VOTE_FILES = import.meta.glob('../data/votes-*.js')
 const VOTES: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as Dict | undefined)?.VOTES?.v || {}
 const CTX: Ctx = { TEAMS, SEASON, VOTES }
 // the one player card (src/film/cards.ts): his rank in this list under his role, the name opens his squad card
-const card = (k: Dict) => keeperFilmCard(CTX, k, { rank: k.rank, href: SEASON === '2026-27' ? `player.html?lg=${k.lg}&team=${k.team}&p=${k.id}` : undefined, story: SEASON === '2026-27' })
+const card = (k: Dict) => keeperFilmCard(CTX, k, { rank: k.rank, sort: SORT, href: SEASON === '2026-27' ? `player.html?lg=${k.lg}&team=${k.team}&p=${k.id}` : undefined, story: SEASON === '2026-27' })
 
 // ---------- the lists, the film ----------
 const LIST = LG_ORDER.includes(QS.get('lg') || '') ? QS.get('lg')! : 'ALL'
-const listOf = (l: string): Dict[] => (KEEPERS.lists[l] || []).map(([key, rank]: [string, number]) => ({ ...KEEPERS.keepers[key], rank }))
+const bySaves = (l: string): Dict[] => (KEEPERS.lists[l] || []).map(([key, rank]: [string, number]) => ({ ...KEEPERS.keepers[key], rank }))
+// the order (Order by, remembered): saves (the list's own ranks), save % or clean sheets — best first, under three
+// games last — or age, youngest first; the same keepers either way, the rank badge their place in this order
+const SORTS: Record<string, string> = { saves: 'saves', pct: 'save %', cs: 'clean sheets', age: 'age' }
+let SORT = readSort('top5.keepers.sort', SORTS)
+const listOf = (l: string, sort = SORT): Dict[] => { const L = bySaves(l); if (sort === 'saves') return L
+  const few = (k: Dict) => +(k.GP < 3)
+  const cmp = (a: Dict, b: Dict) => sort === 'age' ? (a.age ?? 999) - (b.age ?? 999)
+    : few(a) - few(b) || (sort === 'pct' ? (b.PCT ?? -1) - (a.PCT ?? -1) : b.CS - a.CS || (b.PCT ?? -1) - (a.PCT ?? -1))
+  return [...L].sort((a, b) => cmp(a, b) || a.rank - b.rank).map((k, i) => ({ ...k, rank: i + 1 })) }
 const P: Dict[] = listOf(LIST)
+const sortVal = (k: Dict) => SORT === 'pct' ? `${k.PCT ?? '–'}% saved` : SORT === 'cs' ? `${k.CS} clean sheets` : SORT === 'age' ? `${k.age ?? '–'}` : `${k.SV} saves, ${k.PCT ?? '–'}%`
 const listUrl = (l: string) => { const q = new URLSearchParams(location.search); l === 'ALL' ? q.delete('lg') : q.set('lg', l); const qs = q.toString(); return location.pathname + (qs ? '?' + qs : '') + '#1' }   // a top-bar switch starts at card 1
 const $ = (id: string) => document.getElementById(id)!
 const film = $('film')
 film.innerHTML = P.map(card).join('')
-const lsize = (l: string) => listOf(l).length
+const lsize = (l: string) => bySaves(l).length
 $('lgs').innerHTML = `<a class="lgb all${LIST === 'ALL' ? ' on' : ''}" href="${listUrl('ALL')}" title="The top 25 keepers by saves across the five leagues · ${lsize('ALL')}"><b>All Leagues</b><span>${lsize('ALL')}</span></a>` +
   LG_ORDER.map(lg => `<a class="lgb${LIST === lg ? ' on' : ''}" data-lg="${lg}" href="${listUrl(lg)}" title="${LEAGUE_NAME[lg]} goalkeepers · ${lsize(lg)}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"><span>${lsize(lg)}</span></a>`).join('')
 const upd = new Date(KEEPERS.updated)
-$('cnote').innerHTML = `${P.length} goalkeepers: ${LIST === 'ALL' ? `the top 25 by saves across the five leagues, plus everyone tied on ${KEEPERS.cut}` : `every ${LEAGUE_NAME[LIST]} club's first-choice keeper and anyone with three or more starts`}, ranked by saves. Season ${KEEPERS.season.replace('-', '/')}, updated ${upd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
+$('cnote').innerHTML = `${P.length} goalkeepers: ${LIST === 'ALL' ? `the top 25 by saves across the five leagues, plus everyone tied on ${KEEPERS.cut}` : `every ${LEAGUE_NAME[LIST]} club's first-choice keeper and anyone with three or more starts`}, ranked by ${SORTS[SORT]}${SORT === 'age' ? ' (youngest first)' : SORT === 'saves' ? '' : ' (under three games last)'}. Season ${KEEPERS.season.replace('-', '/')}, updated ${upd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
 
 function onPaint(i: number) {
   const k = P[i]
-  $('ctx').innerHTML = `${LIST === 'ALL' ? 'Goalkeepers' : `${LEAGUE_NAME[LIST]} goalkeepers`} ${SEASON.replace('-', '/')} · by saves · <b>${esc(k.name)}</b> · ${k.SV} saves, ${k.PCT ?? '–'}%`
+  $('ctx').innerHTML = `${LIST === 'ALL' ? 'Goalkeepers' : `${LEAGUE_NAME[LIST]} goalkeepers`} ${SEASON.replace('-', '/')} · by ${SORTS[SORT]} · <b>${esc(k.name)}</b> · ${sortVal(k)}`
   if (LIST === 'ALL') $('lgs').querySelectorAll<HTMLElement>('.lgb[data-lg]').forEach(b => b.classList.toggle('cur', b.dataset.lg === k.lg))
   const meta = (n: string, v: string) => document.querySelector(`meta[name="agwas:${n}"]`)?.setAttribute('content', v)
   meta('mentions', LG_IG[k.lg]); meta('title', `${k.name} · ${k.SV} saves · ${LIST === 'ALL' ? 'top-5 leagues' : LEAGUE_NAME[LIST]}`)
@@ -61,4 +71,6 @@ if (SEASON === '2026-27') initStory(film, CTX)
 fitBios(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
 initNav('keepers', LIST, SEASON)
+initSort({ store: 'top5.keepers.sort', sorts: SORTS, notes: { pct: 'best first', age: 'youngest first' }, current: SORT, list: P,
+  inOrder: k => listOf(LIST, k), same: (a, b) => a.key === b.key })
 initFilm({ label: i => P[i].name, count: P.length, key: 'top5.keepers.card' + (SEASON === '2026-27' ? '' : '.' + SEASON) + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'keepers.html' })
