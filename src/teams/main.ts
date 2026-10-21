@@ -222,12 +222,21 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
   const frame = (L: Dict[], fill: string) => `<svg class="gf" viewBox="0 0 116 40"><rect x="8" y="4" width="100" height="33.3" fill="url(#gnet)"/><path d="M8 37.3V4H108V37.3" fill="none" stroke="#15181d" stroke-width="1.8" stroke-linejoin="round"/><line x1="0" x2="116" y1="37.3" y2="37.3" stroke="#c9ced4" stroke-width=".6"/>
     ${L.filter(s => s.out === 'g' && s.gx != null).map(s => `<circle class="gm" data-gk="${s.key}"${href(s)} cx="${(8 + s.gx * 50).toFixed(1)}" cy="${(4 + (.6667 - s.gy) * 50).toFixed(1)}" r="2.2" style="fill:${fill}" stroke="#fff" stroke-width=".8"/>`).join('')}</svg>`
   const xg = (L: Dict[]) => L.reduce((a, s) => a + s.xg, 0), gN = (L: Dict[]) => L.filter(s => s.out === 'g').length
-  const how = (L: Dict[]) => Object.entries(L.filter(s => s.out === 'g').reduce((o: Dict, s) => (o[SIT[s.sit] || 'other'] = (o[SIT[s.sit] || 'other'] || 0) + 1, o), {})).sort((a: any, b: any) => b[1] - a[1]).map(([k, n]) => `${k} <b>${n}</b>`).join(' · ')
-  const col = (lb: string, L: Dict[], fill: string, og: number, help = '') => { const d = gN(L) - xg(L)
-    return `<div class="gcol"><div class="sec">${lb}${help}<span class="gsum"><b>${gN(L)}</b> goals${og ? ` (+${og} own goal${og === 1 ? '' : 's'})` : ''} from <b>${L.length}</b> shots · xG <b>${xg(L).toFixed(1)}</b> · <b>${d >= 0 ? '+' : ''}${d.toFixed(1)}</b></span></div>${frame(L, fill)}${pitch(L, fill)}<div class="ghow">${how(L) || '&nbsp;'}</div></div>` }
+  // a side column of numbers: goals, shots, xG and goals minus xG, then small bars — how the goals came, with what,
+  // from where (inside / outside the box)
+  const bars = (title: string, rows: [string, number][], fill: string) => { const mx = Math.max(1, ...rows.map(r => r[1]))
+    return rows.length ? `<div class="gkb"><div class="gkt">${title}</div>${rows.map(([k, n]) => `<div class="gkr"><span>${k}</span><i style="width:${Math.round(n / mx * 100)}%;background:${fill}"></i><b>${n}</b></div>`).join('')}</div>` : '' }
+  const count = (L: Dict[], key: (s: Dict) => string) => Object.entries(L.reduce((o: Dict, s) => (o[key(s)] = (o[key(s)] || 0) + 1, o), {})).sort((a: any, b: any) => b[1] - a[1]) as [string, number][]
+  const kpis = (lb: string, L: Dict[], fill: string, og: number, help = '') => { const G = L.filter(s => s.out === 'g'), d = gN(L) - xg(L), sot = L.filter(s => s.out === 'g' || s.out === 's').length
+    const inBox = G.filter(s => s.x >= 88.5 && s.y >= 13.84 && s.y <= 54.16).length
+    return `<div class="gk"><div class="sec">${lb}${help}</div>
+      <div class="gkn"><b>${gN(L)}</b><span>goals${og ? ` <em>+${og} own goal${og === 1 ? '' : 's'}</em>` : ''}</span></div>
+      <div class="gks"><span><b>${L.length}</b> shots</span><span><b>${sot}</b> on target</span><span>xG <b>${xg(L).toFixed(1)}</b></span><span class="${d >= 0 ? 'up' : 'dn'}"><b>${d >= 0 ? '+' : ''}${d.toFixed(1)}</b> vs xG</span></div>
+      ${bars('How', count(G, s => SIT[s.sit] || 'other'), fill)}${bars('With', count(G.filter(s => BODY[s.body]), s => BODY[s.body]), fill)}${bars('From', ([['inside the box', inBox], ['outside', G.length - inBox]] as [string, number][]).filter(r => r[1]), fill)}</div>` }
+  const col = (L: Dict[], fill: string) => `<div class="gcol">${frame(L, fill)}${pitch(L, fill)}</div>`
   const ogFor = Math.max(0, t.GF - gN(F)), ogAg = Math.max(0, t.GA - gN(A))
   return `<svg width="0" height="0" style="position:absolute"><defs><pattern id="gnet" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="#dfe3e6" stroke-width=".4"/></pattern></defs></svg>
-    <div class="gt">${col('Scored', F, 'var(--c2)', ogFor, '<i class="ghelp" aria-label="How to read it">?</i>')}${col('Conceded', A, '#15181d', ogAg)}</div>`
+    <div class="gt">${kpis('Scored', F, 'var(--c2)', ogFor, '<i class="ghelp" aria-label="How to read it">?</i>')}${col(F, 'var(--c2)')}${col(A, '#15181d')}${kpis('Conceded', A, '#15181d', ogAg)}</div>`
 }
 let goalsBusy = false
 async function fillGoals() {
@@ -687,7 +696,7 @@ initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.close
 // the Goals tab's help, on its "?" (in place of a legend line under the pitches)
 const GOALS_HELP = `<div class="mt-top">How to read it</div><div class="ghl"><p><b>Top</b>: where each goal went in, the goal seen from the shooter's side. <b>Bottom</b>: where every shot was taken from, attacking up.</p>
   <p><b>●</b> a goal · <b>○</b> saved · <b>×</b> off target or blocked. Hover a goal: the same goal lights in the net and on the pitch, with its xG; click it for the match card.</p>
-  <p><b>xG</b>: how many goals the chances were worth; the number after it is goals minus xG. Under each pitch: how the goals came. Data: FotMob shot map.</p></div>`
+  <p><b>Left</b>: the goals scored — <b>right</b>: conceded. <b>xG</b>: how many goals the chances were worth; "vs xG": goals minus xG. The bars: how the goals came, with what, from where. Data: FotMob shot map.</p></div>`
 initTip(film, '.ghelp', () => GOALS_HELP)
 // a goal in the Goals tab: its card above the column's goal, the same goal lit in the net and on the pitch, the rest faded
 // (own class names — .gm, .lit: the film's .gd / .hl styles scale and clear on hover)
