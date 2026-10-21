@@ -65,7 +65,7 @@ const nameOf = (e: Entry) => COACHES[e.lg].coaches[e.id].name
 const club = (e: Entry) => TEAMS[e.lg][e.code]?.name || e.code
 
 const card = (e: Entry, i: number) => coachCard(CTX, COACHES[e.lg], e.lg, e.code, e.played, e.teamLine, e.recs, e.lg === 'ITA' ? MARKS[e.code] : undefined,
-  { who: e.id, badge: `#${i + 1}`, id: `c-${e.lg}-${e.code}-${e.id}`, href: e.former ? undefined : coachHref(e.lg, e.code), squad: e.squad })
+  { who: e.id, badge: `#${i + 1}`, id: `c-${e.lg}-${e.code}-${e.id}`, href: e.former ? undefined : coachHref(e.lg, e.code), squad: e.squad, sort: SORT })
 
 // ---------- the film and its top bar ----------
 const $ = (id: string) => document.getElementById(id)!

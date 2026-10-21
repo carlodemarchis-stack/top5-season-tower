@@ -1,7 +1,7 @@
 // Head coaches (scripts/update-coaches.mjs, from FotMob — ESPN has none): who was on the bench in each game, each
 // club's coaches this season in order, the chip the team and match cards show, and the coach card that closes each
 // squad film (player.html). Photos are FotMob's 192px head crops → a round portrait, never stretched to a full panel.
-import { RES6, res6, esc, ord, logo, lum, bio, matchHrefOf, cardsHTML, n2, tacSwitch, type Ctx } from './cards'
+import { RES6, res6, esc, ord, logo, lum, bio, matchHrefOf, cardsHTML, tacSwitch, type Ctx } from './cards'
 type Dict = Record<string, any>
 export type Stint = { id: string; from: number | null; to: number | null; W: number; D: number; L: number; GF: number; GA: number; CS: number }
 
@@ -120,7 +120,8 @@ const markHTML = (v?: number) => v == null ? '' : `<div class="vt${v >= 7 ? ' hi
 // marks = Serie A: the coach's Fantacalcio mark per match day (votes-ITA `c`, the club's bench that day)
 // opt (the coaches film): who = any coach of the club this season (a departed one too), badge = the panel's corner,
 // id = the card's id, href = his card's link (the name)
-export type CoachOpt = { who?: string; badge?: string; id?: string; href?: string; squad?: Dict[] }   // squad: the team card's (ages, photos)
+// squad: the team card's (ages, photos); sort: the coaches film's order — its number on the card takes the club colour
+export type CoachOpt = { who?: string; badge?: string; id?: string; href?: string; squad?: Dict[]; sort?: string }
 export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Dict[], teamLine: Dict, recs: Dict[] = [], marks?: Record<string, number>, opt: CoachOpt = {}) {
   const S = stints(C, code, games), H = headOf(C, code, S), cur = { id: opt.who || H.id }, k = C.coaches[cur.id]
   const former = cur.id !== H.id, myS = S.filter(s => s.id === cur.id && s.from != null)
@@ -147,7 +148,6 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
   // his bookings (scripts/update-coaches.mjs: Serie A's own line-ups, FotMob elsewhere): on his own benches only
   const cardsIn = (g: Dict) => (C.cards?.[g.ha === 'H' ? `${code}-${g.opp}` : `${g.opp}-${code}`] || []).filter((x: string[]) => x[0] === (g.ha === 'H' ? 'h' : 'a'))
   const booked = all.filter(g => byId[g.id] && coachOf(C, code, g.opp, g.ha) === cur.id).flatMap(g => cardsIn(g).map((x: string[]) => ({ g, k: x[1], min: x[2] })))
-  const YC = booked.filter(b => b.k === 'y').length, RC = booked.filter(b => b.k === 'r').length
   const cell = (g: Dict) => {
     const m = byId[g.id], at = g.ha === 'A' ? '@' : ''
     if (!m) return `<div class="c2 up"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
@@ -206,11 +206,11 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
         <span class="tl"><b>${teamLine.pos ? ord(teamLine.pos) : '–'}</b> · <b>${teamLine.pts ?? 0}</b> pts · ${teamLine.W ?? 0}-${teamLine.D ?? 0}-${teamLine.L ?? 0} · GD ${(teamLine.GF ?? 0) - (teamLine.GA ?? 0) >= 0 ? '+' : ''}${(teamLine.GF ?? 0) - (teamLine.GA ?? 0)}</span>${tac ? tacSwitch(false, 'Subs') : ''}</div>${tac ? '<div class="pane-season">' : ''}
       <div class="nums">
         <div class="n big"><b>${ppg}</b><span>Points per game</span></div>
-        <div class="n"><b>${n('W')}-${n('D')}-${n('L')}</b><span>W-D-L</span></div>
-        ${avgMark != null ? `<div class="n"><b>${avgMark.toFixed(2)}</b><span>Avg mark</span></div>` : `<div class="n"><b>${P}</b><span>Points</span></div>`}
+        <div class="n"><b>${n('W')}-${n('D')}-${n('L')}</b><span>W-D-L · ${P} pts</span></div>
+        ${avgMark != null ? `<div class="n"><b>${avgMark.toFixed(2)}</b><span>Avg mark</span></div>` : ''}
         <div class="n"><b>${n('GF')}–${n('GA')}</b><span>For–against</span></div>
+        <div class="n"><b${opt.sort === 'gpg' ? ' style="color:var(--c2)"' : ''}>${G ? (n('GF') / G).toFixed(2) : '–'}</b><span>Goals per game</span></div>
         <div class="n"><b>${n('CS')}</b><span>Clean sheets</span></div>
-        <div class="n"><b>${YC}${RC ? n2(RC, 'r') : ''}</b><span>${RC ? 'Yellow / red' : 'Yellow cards'}</span></div>
       </div>
       ${(() => { const grey = S.some(s => !mine.includes(s)), si = !former && H.standIn.length
         const parts = [forms && `His formations: ${forms}`, booked.length && `Booked: ${booked.map(b => `<i class="cd ${b.k}"></i>MD ${b.g.w} ${b.g.ha === 'H' ? 'vs' : 'at'} ${esc(b.g.opp)} ${esc(b.min)}`).join(', ')}`, si && `${H.standIn.map(s => `${esc(C.coaches[s.id].name)} on the bench in ${span(s)}`).join(', ')}: a stand-in, counted in his record`,
