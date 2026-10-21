@@ -81,7 +81,7 @@ function card(t: Dict) {
         <div class="meta" style="margin-top:8px">${LEAGUE_NAME[t.lg]} · <b>${t.pos ? ord(t.pos) : '–'}</b> · ${t.W}-${t.D}-${t.L} · GD ${gd >= 0 ? '+' : ''}${gd}${topScorers(t)}</div>
         ${coachChip(COACHES_OF[t.lg], t.lg, t.code, playedOf(t, club))}
       </div>
-      <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button>${SEASON === '2026-27' ? '<button class="tab" data-tab="tac">Tactical</button>' : ''}${SORTBAR}</div>
+      <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button>${SEASON === '2026-27' ? '<button class="tab" data-tab="tac">Tactical</button><button class="tab" data-tab="goals">Goals</button>' : ''}${SORTBAR}</div>
       <div class="pane pane-season">
       <div class="nums">
         <div class="n big"><b>${t.pts}</b><span>Points · ${ppg}/game</span></div>
@@ -98,6 +98,7 @@ function card(t: Dict) {
       </div>
       <div class="pane pane-squad">${squadGrid(t)}</div>
       <div class="pane pane-tac"></div>
+      <div class="pane pane-goals"></div>
     </div>
   </section>`
 }
@@ -184,6 +185,59 @@ async function fillTactics() {
       const s = panes[i].querySelector<HTMLElement>('.tacs'); if (s) { s.addEventListener('scroll', () => tacArrows(s), { passive: true }); requestAnimationFrame(() => tacArrows(s)) } })
   }
   tacBusy = false
+}
+
+// ---------- Goals tab: where the goals went in (the goal, from the shooter's side) over where every shot came from ----------
+// scored | conceded, side by side; the shot map comes from FotMob (scripts/update-shots.mjs), loaded when the tab opens
+const SHOT_FILES = import.meta.glob('../data/shots-*.js')
+const SHOTS: Record<string, Promise<Dict>> = {}
+const shotsOf = (lg: string) => SHOTS[lg] ??= (SHOT_FILES[`../data/shots-${lg}-${SEASON}.js`]?.() ?? Promise.resolve({ SHOTS: {} })).then(m => (m as Dict).SHOTS || {})
+const SIT: Record<string, string> = { o: 'open play', c: 'counter-attack', s: 'set piece', k: 'corner', f: 'free kick', p: 'penalty', t: 'throw-in' }
+const BODY: Record<string, string> = { r: 'right foot', l: 'left foot', h: 'header', x: '' }
+const GTIPS = new Map<string, string>()   // a goal's hover card, by its key
+function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
+  const games: Record<string, Dict> = Object.fromEntries((club.games || []).map((g: Dict) => [g.id, g])), recBy: Record<string, Dict> = Object.fromEntries(recs.map(M => [M.id, M]))
+  const F: Dict[] = [], A: Dict[] = []
+  for (const m of t.matches as Dict[]) {
+    const M = recBy[m.id], rows = S[m.id] as any[][] | undefined, g = games[m.id]; if (!M || !rows || !g) continue
+    const side = M.h === t.code ? 'h' : 'a'
+    rows.forEach((r, i) => { if (r[5] === 'og') return
+      const T = r[0] === 'h' ? M.home : M.away, p = (T.players as Dict[]).find(x => String(x.id) === r[8])
+      const sh = { key: `${m.id}-${i}`, md: g.w, opp: g.opp, ha: g.ha, gf: m.gf, ga: m.ga, mid: m.id, side: r[0], min: r[1], x: r[2], y: r[3], xg: r[4], out: r[5], sit: r[6], body: r[7], name: p?.name || '', gx: r[9], gy: r[10],
+        ast: r[5] === 'g' ? (M.goals as Dict[]).find(q => q.s === r[0] && String(q.byId) === r[8] && Math.abs(parseInt(q.min) - Math.floor(r[1])) <= 1)?.ast : null }
+      ;(r[0] === side ? F : A).push(sh)
+      if (r[5] === 'g') GTIPS.set(sh.key, `<div class="mt-top">MD ${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} · ${m.gf}-${m.ga}</div>
+        <div class="mt-me" style="margin-top:0;padding-top:0;border-top:0"><b>${esc(sh.name || '?')}</b> · <b>${Math.floor(r[1])}′</b> · xG <b>${r[4].toFixed(2)}</b></div>
+        <div class="mt-stats"><span>${SIT[r[6]] || ''}</span>${BODY[r[7]] ? `<span>${BODY[r[7]]}</span>` : ''}${sh.ast ? `<span>assist <b>${esc(sh.ast)}</b></span>` : ''}</div>`) })
+  }
+  if (!F.length && !A.length) return '<p class="none">No shot maps yet.</p>'
+  const href = (s: Dict) => ` data-href="matches.html?lg=${t.lg}&md=${s.md}&m=${s.mid}"`
+  // the half pitch, attacking up (68 wide, the 35 m in front of the goal): ● a goal, sized by its xG · ○ saved · × the rest
+  const pitch = (L: Dict[], fill: string) => `<svg class="gp" viewBox="0 -1 68 36"><rect x="0" y="0" width="68" height="35" rx=".8" fill="#e8eee8"/><g fill="none" stroke="#fff" stroke-width=".4"><rect x="13.84" y="0" width="40.32" height="16.5"/><rect x="24.84" y="0" width="18.32" height="5.5"/><path d="M26.7 16.5a9.15 9.15 0 0 0 14.6 0"/></g><rect x="30.34" y="-1" width="7.32" height="1" fill="#15181d"/>
+    ${L.filter(s => s.x >= 70 && s.out !== 'g').map(s => s.out === 's' ? `<circle cx="${s.y}" cy="${105 - s.x}" r=".55" fill="#fff" style="stroke:${fill}" stroke-width=".3" opacity=".6"/>` : `<path d="M${s.y - .45} ${105 - s.x - .45}l.9 .9m0-.9l-.9 .9" stroke="#9aa0a8" stroke-width=".25" opacity=".55"/>`).join('')}
+    ${L.filter(s => s.out === 'g').map(s => `<circle class="gd" data-gk="${s.key}"${href(s)} cx="${s.y}" cy="${Math.max(.8, 105 - s.x)}" r="${(0.8 + Math.min(s.xg, .6) * 2).toFixed(2)}" style="fill:${fill}" stroke="#fff" stroke-width=".35"/>`).join('')}</svg>`
+  // the goal, from the shooter's side: posts at 0 and 2, the bar at .667 from the ground — goals only
+  const frame = (L: Dict[], fill: string) => `<svg class="gf" viewBox="0 0 116 40"><rect x="8" y="4" width="100" height="33.3" fill="url(#gnet)"/><path d="M8 37.3V4H108V37.3" fill="none" stroke="#15181d" stroke-width="1.8" stroke-linejoin="round"/><line x1="0" x2="116" y1="37.3" y2="37.3" stroke="#c9ced4" stroke-width=".6"/>
+    ${L.filter(s => s.out === 'g' && s.gx != null).map(s => `<circle class="gd" data-gk="${s.key}"${href(s)} cx="${(8 + s.gx * 50).toFixed(1)}" cy="${(4 + (.6667 - s.gy) * 50).toFixed(1)}" r="3" style="fill:${fill}" stroke="#fff" stroke-width="1"/>`).join('')}</svg>`
+  const xg = (L: Dict[]) => L.reduce((a, s) => a + s.xg, 0), gN = (L: Dict[]) => L.filter(s => s.out === 'g').length
+  const how = (L: Dict[]) => Object.entries(L.filter(s => s.out === 'g').reduce((o: Dict, s) => (o[SIT[s.sit] || 'other'] = (o[SIT[s.sit] || 'other'] || 0) + 1, o), {})).sort((a: any, b: any) => b[1] - a[1]).map(([k, n]) => `${k} <b>${n}</b>`).join(' · ')
+  const col = (lb: string, L: Dict[], fill: string, og: number) => { const d = gN(L) - xg(L)
+    return `<div class="gcol"><div class="sec">${lb}<span class="gsum"><b>${gN(L)}</b> goals${og ? ` (+${og} own goal${og === 1 ? '' : 's'})` : ''} from <b>${L.length}</b> shots · xG <b>${xg(L).toFixed(1)}</b> · <b>${d >= 0 ? '+' : ''}${d.toFixed(1)}</b></span></div>${frame(L, fill)}${pitch(L, fill)}<div class="ghow">${how(L) || '&nbsp;'}</div></div>` }
+  const ogFor = Math.max(0, t.GF - gN(F)), ogAg = Math.max(0, t.GA - gN(A))
+  return `<svg width="0" height="0" style="position:absolute"><defs><pattern id="gnet" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="#dfe3e6" stroke-width=".4"/></pattern></defs></svg>
+    <div class="gt">${col('Scored', F, 'var(--c2)', ogFor)}${col('Conceded', A, '#15181d', ogAg)}</div>
+    <div class="gleg">● a goal, bigger for a bigger chance (xG) · ○ saved · × off target or blocked · top: where it went in, from the shooter's side · bottom: where it was shot from · the number after xG: goals minus xG · FotMob shot map</div>`
+}
+let goalsBusy = false
+async function fillGoals() {
+  if (goalsBusy) return; goalsBusy = true
+  const panes = [...film.querySelectorAll<HTMLElement>('.pane-goals')]
+  for (const lg of [...new Set(P.map(t => t.lg))]) {
+    const [recs, S] = await Promise.all([recsOf(lg), shotsOf(lg)])
+    P.forEach((t, i) => { if (t.lg !== lg || panes[i].dataset.done) return
+      panes[i].innerHTML = goalsPane(t, TEAMS_OF[t.lg][t.code] || {}, recs, S); panes[i].dataset.done = '1' })
+  }
+  goalsBusy = false
 }
 
 // ---------- the season in two rows; the darker part of each box = the club's possession ----------
@@ -519,12 +573,13 @@ function jumpHTML(q: string) {
 }
 
 // Season | Squad | Tactical tab: one choice for every card, remembered
-const TABS = SEASON === '2026-27' ? ['season', 'squad', 'tac'] : ['season', 'squad']
+const TABS = SEASON === '2026-27' ? ['season', 'squad', 'tac', 'goals'] : ['season', 'squad']
 let TAB = 'season'
 try { const s = localStorage.getItem('top5.teams.tab') || ''; if (TABS.includes(s)) TAB = s } catch { }
 const setTab = (t: string) => {
-  TAB = t; document.body.classList.toggle('tab-squad', t === 'squad'); document.body.classList.toggle('tab-tac', t === 'tac')
+  TAB = t; document.body.classList.toggle('tab-squad', t === 'squad'); document.body.classList.toggle('tab-tac', t === 'tac'); document.body.classList.toggle('tab-goals', t === 'goals')
   if (t === 'tac') fillTactics()
+  if (t === 'goals') fillGoals()
   film.querySelectorAll<HTMLElement>('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t))
   try { localStorage.setItem('top5.teams.tab', t) } catch { }
   sizeDeck()
@@ -622,5 +677,6 @@ function matchTip(t: Dict, gid: string, after?: string) {
 }
 initLinks(film)
 initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!, el.dataset.after))
+initTip(film, '.gd[data-gk]', el => GTIPS.get(el.dataset.gk!) || '')   // a goal in the Goals tab
 initNav('teams', LG, SEASON)
 initFilm({ count: P.length + (ALL ? 5 : 3), key: KEY, onPaint, jumpHTML, self: 'teams.html' })

@@ -191,6 +191,16 @@
     @media (max-width: 760px){ .card .pane,.card .duo{flex:none} .card .duo>.s2:last-child{max-height:none} .card .pline .plot{flex:none;height:110px} }
     body.tab-squad .pane-season,body:not(.tab-squad) .pane-squad{display:none}
     body.tab-tac .pane-season,body:not(.tab-tac) .pane-tac{display:none}
+    body.tab-goals .pane-season,body:not(.tab-goals) .pane-goals{display:none}
+    /* Goals tab: scored | conceded, each the goal (where they went in) over the half pitch (where every shot came from) */
+    .gt{display:grid;grid-template-columns:1fr 1fr;gap:clamp(16px,2.4vw,32px);margin-top:12px;max-width:1040px}
+    .gcol{min-width:0}.gcol .sec{display:block;margin-bottom:4px}.gcol .gsum{display:inline;margin-left:10px}
+    .gt svg{display:block;width:100%}.gt .gf{margin-bottom:4px}
+    .gd{cursor:pointer}.gd:hover{stroke:#15181d}.gp .gd:hover{stroke-width:.6}.gf .gd:hover{stroke-width:1.6}
+    .ghow{font-size:11.5px;color:#5b626c;margin-top:5px}.ghow b{color:#15181d}
+    .gleg{font-size:11px;color:#8a9099;margin-top:10px;max-width:1040px}
+    .pane-goals .none{font-size:12px;color:#9aa0a8}
+    @media (max-width: 760px){ .gt{grid-template-columns:1fr} .card .pane-goals{flex:none} }
     /* Tactical tab: one half pitch per league game, newest first, scrolling sideways; the bench under each */
     .tacw{position:relative;flex:1 1 auto;min-height:0;display:flex;margin-top:14px}   /* a little air under the tabs */
     .tacs{display:flex;gap:14px;overflow:auto;flex:1 1 auto;min-height:0;padding-bottom:6px;align-items:flex-start;scrollbar-width:thin}
@@ -300,6 +310,7 @@
       <li><b>Position</b>: where the club stood in the table after each matchday.</li>
       <li><b>Scorers</b>: goals (and assists). Hover or tap a scorer or a match to light up the goals.</li>
       <li><b>Squad</b> tab (<kbd>t</kbd>): the whole squad as player cards by position, most minutes first — minutes, goals and assists (saves and goals conceded for keepers), shirt number behind the photo; a red + marks an injury, a card colour a booking, faded players haven't played yet. Click a player for his own card, in a film of the whole squad.</li>
+      <li><b>Goals</b> tab: scored and conceded side by side — on top, where each goal went in (the goal from the shooter's side); below, where every shot was taken from: ● a goal, bigger for a bigger chance (xG), ○ saved, × off target or blocked. Each column adds goals against xG (above zero: more goals than the chances were worth) and how the goals came — open play, corner, counter-attack, penalty… Hover a goal for the scorer, minute, xG and assist; click it for the match card. Data: FotMob's shot map.</li>
     </ul>
     <p><kbd>←</kbd> <kbd>→</kbd> previous / next · <kbd>space</kbd> play / pause · <kbd>Home</kbd> <kbd>End</kbd> first / last · <kbd>g</kbd> or <kbd>/</kbd> find a club · <kbd>f</kbd> fullscreen · <kbd>h</kbd> this help · <kbd>Esc</kbd> close</p>
     <p class="agwas-rel">Release notes <a class="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>

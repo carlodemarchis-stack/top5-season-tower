@@ -150,9 +150,12 @@ export function initTip(film: HTMLElement, sel: string, render: (el: HTMLElement
 // on a touch screen the first tap shows the box's hover card, a second tap on the same box opens it
 export function initLinks(film: HTMLElement) {
   const touch = matchMedia('(hover: none)').matches
-  let armed: Element | null = null
+  let armed: Element | null = null, pressed: HTMLElement | null = null
+  // overlapping links (two goals on one spot): the press can land on one and the release on the other, and the click
+  // then goes to their container — follow the link that was pressed
+  film.addEventListener('pointerdown', (e) => { pressed = (e.target as HTMLElement).closest<HTMLElement>('[data-href]') })
   film.addEventListener('click', (e) => {
-    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-href]')
+    const t = e.target as HTMLElement, el = t.closest<HTMLElement>('[data-href]') || (pressed && t.contains(pressed) ? pressed : null)
     if (!el) { armed = null; return }
     if (touch && armed !== el) { armed = el; return }
     if (e.metaKey || e.ctrlKey) window.open(el.dataset.href, '_blank'); else location.href = el.dataset.href!
