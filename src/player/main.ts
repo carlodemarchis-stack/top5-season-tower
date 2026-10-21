@@ -46,7 +46,7 @@ const ST = COACHES ? stints(COACHES, CODE, played) : [], HID = COACHES && ST.len
 if (HEAD) P.splice(P.filter(x => minsOf(x) > 0).length, 0, { kind: 'coach', sq: { name: HEAD.name, pos: 'C', nat: HEAD.nat }, d: {} })   // after the last player with league minutes
 
 function card(x: Dict) {
-  if (x.kind === 'coach') return coachCard(CTX, COACHES!, LG, CODE, played, teamLine, games, (votes as Dict | null)?.VOTES?.c?.[CODE])
+  if (x.kind === 'coach') return coachCard(CTX, COACHES!, LG, CODE, played, teamLine, games, (votes as Dict | null)?.VOTES?.c?.[CODE], { squad: team.squad })
   return x.kind === 'gk' ? keeperFilmCard(CTX, x.d, { story: SEASON === '2026-27' }) : outfieldCard(CTX, x.d, { story: SEASON === '2026-27' })
 }
 

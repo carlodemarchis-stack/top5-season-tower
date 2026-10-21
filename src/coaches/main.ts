@@ -32,7 +32,7 @@ const MARKS: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as
 const CTX: Ctx = { TEAMS, SEASON, VOTES: {} }
 
 // ---------- every coach of every club this season, with his record there ----------
-type Entry = { lg: string; code: string; id: string; former: boolean; G: number; P: number; GD: number; ppg: number; played: Dict[]; recs: Dict[]; teamLine: Dict }
+type Entry = { lg: string; code: string; id: string; former: boolean; G: number; P: number; GD: number; ppg: number; played: Dict[]; recs: Dict[]; teamLine: Dict; squad: Dict[] }
 const ENTRIES: Entry[] = []
 for (const lg of FULL) {
   const C = COACHES[lg]; if (!C) continue
@@ -47,7 +47,7 @@ for (const lg of FULL) {
       const mine = S.filter(s => s.id === id || (id === H.id && H.standIn.includes(s))), G = mine.reduce((a, s) => a + s.W + s.D + s.L, 0)
       const former = id !== H.id; if (former && G < MIN_GAMES) continue   // a one- or two-game stand-in gets no card
       const P = mine.reduce((a, s) => a + 3 * s.W + s.D, 0), GD = mine.reduce((a, s) => a + s.GF - s.GA, 0)
-      ENTRIES.push({ lg, code, id, former, G, P, GD, ppg: G ? P / G : 0, played, recs, teamLine })
+      ENTRIES.push({ lg, code, id, former, G, P, GD, ppg: G ? P / G : 0, played, recs, teamLine, squad: t.squad || [] })
     }
   }
 }
@@ -59,7 +59,7 @@ const nameOf = (e: Entry) => COACHES[e.lg].coaches[e.id].name
 const club = (e: Entry) => TEAMS[e.lg][e.code]?.name || e.code
 
 const card = (e: Entry, i: number) => coachCard(CTX, COACHES[e.lg], e.lg, e.code, e.played, e.teamLine, e.recs, e.lg === 'ITA' ? MARKS[e.code] : undefined,
-  { who: e.id, badge: `#${i + 1}`, id: `c-${e.lg}-${e.code}-${e.id}`, href: e.former ? undefined : coachHref(e.lg, e.code) })
+  { who: e.id, badge: `#${i + 1}`, id: `c-${e.lg}-${e.code}-${e.id}`, href: e.former ? undefined : coachHref(e.lg, e.code), squad: e.squad })
 
 // ---------- the film and its top bar ----------
 const $ = (id: string) => document.getElementById(id)!
