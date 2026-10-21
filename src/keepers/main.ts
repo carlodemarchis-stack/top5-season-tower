@@ -42,10 +42,16 @@ const $ = (id: string) => document.getElementById(id)!
 const film = $('film')
 film.innerHTML = P.map(card).join('')
 const lsize = (l: string) => bySaves(l).length
+// a league's list can hold two keepers of one club (both with three or more starts): said, so the count adds up —
+// "20 clubs, 2 at Monza"
+const clubsNote = (l: string) => { if (l === 'ALL') return ''
+  const by: Record<string, number> = {}; for (const k of bySaves(l)) by[k.team] = (by[k.team] || 0) + 1
+  const two = Object.entries(by).filter(([, n]) => n > 1)
+  return two.length ? `${Object.keys(by).length} clubs, ${two.map(([c, n]) => `${n} at ${TEAMS[l][c]?.name || c}`).join(', ')}` : '' }
 $('lgs').innerHTML = `<a class="lgb all${LIST === 'ALL' ? ' on' : ''}" href="${listUrl('ALL')}" title="The top 25 keepers by saves across the five leagues · ${lsize('ALL')}"><b>All Leagues</b><span>${lsize('ALL')}</span></a>` +
-  LG_ORDER.map(lg => `<a class="lgb${LIST === lg ? ' on' : ''}" data-lg="${lg}" href="${listUrl(lg)}" title="${LEAGUE_NAME[lg]} goalkeepers · ${lsize(lg)}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"><span>${lsize(lg)}</span></a>`).join('')
+  LG_ORDER.map(lg => `<a class="lgb${LIST === lg ? ' on' : ''}" data-lg="${lg}" href="${listUrl(lg)}" title="${LEAGUE_NAME[lg]} goalkeepers · ${lsize(lg)}${clubsNote(lg) ? ` · ${clubsNote(lg)}` : ''}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"><span>${lsize(lg)}</span></a>`).join('')
 const upd = new Date(KEEPERS.updated)
-$('cnote').innerHTML = `${P.length} goalkeepers: ${LIST === 'ALL' ? `the top 25 by saves across the five leagues, plus everyone tied on ${KEEPERS.cut}` : `every ${LEAGUE_NAME[LIST]} club's first-choice keeper and anyone with three or more starts`}, ranked by ${SORTS[SORT]}${SORT === 'age' ? ' (youngest first)' : SORT === 'saves' ? '' : ' (under three games last)'}. Season ${KEEPERS.season.replace('-', '/')}, updated ${upd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
+$('cnote').innerHTML = `${P.length} goalkeepers: ${LIST === 'ALL' ? `the top 25 by saves across the five leagues, plus everyone tied on ${KEEPERS.cut}` : `every ${LEAGUE_NAME[LIST]} club's first-choice keeper and anyone with three or more starts${clubsNote(LIST) ? ` (${clubsNote(LIST)}: a shared job)` : ''}`}, ranked by ${SORTS[SORT]}${SORT === 'age' ? ' (youngest first)' : SORT === 'saves' ? '' : ' (under three games last)'}. Season ${KEEPERS.season.replace('-', '/')}, updated ${upd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`
 
 function onPaint(i: number) {
   const k = P[i]
