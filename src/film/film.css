@@ -290,11 +290,11 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 body:not(.view-heat) .coachc .pane-subs,body.view-heat .coachc .pane-story{display:none}
 .pane-subs .subs{overflow:visible;margin-top:0}
 .subs .sgs.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));overflow:visible}
-.sub-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 28px;margin:8px 0 12px}.sub-cols.two{grid-template-columns:auto 1fr;gap:10px 48px}
+.sub-cols{display:grid;grid-template-columns:repeat(3,minmax(0,230px)) auto;justify-content:start;gap:10px 32px;margin:8px 0 12px}
 .sub-col .lb{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#9aa0a8;margin-bottom:6px}
 .sub-col .scr{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;font-weight:700;color:#15181d;padding:3px 0;border-bottom:1px solid #e9ecef}.sub-col .scr b{font-weight:900}.sub-col .scr span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sub-col .scr.none{color:#9aa0a8}
 .sub-state{display:flex;gap:22px}.sub-state span{display:flex;flex-direction:column;font-size:10.5px;font-weight:700;color:#8a9099}.sub-state b{font-size:22px;font-weight:900;color:#15181d;line-height:1.1}
-@media (max-width: 760px){ .sub-cols,.sub-cols.two{grid-template-columns:1fr} }
+@media (max-width: 760px){ .sub-cols{grid-template-columns:1fr} }
 .sub-when{display:flex;align-items:flex-end;gap:14px}
 .sub-when>span{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:#8a9099;font-weight:700;min-width:44px}
 .sub-when i{width:22px;border-radius:3px 3px 0 0;background:var(--c);min-height:2px}.sub-when b{font-size:12px;color:#15181d;font-weight:900}.sub-when em{font-style:normal;white-space:nowrap}

@@ -99,9 +99,10 @@ function subsHTML(code: string, recs: Dict[], counts: (M: Dict) => boolean, full
     ${full ? (() => { const mx = Math.max(1, ...when), L = ['1st half', 'half-time', "46–60'", "61–75'", "76–90'+"]
       // the Subs tab: the three lists as ranked columns, then when he changes and the score at the time side by side
       const col = (lb: string, Lx: { name: string; n: number }[]) => `<div class="sub-col"><div class="lb">${lb}</div>${Lx.map(x => `<div class="scr"><span>${esc(x.name)}</span><b>×${x.n}</b></div>`).join('') || '<div class="scr none">–</div>'}</div>`
-      return `<div class="sub-cols">${col('Most used off the bench', top)}${col('Most taken off', offs)}${col('Most repeated change', swaps)}</div>
-      <div class="sub-cols two"><div class="sub-col"><div class="lb">When he changes</div><span class="sub-when">${when.map((n, i) => `<span><i style="height:${Math.round(n / mx * 34)}px"></i><b>${n}</b><em>${L[i]}</em></span>`).join('')}</span></div>
-        <div class="sub-col"><div class="lb">The score at the time</div><div class="sub-state"><span><b>${state.ahead}</b>ahead</span><span><b>${state.level}</b>level</span><span><b>${state.behind}</b>behind</span></div></div></div>
+      // the three lists, then a fourth column: when he changes over the score at the time
+      return `<div class="sub-cols">${col('Most used off the bench', top)}${col('Most taken off', offs)}${col('Most repeated change', swaps)}
+        <div class="sub-col"><div class="lb">When he changes</div><span class="sub-when">${when.map((n, i) => `<span><i style="height:${Math.round(n / mx * 34)}px"></i><b>${n}</b><em>${L[i]}</em></span>`).join('')}</span>
+          <div class="lb" style="margin-top:14px">The score at the time</div><div class="sub-state"><span><b>${state.ahead}</b>ahead</span><span><b>${state.level}</b>level</span><span><b>${state.behind}</b>behind</span></div></div></div>
       <div class="sec" style="margin-top:12px">Every game</div><div class="sgs grid">${games.join('')}</div></div>` })()
     : `<div class="hsw"><div class="sgs hs">${games.join('')}</div><button class="hsc l" data-dir="-1" aria-label="Later games">‹</button><button class="hsc r" data-dir="1" aria-label="Earlier games">›</button></div></div>`}`
 }
