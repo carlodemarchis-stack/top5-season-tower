@@ -196,9 +196,15 @@
     .gt{display:grid;grid-template-columns:1fr 1fr;gap:clamp(16px,2.4vw,32px);margin-top:12px;max-width:1040px}
     .gcol{min-width:0}.gcol .sec{display:block;margin-bottom:4px}.gcol .gsum{display:inline;margin-left:10px}
     .gt svg{display:block;width:100%}.gt .gf{margin-bottom:4px}
+    .gt svg .gm{r:calc(7.5px * var(--u,.17));stroke-width:calc(1.6px * var(--u,.17))}   /* one size on screen: --u from sizeGoalDots() */
+    .gt .sec{min-height:16px;display:flex;align-items:center}
     .gm{cursor:pointer}.gt.lit .gm:not(.on){opacity:.18}.gm.on{stroke:#15181d}   /* hover: one goal, in the net and on the pitch (no size change: no flicker) */
     .ghow{font-size:11.5px;color:#5b626c;margin-top:5px}.ghow b{color:#15181d}
-    .gleg{font-size:11px;color:#8a9099;margin-top:10px;max-width:1040px}
+    .ghelp{display:inline-grid;place-items:center;width:15px;height:15px;margin-left:7px;border-radius:50%;background:#e3e6ea;color:#5b626c;font-size:10px;font-weight:900;font-style:normal;letter-spacing:0;cursor:help;vertical-align:1px}
+    .ghelp:hover{background:#15181d;color:#fff}
+    .ghl p{margin:0 0 6px;font-size:11.5px;line-height:1.4;color:#3a3f47}.ghl p:last-child{margin:0}
+    /* each column as big as the height allows: goal + pitch are ~0.87 of the width tall, plus the lines around them */
+    .gcol{max-width:calc((100vh - var(--gtop,420px)) / .874)}
     .pane-goals .none{font-size:12px;color:#9aa0a8}
     @media (max-width: 760px){ .gt{grid-template-columns:1fr} .card .pane-goals{flex:none} }
     /* Tactical tab: one half pitch per league game, newest first, scrolling sideways; the bench under each */
@@ -237,6 +243,14 @@
     body.tab-squad .card .sq{max-width:none}
     @media (min-width: 761px){
       body.tab-squad .card .body,body.tab-tac .card .body{overflow:visible;min-height:0}
+    }
+    /* Goals tab: the whole width on wide screens (on laptops the panel stays) */
+    @media (min-width: 1600px){
+      body.tab-goals .card .body{overflow:visible;min-height:0}
+      body.tab-goals .card .pane-goals{position:relative;z-index:3;background:#F5F6F4;box-shadow:0 8px 0 #F5F6F4;
+        margin:0 0 calc(-1 * clamp(20px,3.4vh,40px) - 2px) calc(-1 * max(300px,36vw) - clamp(22px,3vw,48px));
+        padding:0 0 calc(clamp(20px,3.4vh,40px) + 2px) clamp(22px,3vw,48px)}
+      body.tab-goals .gt{max-width:none;justify-content:center;grid-template-columns:repeat(2,minmax(0,calc((100vh - var(--gtop,420px)) / .874)));gap:clamp(32px,4vw,72px)}
       body.tab-squad .card .pane-squad,body.tab-tac .card .pane-tac{position:relative;z-index:3;background:#F5F6F4;box-shadow:0 8px 0 #F5F6F4;
         margin:0 0 calc(-1 * clamp(20px,3.4vh,40px) - 2px) calc(-1 * max(300px,36vw) - clamp(22px,3vw,48px));
         padding:0 0 calc(clamp(20px,3.4vh,40px) + 2px) clamp(22px,3vw,48px)}

@@ -223,12 +223,11 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
     ${L.filter(s => s.out === 'g' && s.gx != null).map(s => `<circle class="gm" data-gk="${s.key}"${href(s)} cx="${(8 + s.gx * 50).toFixed(1)}" cy="${(4 + (.6667 - s.gy) * 50).toFixed(1)}" r="2.2" style="fill:${fill}" stroke="#fff" stroke-width=".8"/>`).join('')}</svg>`
   const xg = (L: Dict[]) => L.reduce((a, s) => a + s.xg, 0), gN = (L: Dict[]) => L.filter(s => s.out === 'g').length
   const how = (L: Dict[]) => Object.entries(L.filter(s => s.out === 'g').reduce((o: Dict, s) => (o[SIT[s.sit] || 'other'] = (o[SIT[s.sit] || 'other'] || 0) + 1, o), {})).sort((a: any, b: any) => b[1] - a[1]).map(([k, n]) => `${k} <b>${n}</b>`).join(' · ')
-  const col = (lb: string, L: Dict[], fill: string, og: number) => { const d = gN(L) - xg(L)
-    return `<div class="gcol"><div class="sec">${lb}<span class="gsum"><b>${gN(L)}</b> goals${og ? ` (+${og} own goal${og === 1 ? '' : 's'})` : ''} from <b>${L.length}</b> shots · xG <b>${xg(L).toFixed(1)}</b> · <b>${d >= 0 ? '+' : ''}${d.toFixed(1)}</b></span></div>${frame(L, fill)}${pitch(L, fill)}<div class="ghow">${how(L) || '&nbsp;'}</div></div>` }
+  const col = (lb: string, L: Dict[], fill: string, og: number, help = '') => { const d = gN(L) - xg(L)
+    return `<div class="gcol"><div class="sec">${lb}${help}<span class="gsum"><b>${gN(L)}</b> goals${og ? ` (+${og} own goal${og === 1 ? '' : 's'})` : ''} from <b>${L.length}</b> shots · xG <b>${xg(L).toFixed(1)}</b> · <b>${d >= 0 ? '+' : ''}${d.toFixed(1)}</b></span></div>${frame(L, fill)}${pitch(L, fill)}<div class="ghow">${how(L) || '&nbsp;'}</div></div>` }
   const ogFor = Math.max(0, t.GF - gN(F)), ogAg = Math.max(0, t.GA - gN(A))
   return `<svg width="0" height="0" style="position:absolute"><defs><pattern id="gnet" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="#dfe3e6" stroke-width=".4"/></pattern></defs></svg>
-    <div class="gt">${col('Scored', F, 'var(--c2)', ogFor)}${col('Conceded', A, '#15181d', ogAg)}</div>
-    <div class="gleg">● a goal (hover: the same goal on the pitch and in the net, its xG) · ○ saved · × off target or blocked · top: where it went in, from the shooter's side · bottom: where it was shot from · the number after xG: goals minus xG · FotMob shot map</div>`
+    <div class="gt">${col('Scored', F, 'var(--c2)', ogFor, '<i class="ghelp" aria-label="How to read it">?</i>')}${col('Conceded', A, '#15181d', ogAg)}</div>`
 }
 let goalsBusy = false
 async function fillGoals() {
@@ -239,8 +238,14 @@ async function fillGoals() {
     P.forEach((t, i) => { if (t.lg !== lg || panes[i].dataset.done) return
       panes[i].innerHTML = goalsPane(t, TEAMS_OF[t.lg][t.code] || {}, recs, S); panes[i].dataset.done = '1' })
   }
-  goalsBusy = false
+  goalsBusy = false; sizeGoalDots()
 }
+// the goal dots keep one size on screen however big the drawings get (a bigger pitch = more room between goals):
+// --u = drawing units per screen pixel, the dots' radius is set in pixels × --u
+function sizeGoalDots() {
+  film.querySelectorAll<SVGSVGElement>('.gt svg').forEach(sv => { const w = sv.clientWidth; if (w) sv.style.setProperty('--u', String(sv.viewBox.baseVal.width / w)) })
+}
+addEventListener('resize', sizeGoalDots)
 
 // ---------- the season in two rows; the darker part of each box = the club's possession ----------
 const matchHref = (lg: string, md: number, id: string) => SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
@@ -581,7 +586,7 @@ try { const s = localStorage.getItem('top5.teams.tab') || ''; if (TABS.includes(
 const setTab = (t: string) => {
   TAB = t; document.body.classList.toggle('tab-squad', t === 'squad'); document.body.classList.toggle('tab-tac', t === 'tac'); document.body.classList.toggle('tab-goals', t === 'goals')
   if (t === 'tac') fillTactics()
-  if (t === 'goals') fillGoals()
+  if (t === 'goals') { fillGoals(); requestAnimationFrame(sizeGoalDots) }
   film.querySelectorAll<HTMLElement>('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t))
   try { localStorage.setItem('top5.teams.tab', t) } catch { }
   sizeDeck()
@@ -679,6 +684,11 @@ function matchTip(t: Dict, gid: string, after?: string) {
 }
 initLinks(film)
 initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!, el.dataset.after))
+// the Goals tab's help, on its "?" (in place of a legend line under the pitches)
+const GOALS_HELP = `<div class="mt-top">How to read it</div><div class="ghl"><p><b>Top</b>: where each goal went in, the goal seen from the shooter's side. <b>Bottom</b>: where every shot was taken from, attacking up.</p>
+  <p><b>●</b> a goal · <b>○</b> saved · <b>×</b> off target or blocked. Hover a goal: the same goal lights in the net and on the pitch, with its xG; click it for the match card.</p>
+  <p><b>xG</b>: how many goals the chances were worth; the number after it is goals minus xG. Under each pitch: how the goals came. Data: FotMob shot map.</p></div>`
+initTip(film, '.ghelp', () => GOALS_HELP)
 // a goal in the Goals tab: its card above the column's goal, the same goal lit in the net and on the pitch, the rest faded
 // (own class names — .gm, .lit: the film's .gd / .hl styles scale and clear on hover)
 initTip(film, '.gm[data-gk]', el => GTIPS.get(el.dataset.gk!) || '', el => el.closest<HTMLElement>('.gcol')?.querySelector<HTMLElement>('.gf') || el)
