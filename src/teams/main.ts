@@ -203,7 +203,8 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
     const side = M.h === t.code ? 'h' : 'a'
     rows.forEach((r, i) => { if (r[5] === 'og') return
       const T = r[0] === 'h' ? M.home : M.away, p = (T.players as Dict[]).find(x => String(x.id) === r[8])
-      const sh = { key: `${m.id}-${i}`, md: g.w, opp: g.opp, ha: g.ha, gf: m.gf, ga: m.ga, mid: m.id, side: r[0], min: r[1], x: r[2], y: r[3], xg: r[4], out: r[5], sit: r[6], body: r[7], name: p?.name || '', gx: r[9], gy: r[10],
+      const sh = { key: `${t.code}-${m.id}-${i}`,   // the club in the key: both clubs' tabs draw the same match
+         md: g.w, opp: g.opp, ha: g.ha, gf: m.gf, ga: m.ga, mid: m.id, side: r[0], min: r[1], x: r[2], y: r[3], xg: r[4], out: r[5], sit: r[6], body: r[7], name: p?.name || '', gx: r[9], gy: r[10],
         ast: r[5] === 'g' ? (M.goals as Dict[]).find(q => q.s === r[0] && String(q.byId) === r[8] && Math.abs(parseInt(q.min) - Math.floor(r[1])) <= 1)?.ast : null }
       ;(r[0] === side ? F : A).push(sh)
       if (r[5] === 'g') GTIPS.set(sh.key, `<div class="mt-top">MD ${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} · ${m.gf}-${m.ga}</div>
