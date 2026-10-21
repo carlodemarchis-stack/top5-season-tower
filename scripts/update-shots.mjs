@@ -6,7 +6,7 @@
  *   node scripts/update-shots.mjs --league ITA    # one league
  *   node scripts/update-shots.mjs --full          # refetch every match
  *
- * The shot map gives each shot's spot (x 0–105 towards the goal attacked, y 0–68 from the shooter's left), its xG,
+ * The shot map gives each shot's spot (x 0–105 towards the goal attacked, y 0–68 from the shooter's RIGHT — checked against ESPN's commentary), its xG,
  * outcome, situation and body part, and for a goal where it crossed the line (x 0–2 between the posts, y 0–.667 from
  * the ground to the bar). Shooters are matched to our match card's line-up like the heatmaps (shirt, then name).
  * Checked per match: as many goals as our match card (own goals included), or the match is skipped.

@@ -213,10 +213,11 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
   }
   if (!F.length && !A.length) return '<p class="none">No shot maps yet.</p>'
   const href = (s: Dict) => ` data-href="matches.html?lg=${t.lg}&md=${s.md}&m=${s.mid}"`
-  // the half pitch, attacking up (68 wide, the 35 m in front of the goal): ● a goal · ○ saved · × the rest
+  // the half pitch, attacking up (68 wide, the 35 m in front of the goal): ● a goal · ○ saved · × the rest. FotMob's y
+  // runs from the shooter's RIGHT (checked against ESPN's "left / right side of the box": 1,453 to 4), so x = 68 − y
   const pitch = (L: Dict[], fill: string) => `<svg class="gp" viewBox="0 -1 68 36"><rect x="0" y="0" width="68" height="35" rx=".8" fill="#e8eee8"/><g fill="none" stroke="#fff" stroke-width=".4"><rect x="13.84" y="0" width="40.32" height="16.5"/><rect x="24.84" y="0" width="18.32" height="5.5"/><path d="M26.7 16.5a9.15 9.15 0 0 0 14.6 0"/></g><rect x="30.34" y="-1" width="7.32" height="1" fill="#15181d"/>
-    ${L.filter(s => s.x >= 70 && s.out !== 'g').map(s => s.out === 's' ? `<circle cx="${s.y}" cy="${105 - s.x}" r=".55" fill="#fff" style="stroke:${fill}" stroke-width=".3" opacity=".6"/>` : `<path d="M${s.y - .45} ${105 - s.x - .45}l.9 .9m0-.9l-.9 .9" stroke="#9aa0a8" stroke-width=".25" opacity=".55"/>`).join('')}
-    ${L.filter(s => s.out === 'g').map(s => `<circle class="gm" data-gk="${s.key}"${href(s)} cx="${s.y}" cy="${Math.min(33.8, Math.max(1.3, 105 - s.x))}" r="1.2" style="fill:${fill}" stroke="#fff" stroke-width=".3"/>`).join('')}</svg>`
+    ${L.filter(s => s.x >= 70 && s.out !== 'g').map(s => s.out === 's' ? `<circle cx="${68 - s.y}" cy="${105 - s.x}" r=".55" fill="#fff" style="stroke:${fill}" stroke-width=".3" opacity=".6"/>` : `<path d="M${68 - s.y - .45} ${105 - s.x - .45}l.9 .9m0-.9l-.9 .9" stroke="#9aa0a8" stroke-width=".25" opacity=".55"/>`).join('')}
+    ${L.filter(s => s.out === 'g').map(s => `<circle class="gm" data-gk="${s.key}"${href(s)} cx="${68 - s.y}" cy="${Math.min(33.8, Math.max(1.3, 105 - s.x))}" r="1.2" style="fill:${fill}" stroke="#fff" stroke-width=".3"/>`).join('')}</svg>`
   // the goal, from the shooter's side: posts at 0 and 2, the bar at .667 from the ground — goals only
   const frame = (L: Dict[], fill: string) => `<svg class="gf" viewBox="0 0 116 40"><rect x="8" y="4" width="100" height="33.3" fill="url(#gnet)"/><path d="M8 37.3V4H108V37.3" fill="none" stroke="#15181d" stroke-width="1.8" stroke-linejoin="round"/><line x1="0" x2="116" y1="37.3" y2="37.3" stroke="#c9ced4" stroke-width=".6"/>
     ${L.filter(s => s.out === 'g' && s.gx != null).map(s => `<circle class="gm" data-gk="${s.key}"${href(s)} cx="${(8 + s.gx * 50).toFixed(1)}" cy="${(4 + (.6667 - s.gy) * 50).toFixed(1)}" r="2.2" style="fill:${fill}" stroke="#fff" stroke-width=".8"/>`).join('')}</svg>`
