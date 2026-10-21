@@ -63,11 +63,13 @@ export function coachChip(C: Dict | null, lg: string, code: string, played: Dict
 // most, takes off most, the change he repeats, and each recent game's changes (minute, who came on for whom; ● a goal / ○ an assist by the sub)
 const short = (n: string) => /\s/.test(n) ? n.replace(/^\S+\s+/, '') : n
 const minute = (m: string) => parseInt(m, 10) || 0
-function subsHTML(code: string, recs: Dict[], counts: (M: Dict) => boolean) {
+// full (the Subs tab): longer lists, his changes by the score at the time and by when in the game, every game in a grid
+function subsHTML(code: string, recs: Dict[], counts: (M: Dict) => boolean, full = false) {
   const mine = recs.filter(counts).sort((a, b) => b.md - a.md)
   if (!mine.length) return ''
   const used: Record<string, { name: string; n: number }> = {}, outs: typeof used = {}, swap: typeof used = {}
   let total = 0, firsts: number[] = [], ht = 0, G = 0, A = 0
+  const state = { ahead: 0, level: 0, behind: 0 }, when = [0, 0, 0, 0, 0]   // <45 · half-time · 46–60 · 61–75 · 76+
   const games = mine.map(M => {
     const me = M.h === code ? 'h' : 'a', T = me === 'h' ? M.home : M.away, ha = me === 'h' ? 'H' : 'A'
     const P: Record<string, Dict> = Object.fromEntries(T.players.map((p: Dict) => [String(p.id), p]))
@@ -77,6 +79,10 @@ function subsHTML(code: string, recs: Dict[], counts: (M: Dict) => boolean) {
       const on = P[String(x.on)], off = P[String(x.off)], g = M.goals.filter((q: Dict) => String(q.byId) === String(x.on) && q.s === me && q.kind !== 'og').length
       const a = on.ev.filter((e: string[]) => e[0] === 'ast').length
       total++; if (minute(x.min) <= 46) ht++; G += g; A += a
+      // the score when he made the change (goals before that minute)
+      const mn = minute(x.min), sc = (s: string) => M.goals.filter((q: Dict) => q.s === s && minute(q.min) < mn).length, d = sc(me) - sc(me === 'h' ? 'a' : 'h')
+      state[d > 0 ? 'ahead' : d < 0 ? 'behind' : 'level']++
+      when[mn < 45 ? 0 : mn <= 46 ? 1 : mn <= 60 ? 2 : mn <= 75 ? 3 : 4]++
       ;(used[on.id] ||= { name: on.name, n: 0 }).n++
       if (off) { (outs[off.id] ||= { name: off.name, n: 0 }).n++; (swap[`${on.id}-${off.id}`] ||= { name: `${short(on.name)} for ${short(off.name)}`, n: 0 }).n++ }
       return `<div class="sr"><b>${esc(x.min)}</b><span class="on">${esc(short(on.name))}${'<i class="gl"></i>'.repeat(g)}${'<i class="as"></i>'.repeat(a)}</span><span class="off">for ${esc(short(off?.name || '?'))}</span></div>`
@@ -84,13 +90,17 @@ function subsHTML(code: string, recs: Dict[], counts: (M: Dict) => boolean) {
     return `<div class="sg" data-mid="${M.id}"><div class="sh">MD ${M.md} · ${ha === 'H' ? 'vs' : 'at'} ${esc(M[me === 'h' ? 'a' : 'h'])} <b>${M.score[me]}-${M.score[me === 'h' ? 'a' : 'h']}</b></div>${rows || '<div class="sr none">no changes</div>'}</div>`
   })
   const avgFirst = firsts.length ? Math.round(firsts.reduce((a, b) => a + b, 0) / firsts.length) : null
-  const rank = (o: typeof used, min = 1) => Object.values(o).filter(x => x.n >= min).sort((a, b) => b.n - a.n).slice(0, 5)
+  const rank = (o: typeof used, min = 1) => Object.values(o).filter(x => x.n >= min).sort((a, b) => b.n - a.n).slice(0, full ? 8 : 5)
   const top = rank(used), offs = rank(outs), swaps = rank(swap, 2)   // a swap counts once it has happened twice
   const chips = (lb: string, L: { name: string; n: number }[]) => L.length ? `<div class="sub-top"><span class="lb">${lb}</span>${L.map(x => `<span class="g">${esc(x.name)} <b>×${x.n}</b></span>`).join('')}</div>` : ''
   return `<div class="subs"><div class="sec">Substitutions<span class="gsum">${[`<b>${total}</b> changes in ${mine.length} game${mine.length === 1 ? '' : 's'}`, avgFirst != null && `first change at <b>${avgFirst}'</b> on average`,
       ht && `<b>${ht}</b> at half-time`, `subs scored <b>${G}</b>, assisted <b>${A}</b>`].filter(Boolean).map(c => `<span class="nw">${c}</span>`).join(' · ')}</span></div>
     ${chips('Most used off the bench', top)}${chips('Most taken off', offs)}${chips('Most repeated change', swaps)}
-    <div class="hsw"><div class="sgs hs">${games.join('')}</div><button class="hsc l" data-dir="-1" aria-label="Later games">‹</button><button class="hsc r" data-dir="1" aria-label="Earlier games">›</button></div></div>`
+    ${full ? (() => { const mx = Math.max(1, ...when), L = ['1st half', 'half-time', "46–60'", "61–75'", "76–90'+"]
+      return `<div class="sub-top"><span class="lb">When he changes</span><span class="sub-when">${when.map((n, i) => `<span><i style="height:${Math.round(n / mx * 34)}px"></i><b>${n}</b><em>${L[i]}</em></span>`).join('')}</span></div>
+      <div class="sub-top"><span class="lb">The score at the time</span><span class="g">ahead <b>${state.ahead}</b></span><span class="g">level <b>${state.level}</b></span><span class="g">behind <b>${state.behind}</b></span></div>
+      <div class="sec" style="margin-top:12px">Every game</div><div class="sgs grid">${games.join('')}</div></div>` })()
+    : `<div class="hsw"><div class="sgs hs">${games.join('')}</div><button class="hsc l" data-dir="-1" aria-label="Later games">‹</button><button class="hsc r" data-dir="1" aria-label="Earlier games">›</button></div></div>`}`
 }
 
 // a Fantacalcio mark under a box, as the player cards show it (green ≥ 7, red < 6)
@@ -153,7 +163,7 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
     <div class="body">
       <div><h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(k.name)} · his club's squad film"` : ''}>${esc(k.name)}</h1></div>
       <div class="club"><img src="${logo(lg, code)}" alt="" onerror="this.remove()">${esc(club.name || code)}
-        <span class="tl"><b>${teamLine.pos ? ord(teamLine.pos) : '–'}</b> · <b>${teamLine.pts ?? 0}</b> pts · ${teamLine.W ?? 0}-${teamLine.D ?? 0}-${teamLine.L ?? 0} · GD ${(teamLine.GF ?? 0) - (teamLine.GA ?? 0) >= 0 ? '+' : ''}${(teamLine.GF ?? 0) - (teamLine.GA ?? 0)}</span>${tac ? tacSwitch(false, false) : ''}</div>${tac ? '<div class="pane-season">' : ''}
+        <span class="tl"><b>${teamLine.pos ? ord(teamLine.pos) : '–'}</b> · <b>${teamLine.pts ?? 0}</b> pts · ${teamLine.W ?? 0}-${teamLine.D ?? 0}-${teamLine.L ?? 0} · GD ${(teamLine.GF ?? 0) - (teamLine.GA ?? 0) >= 0 ? '+' : ''}${(teamLine.GF ?? 0) - (teamLine.GA ?? 0)}</span>${tac ? tacSwitch(false, 'Subs') : ''}</div>${tac ? '<div class="pane-season">' : ''}
       <div class="nums">
         <div class="n big"><b>${ppg}</b><span>Points per game</span></div>
         <div class="n"><b>${n('W')}-${n('D')}-${n('L')}</b><span>W-D-L</span></div>
@@ -168,8 +178,8 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
         return parts.length ? `<div class="avail"><span>${parts.join(' · ')}</span></div>` : '' })()}
       <div class="s2">${row(all.slice(0, half), `MD 1–${half}`)}${row(all.slice(half), `MD ${half + 1}–${all.length}`)}</div>
       ${list}
-      ${subsHTML(code, recs, countsM)}
-      ${tac ? `</div><div class="pane-story" data-story="${lg}|${code}|coach:${cur.id}" data-marks='${JSON.stringify(marks || {})}'></div>` : ''}
+      ${tac ? `</div><div class="pane-story" data-story="${lg}|${code}|coach:${cur.id}" data-marks='${JSON.stringify(marks || {})}'></div>
+      <div class="pane-subs">${subsHTML(code, recs, countsM, true)}</div>` : subsHTML(code, recs, countsM)}
     </div>
   </section>`
 }

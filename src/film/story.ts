@@ -237,7 +237,8 @@ export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view')
     const want = view; if (pane.dataset.done === want) return; pane.dataset.done = want
     const [lg, code, id] = pane.dataset.story!.split('|')
     if (!pane.innerHTML) pane.innerHTML = '<p class="msload">Loading the match cards…</p>'
-    // a coach card: his Tactical view (the same for Heatmaps — a coach has none)
+    // a coach card: his Tactical view (its third view, Subs, is drawn with the card)
+    if (id.startsWith('coach:') && want === 'heat') return
     if (id.startsWith('coach:')) { const [recs, C, run] = await Promise.all([recsOf(lg, ctx.SEASON), loadCoaches(lg, ctx.SEASON), runOf(lg, ctx.SEASON)])
       if (pane.dataset.done === want && C) pane.innerHTML = coachStoryHTML(ctx, lg, code, id.slice(6), recs, C, JSON.parse(pane.dataset.marks || '{}'), run); return }
     const [recs, heat, run] = await Promise.all([recsOf(lg, ctx.SEASON), want === 'heat' ? heatOf(lg, ctx.SEASON) : Promise.resolve(null), runOf(lg, ctx.SEASON)])
@@ -247,9 +248,8 @@ export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view')
   const io = new IntersectionObserver(es => { if (view !== 'season') es.forEach(e => e.isIntersecting && fill(e.target as HTMLElement)) }, { rootMargin: '0px 100% 0px 100%' })
   film.querySelectorAll<HTMLElement>('.pane-story').forEach(p => io.observe(p))
   const set = (v: string) => {
-    view = v; document.body.classList.toggle('view-tac', v !== 'season')
-    // a switch without Heatmaps (a coach card) shows Tactical while the film is on Heatmaps
-    film.querySelectorAll<HTMLElement>('.tacsw button').forEach(b => b.classList.toggle('on', b.dataset.view === v || (v === 'heat' && b.dataset.view === 'tac' && !b.parentElement!.querySelector('[data-view="heat"]'))))
+    view = v; document.body.classList.toggle('view-tac', v !== 'season'); document.body.classList.toggle('view-heat', v === 'heat')
+    film.querySelectorAll<HTMLElement>('.tacsw button').forEach(b => b.classList.toggle('on', b.dataset.view === v))
     try { localStorage.setItem(key, v) } catch { }
     if (v !== 'season') film.querySelectorAll<HTMLElement>('.pane-story').forEach(p => { if (near(p)) fill(p) })
   }

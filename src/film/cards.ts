@@ -90,7 +90,8 @@ export function avgVote(ctx: Ctx, id: string) {
 // pane — every game of his club: where he lined up (or, Heatmaps, where he touched the ball), role + formation,
 // minutes, goals, assists, cards
 // on the club line, right-aligned (it stays in both views); a card without a club line (squad film) floats it top right
-export const tacSwitch = (corner = false, heat = true) => `<div class="tacsw${corner ? ' corner' : ''}" role="tablist"><button data-view="season" role="tab">Season</button><button data-view="tac" role="tab">Tactical</button>${heat ? '<button data-view="heat" role="tab">Heatmaps</button>' : ''}</div>`
+// third: the label of the third view ('Heatmaps'; a coach card's is 'Subs' — the films share one view switch)
+export const tacSwitch = (corner = false, third = 'Heatmaps') => `<div class="tacsw${corner ? ' corner' : ''}" role="tablist"><button data-view="season" role="tab">Season</button><button data-view="tac" role="tab">Tactical</button><button data-view="heat" role="tab">${third}</button></div>`
 
 // ================= the scorer card (outfield players) =================
 export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
