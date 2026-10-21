@@ -27,6 +27,8 @@ a.lgb{text-decoration:none}
 .lgb.all b{font-size:12px;font-weight:900;color:#15181d;letter-spacing:-.01em;white-space:nowrap}
 .lgb.cur{opacity:.95;filter:none}   /* five-league film: the league of the card on screen */
 #credit{color:var(--dim);flex:1 1 0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+#ctlbar #credit{position:absolute;right:16px;top:50%;transform:translateY(-50%);max-width:calc(50% - 330px)}   /* in the control bar, right of the controls */
+#topbar .fnav{margin-left:auto}
 #credit a{color:var(--dim);text-decoration:none;border-bottom:1px solid var(--line)}
 #credit a:hover{color:#15181d}
 #ctlbar{position:fixed;bottom:0;left:0;right:0;height:var(--ctl);z-index:40;display:flex;align-items:center;justify-content:center;gap:8px;

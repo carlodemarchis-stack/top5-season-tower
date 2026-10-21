@@ -196,9 +196,10 @@ export function initNav(self: 'teams' | 'matches' | 'scorers' | 'keepers' | 'coa
   ]
   const nav = document.createElement('nav'); nav.className = 'fnav'; nav.setAttribute('aria-label', 'Views')
   nav.innerHTML = tabs.map(([k, label, c, ink, href]) => `<a class="fn${k === self ? ' on' : ''}" href="${href}" title="${label}" aria-label="${label}" style="--fc:${c};--fi:${ink}"${k === self ? ' aria-current="page"' : ''}>${I[k]}<span class="lbl">${label}</span></a>`).join('')
-  // between the context line and the credit (they share the free space, so the tabs sit near the middle)
+  // the tabs at the right end of the top bar; the credit moves down to the control bar, on its right
   document.querySelector('#topbar > .pill')?.remove()
-  const bar = document.getElementById('topbar')!, credit = document.getElementById('credit')
-  bar.insertBefore(nav, credit)
+  const bar = document.getElementById('topbar')!, credit = document.getElementById('credit'), ctl = document.getElementById('ctlbar')
+  if (credit && ctl) ctl.appendChild(credit)
+  bar.appendChild(nav)
 }
 
