@@ -103,7 +103,8 @@ function subsHTML(code: string, recs: Dict[], counts: (M: Dict) => boolean, full
       return `<div class="sub-cols">${col('Most used off the bench', top)}${col('Most taken off the pitch', offs)}${col('Most repeated change', swaps)}
         <div class="sub-col"><div class="lb">When he changes</div><span class="sub-when">${when.map((n, i) => `<span><i style="height:${Math.round(n / mx * 34)}px"></i><b>${n}</b><em>${L[i]}</em></span>`).join('')}</span>
           <div class="lb" style="margin-top:14px">The score at the time</div><div class="sub-state"><span><b>${state.ahead}</b>ahead</span><span><b>${state.level}</b>level</span><span><b>${state.behind}</b>behind</span></div></div></div>
-      <div class="sec" style="margin-top:12px">Every game</div><div class="sgs grid">${games.join('')}</div></div>` })()
+      <div class="sec" style="margin-top:12px">Every game</div>
+      <div class="hsw"><div class="sgs pages hs">${Array.from({ length: Math.ceil(games.length / 15) }, (_, i) => `<div class="pg">${games.slice(i * 15, i * 15 + 15).join('')}</div>`).join('')}</div><button class="hsc l" data-dir="-1" aria-label="Later games">‹</button><button class="hsc r" data-dir="1" aria-label="Earlier games">›</button></div></div>` })()
     : `<div class="hsw"><div class="sgs hs">${games.join('')}</div><button class="hsc l" data-dir="-1" aria-label="Later games">‹</button><button class="hsc r" data-dir="1" aria-label="Earlier games">›</button></div></div>`}`
 }
 
