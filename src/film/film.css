@@ -292,6 +292,8 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 .coachc .glist.bench{margin-top:12px}
 .k2s{display:flex;flex-wrap:wrap;gap:6px 22px;flex:1;min-width:0}.k2 b{font-size:20px;font-weight:900;color:#15181d;line-height:1.1}.k2 b i{font-style:normal;font-size:.65em;color:#8a9099}
 .k2{display:flex;align-items:baseline;gap:6px}.k2 span{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8a9099}
+.coachc .clk{display:inline-flex;align-items:center;gap:12px;cursor:pointer}.coachc .clk:hover{text-decoration:underline}
+.coachc [data-href]:not(.c2):not(.msc):not(.clk){cursor:pointer}.coachc .scr[data-href]:hover span,.coachc .sr [data-href]:hover,.coachc .core-t[data-href]:hover b,.coachc .g[data-href]:hover{text-decoration:underline}   /* players: their cards */
 .core{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;max-width:1040px;margin-top:4px}
 .core-t{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;min-width:0}
 .core-t img{height:58px;width:auto;max-width:100%;object-fit:contain}   /* the cutout as it is, no circle */

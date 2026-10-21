@@ -208,7 +208,7 @@ function coachStoryHTML(ctx: Ctx, lg: string, code: string, cid: string, recs: D
         <div class="mt-me" style="margin-top:0;padding-top:0;border-top:0"><b>${esc(p.name)}</b> · #${esc(p.n)}${role ? ` · ${role}` : ''} · ${sub ? `replaced by <b>${esc(sur(P[String(sub.on)]?.name || ''))}</b> at <b>${esc(sub.min)}</b>` : red ? `sent off at <b>${esc(red[1])}</b>` : '<b>90′</b>'}</div>
         <div class="mt-stats">${st(G, `goal${G === 1 ? '' : 's'}`)}${st(A, `assist${A === 1 ? '' : 's'}`)}${km ? st(km[0].toFixed(1), 'km') : ''}${mk != null ? st(mk, 'mark') : ''}${yc || red ? `<span><i class="${red ? 'rc' : 'yc'}"></i></span>` : ''}</div>
         <div class="mt-foot">started ${starts[pid] || 0} of his ${his.length} games</div>`)
-      return `<i style="left:${x}%;top:${y}%" data-pid="${pid}">${esc(p.n)}${offs.has(pid) ? '<b class="ar">↓</b>' : ''}</i>` }).join('')
+      return `<i style="left:${x}%;top:${y}%" data-pid="${pid}" data-href="player.html?lg=${lg}&team=${code}&p=${pid}">${esc(p.n)}${offs.has(pid) ? '<b class="ar">↓</b>' : ''}</i>` }).join('')
     const bk = (C.cards?.[`${M.h}-${M.a}`] || []).filter((x: string[]) => x[0] === side && who === cid)
     const facts = `${bk.some((x: string[]) => x[1] === 'y') ? '<i class="yc"></i>' : ''}${bk.some((x: string[]) => x[1] === 'r') ? '<i class="rc"></i>' : ''}`
     const mk = who === cid ? marks?.[M.md] : null, mark = mk != null ? `<b class="mk${mk >= 7 ? ' hi' : mk < 6 ? ' lo' : ''}">${mk}</b>` : ''
