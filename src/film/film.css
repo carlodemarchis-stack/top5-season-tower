@@ -33,6 +33,11 @@ a.lgb{text-decoration:none}
 #credit a:hover{color:#15181d}
 #ctlbar{position:fixed;bottom:0;left:0;right:0;height:var(--ctl);z-index:40;display:flex;align-items:center;justify-content:center;gap:8px;
   background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.sortw{position:relative;display:flex}   /* the order button and its menu (coaches film) */
+.sortm{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);display:none;flex-direction:column;min-width:190px;padding:6px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(21,24,29,.16);z-index:50}
+.sortm.on{display:flex}.sortt{font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#9aa0a8;padding:4px 8px 6px}
+.sortm button{border:0;background:none;font:inherit;font-size:12.5px;text-align:left;padding:7px 8px;border-radius:8px;cursor:pointer;color:#15181d}.sortm button:hover{background:#F1F2F4}
+.sortm button.on{font-weight:800}.sortm button.on::before{content:'✓ '}.sortm small{color:#9aa0a8;font-weight:600}
 .ic{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--dim);display:grid;place-items:center;cursor:pointer}
 .ic:hover{color:#15181d;border-color:#c9ced4;background:var(--pan)}
 .ic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}

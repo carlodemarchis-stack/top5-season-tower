@@ -6,7 +6,7 @@
 import '../film/film.css'
 import { initFilm, initHighlight, initLinks, initNav, initHScroll } from '../film/chrome'
 import { esc, LEAGUE_NAME, fitBios, type Ctx } from '../film/cards'
-import { loadCoaches, coachCard, stints, headOf, coachHref } from '../film/coach'
+import { loadCoaches, coachCard, stints, headOf, coachHref, ageOf } from '../film/coach'
 import { teamLineOf } from '../film/season'
 import { initStory } from '../film/story'
 type Dict = Record<string, any>
@@ -32,7 +32,7 @@ const MARKS: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as
 const CTX: Ctx = { TEAMS, SEASON, VOTES: {} }
 
 // ---------- every coach of every club this season, with his record there ----------
-type Entry = { lg: string; code: string; id: string; former: boolean; G: number; P: number; GD: number; ppg: number; played: Dict[]; recs: Dict[]; teamLine: Dict; squad: Dict[] }
+type Entry = { lg: string; code: string; id: string; former: boolean; G: number; P: number; GD: number; ppg: number; gpg: number; age: number | null; played: Dict[]; recs: Dict[]; teamLine: Dict; squad: Dict[] }
 const ENTRIES: Entry[] = []
 for (const lg of FULL) {
   const C = COACHES[lg]; if (!C) continue
@@ -46,13 +46,19 @@ for (const lg of FULL) {
       if (id !== H.id && S.filter(s => s.id === id).every(s => H.standIn.includes(s))) continue   // a stand-in: his games are the head coach's
       const mine = S.filter(s => s.id === id || (id === H.id && H.standIn.includes(s))), G = mine.reduce((a, s) => a + s.W + s.D + s.L, 0)
       const former = id !== H.id; if (former && G < MIN_GAMES) continue   // a one- or two-game stand-in gets no card
-      const P = mine.reduce((a, s) => a + 3 * s.W + s.D, 0), GD = mine.reduce((a, s) => a + s.GF - s.GA, 0)
-      ENTRIES.push({ lg, code, id, former, G, P, GD, ppg: G ? P / G : 0, played, recs, teamLine, squad: t.squad || [] })
+      const P = mine.reduce((a, s) => a + 3 * s.W + s.D, 0), GD = mine.reduce((a, s) => a + s.GF - s.GA, 0), GF = mine.reduce((a, s) => a + s.GF, 0)
+      ENTRIES.push({ lg, code, id, former, G, P, GD, ppg: G ? P / G : 0, gpg: G ? GF / G : 0, age: ageOf(C.coaches[id]?.dob), played, recs, teamLine, squad: t.squad || [] })
     }
   }
 }
-// points per game, best first; under three games after everyone else; ties on points, then goal difference
-const order = (a: Entry, b: Entry) => +(b.G >= MIN_GAMES) - +(a.G >= MIN_GAMES) || b.ppg - a.ppg || b.P - a.P || b.GD - a.GD
+// the order (the sort button in the control bar, remembered): points per game (the default) or his side's goals per
+// game, best first — under three games after everyone else; or age, youngest first (no date of birth: last)
+const SORTS: Record<string, string> = { ppg: 'points per game', gpg: 'goals per game', age: 'age' }
+let SORT = 'ppg'; try { const v = localStorage.getItem('top5.coaches.sort') || ''; if (SORTS[v]) SORT = v } catch { }
+const byPpg = (a: Entry, b: Entry) => +(b.G >= MIN_GAMES) - +(a.G >= MIN_GAMES) || b.ppg - a.ppg || b.P - a.P || b.GD - a.GD
+const order = (a: Entry, b: Entry) => SORT === 'gpg' ? +(b.G >= MIN_GAMES) - +(a.G >= MIN_GAMES) || b.gpg - a.gpg || byPpg(a, b)
+  : SORT === 'age' ? (a.age ?? 999) - (b.age ?? 999) || byPpg(a, b) : byPpg(a, b)
+const sortVal = (e: Entry) => SORT === 'gpg' ? `${e.G ? e.gpg.toFixed(2) : '–'} goals a game` : SORT === 'age' ? (e.age != null ? `${e.age}` : 'age –') : `${e.G ? e.ppg.toFixed(2) : '–'} ppg`
 const listOf = (l: string) => ENTRIES.filter(e => l === 'ALL' || e.lg === l).sort(order)
 const P = listOf(LIST)
 const nameOf = (e: Entry) => COACHES[e.lg].coaches[e.id].name
@@ -78,11 +84,11 @@ const lsize = (l: string): number => l === 'ALL' ? LG_ORDER.reduce((a, lg) => a 
 $('lgs').innerHTML = `<a class="lgb all${LIST === 'ALL' ? ' on' : ''}" href="${listUrl('ALL')}" title="Every coach of the five leagues · ${lsize('ALL')}"><b>All Leagues</b><span>${lsize('ALL')}</span></a>` +
   LG_ORDER.map(lg => `<a class="lgb${LIST === lg ? ' on' : ''}" data-lg="${lg}" href="${listUrl(lg)}" title="${LEAGUE_NAME[lg]} coaches · ${lsize(lg)}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"><span>${lsize(lg)}</span></a>`).join('')
 const formers = P.filter(e => e.former).length
-$('cnote').innerHTML = `${P.length} coaches${LIST === 'ALL' ? ' of the five leagues' : ` of ${LEAGUE_NAME[LIST]}`}: every club's head coach${formers ? ` and ${formers} who left during the season (three or more games)` : ''}, ranked by points per game. Season ${SEASON.replace('-', '/')}.`
+$('cnote').innerHTML = `${P.length} coaches${LIST === 'ALL' ? ' of the five leagues' : ` of ${LEAGUE_NAME[LIST]}`}: every club's head coach${formers ? ` and ${formers} who left during the season (three or more games)` : ''}, ranked by ${SORTS[SORT]}${SORT === 'age' ? ' (youngest first)' : ''}. Season ${SEASON.replace('-', '/')}.`
 
 function onPaint(i: number) {
   const e = P[i]
-  $('ctx').innerHTML = `${LIST === 'ALL' ? 'Coaches' : `${LEAGUE_NAME[LIST]} coaches`} ${SEASON.replace('-', '/')} · by points per game · <b>${esc(nameOf(e))}</b> · ${esc(club(e))}${e.former ? ' (former)' : ''} · ${e.G ? e.ppg.toFixed(2) : '–'} ppg`
+  $('ctx').innerHTML = `${LIST === 'ALL' ? 'Coaches' : `${LEAGUE_NAME[LIST]} coaches`} ${SEASON.replace('-', '/')} · by ${SORTS[SORT]} · <b>${esc(nameOf(e))}</b> · ${esc(club(e))}${e.former ? ' (former)' : ''} · ${sortVal(e)}`
   if (LIST === 'ALL') $('lgs').querySelectorAll<HTMLElement>('.lgb[data-lg]').forEach(b => b.classList.toggle('cur', b.dataset.lg === e.lg))
   const meta = (n: string, v: string) => document.querySelector(`meta[name="agwas:${n}"]`)?.setAttribute('content', v)
   meta('mentions', LG_IG[e.lg]); meta('title', `${nameOf(e)} · ${club(e)} · ${e.G ? e.ppg.toFixed(2) : '–'} points per game`)
@@ -106,4 +112,19 @@ fitBios(film)
 initHighlight(film, '[data-mid]', k => `[data-mid="${k}"]`, el => el.dataset.mid!)
 initNav('coaches', LIST, SEASON)
 initStory(film, CTX)   // Season | Tactical
+// the sort button, after the coach selector: a small menu of the three orders; a new order keeps the coach on screen
+{
+  const cur = () => { const m = location.hash.match(/#(\d+)/); return m ? P[+m[1] - 1] : null }
+  const btn = document.createElement('button'); btn.className = 'ic sortb'; btn.title = `Order: ${SORTS[SORT]}`
+  btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M7 4v16M3.5 16.5L7 20l3.5-3.5M14 6h7M14 11h5M14 16h3"/></svg>'
+  const menu = document.createElement('div'); menu.className = 'sortm'
+  menu.innerHTML = `<div class="sortt">Order by</div>${Object.entries(SORTS).map(([k, l]) => `<button data-s="${k}" class="${k === SORT ? 'on' : ''}">${l[0].toUpperCase() + l.slice(1)}${k === 'age' ? ' <small>youngest first</small>' : k === 'ppg' ? ' <small>default</small>' : ''}</button>`).join('')}`
+  const wrap = document.createElement('span'); wrap.className = 'sortw'; wrap.append(btn, menu); $('counter').after(wrap)
+  btn.addEventListener('click', e => { e.stopPropagation(); menu.classList.toggle('on') })
+  addEventListener('click', () => menu.classList.remove('on'))
+  menu.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('[data-s]'); if (!b) return
+    const keep = cur(); try { localStorage.setItem('top5.coaches.sort', b.dataset.s!) } catch { }
+    SORT = b.dataset.s!; const i = keep ? listOf(LIST).findIndex(x => x.lg === keep.lg && x.code === keep.code && x.id === keep.id) : 0
+    location.hash = `#${Math.max(0, i) + 1}`; location.reload() })
+}
 initFilm({ label: i => nameOf(P[i]), count: P.length, key: 'top5.coaches.card' + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'coaches.html' })
