@@ -95,10 +95,13 @@ function subsHTML(code: string, recs: Dict[], counts: (M: Dict) => boolean, full
   const chips = (lb: string, L: { name: string; n: number }[]) => L.length ? `<div class="sub-top"><span class="lb">${lb}</span>${L.map(x => `<span class="g">${esc(x.name)} <b>×${x.n}</b></span>`).join('')}</div>` : ''
   return `<div class="subs"><div class="sec">Substitutions<span class="gsum">${[`<b>${total}</b> changes in ${mine.length} game${mine.length === 1 ? '' : 's'}`, avgFirst != null && `first change at <b>${avgFirst}'</b> on average`,
       ht && `<b>${ht}</b> at half-time`, `subs scored <b>${G}</b>, assisted <b>${A}</b>`].filter(Boolean).map(c => `<span class="nw">${c}</span>`).join(' · ')}</span></div>
-    ${chips('Most used off the bench', top)}${chips('Most taken off', offs)}${chips('Most repeated change', swaps)}
+    ${full ? '' : `${chips('Most used off the bench', top)}${chips('Most taken off', offs)}${chips('Most repeated change', swaps)}`}
     ${full ? (() => { const mx = Math.max(1, ...when), L = ['1st half', 'half-time', "46–60'", "61–75'", "76–90'+"]
-      return `<div class="sub-top"><span class="lb">When he changes</span><span class="sub-when">${when.map((n, i) => `<span><i style="height:${Math.round(n / mx * 34)}px"></i><b>${n}</b><em>${L[i]}</em></span>`).join('')}</span></div>
-      <div class="sub-top"><span class="lb">The score at the time</span><span class="g">ahead <b>${state.ahead}</b></span><span class="g">level <b>${state.level}</b></span><span class="g">behind <b>${state.behind}</b></span></div>
+      // the Subs tab: the three lists as ranked columns, then when he changes and the score at the time side by side
+      const col = (lb: string, Lx: { name: string; n: number }[]) => `<div class="sub-col"><div class="lb">${lb}</div>${Lx.map(x => `<div class="scr"><span>${esc(x.name)}</span><b>×${x.n}</b></div>`).join('') || '<div class="scr none">–</div>'}</div>`
+      return `<div class="sub-cols">${col('Most used off the bench', top)}${col('Most taken off', offs)}${col('Most repeated change', swaps)}</div>
+      <div class="sub-cols two"><div class="sub-col"><div class="lb">When he changes</div><span class="sub-when">${when.map((n, i) => `<span><i style="height:${Math.round(n / mx * 34)}px"></i><b>${n}</b><em>${L[i]}</em></span>`).join('')}</span></div>
+        <div class="sub-col"><div class="lb">The score at the time</div><div class="sub-state"><span><b>${state.ahead}</b>ahead</span><span><b>${state.level}</b>level</span><span><b>${state.behind}</b>behind</span></div></div></div>
       <div class="sec" style="margin-top:12px">Every game</div><div class="sgs grid">${games.join('')}</div></div>` })()
     : `<div class="hsw"><div class="sgs hs">${games.join('')}</div><button class="hsc l" data-dir="-1" aria-label="Later games">‹</button><button class="hsc r" data-dir="1" aria-label="Earlier games">›</button></div></div>`}`
 }
