@@ -301,7 +301,7 @@ export function keeperCard(ctx: Ctx, k: Dict, opt: CardOpt = {}) {
         <h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(k.name)} · his card in the squad"` : ''}>${esc(k.name)}</h1>
       </div>
       ${opt.noClub ? (opt.story ? tacSwitch(true) : '') : `<div class="club"><img src="${logo(k.lg, k.team)}" alt="" onerror="this.remove()">${esc(club.name || k.team)}
-        <span class="tl">${LEAGUE_NAME[k.lg]}${k.tpos ? ` · <b>${ord(k.tpos)}</b>` : ''}</span>${opt.story ? tacSwitch() : ''}</div>`}${opt.story ? '<div class="pane-season">' : ''}
+        <span class="tl">${k.teamLine ? (t => `<b>${t.pos ? ord(t.pos) : '–'}</b> · <b>${t.pts}</b> pts · ${t.W}-${t.D}-${t.L} · GD ${t.GF - t.GA >= 0 ? '+' : ''}${t.GF - t.GA}`)(k.teamLine) : `${LEAGUE_NAME[k.lg]}${k.tpos ? ` · <b>${ord(k.tpos)}</b>` : ''}`}</span>${opt.story ? tacSwitch() : ''}</div>`}${opt.story ? '<div class="pane-season">' : ''}
       <div class="nums">${opt.nums ?? `
         <div class="n big"><b>${k.SV}</b><span>Saves${k.PS ? ` · ${k.PS} pen${k.PS > 1 ? 's' : ''}` : ''}</span></div>
         <div class="n"><b>${k.GA}</b><span>Conceded</span></div>
