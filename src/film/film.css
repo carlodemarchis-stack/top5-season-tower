@@ -295,6 +295,7 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 .subs .sec .gsum{margin-left:0;justify-content:flex-start}
 /* the coach card's Season view: his team's numbers, then his core */
 .team-b,.core-b{margin-top:12px}
+.core-b>.team-b{margin:0 0 6px}
 .team-b,.coachc .glist.bench{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:6px 20px;text-align:left}
 .team-b>.sec,.coachc .glist.bench>.sec{margin:0;flex:none;width:auto}.coachc .glist.bench>.goals{flex:1;min-width:0}   /* title and content on one line */
 .coachc .glist.bench{margin-top:12px}

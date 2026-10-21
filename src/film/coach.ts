@@ -188,7 +188,10 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
     const avgAge = xis.length ? xis.reduce((a, x) => a + x.age, 0) / xis.length : null, young = [...xis].sort((a, b) => a.age - b.age)[0]
     const tile = ([id, m]: [string, number]) => { const p = sq[id], ph = p?.thumb
       return `<div class="core-t"${plHref(lg, code, id)}>${ph ? `<img src="${ph}" alt="" loading="lazy">` : `<span class="ini">${esc(names[id].split(' ').map(w => w[0]).slice(0, 2).join(''))}</span>`}<b>${esc(short(names[id]))}</b><span class="mb"><i style="width:${Math.round(m / max * 100)}%"></i></span><em>${m}' · ${starts[id] || 0} st</em></div>` }
-    return `<div class="core-b"><div class="sec">His core<span class="gsum"><span class="nw"><b>${Object.keys(mins).length}</b> players used</span>${avgAge != null ? ` · <span class="nw">his XI's average age <b>${avgAge.toFixed(1)}</b></span>` : ''}${young ? ` · <span class="nw">youngest XI <b>${young.age.toFixed(1)}</b> (MD ${young.md} v ${esc(young.opp)})</span>` : ''}</span></div>
+    // the head line in the same format as "His team, a game": the title, then big numbers with small labels
+    const k = (v: string, l: string) => `<div class="k2"><b>${v}</b><span>${l}</span></div>`
+    return `<div class="core-b"><div class="team-b"><div class="sec">His core</div><div class="k2s">${[k(String(Object.keys(mins).length), 'players used'),
+      avgAge != null && k(avgAge.toFixed(1), "XI's average age"), young && k(young.age.toFixed(1), `youngest XI · MD ${young.md} v ${esc(young.opp)}`)].filter(Boolean).join('')}</div></div>
       <div class="core">${top.map(tile).join('')}</div></div>` }
   const list = S.length > 1 ? `<div class="glist bench"><div class="sec">The bench this season</div><div class="goals">${S.map(s => { const x = C.coaches[s.id]
     return `<span class="g${s.id === cur.id ? ' on' : ''}">${x.ph ? `<img class="cf" src="${coachPhoto(s.id)}" alt="">` : ''}<b>${esc(x.name)}</b> ${span(s)}${s.from == null ? '' : ` · ${s.W}-${s.D}-${s.L} · ${pts(s)} pts`}${H.standIn.includes(s) ? ' · stand-in' : ''}</span>` }).join('')}</div></div>` : ''
