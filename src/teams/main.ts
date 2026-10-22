@@ -196,6 +196,15 @@ const shotsOf = (lg: string) => SHOTS[lg] ??= (SHOT_FILES[`../data/shots-${lg}-$
 const SIT: Record<string, string> = { o: 'open play', c: 'counter-attack', s: 'set piece', k: 'corner', f: 'free kick', p: 'penalty', t: 'throw-in' }
 const BODY: Record<string, string> = { r: 'right foot', l: 'left foot', h: 'header', x: '' }
 const GTIPS = new Map<string, string>()   // a goal's hover card, by its key
+const GROW = new Map<string, string>(), GV = new Map<string, Dict>()   // a grouped goal's row in the list card, and its filter values
+// the list card of a group of goals from one spot: every goal (the ones the filters leave), a row each — the first six on
+// hover, all of them once pinned (a click), each row opening its match card
+function stackTip(el: HTMLElement) {
+  const keys = (el.dataset.vis ?? el.dataset.gs!).split(' ').filter(Boolean), pinned = document.getElementById('mtip')?.classList.contains('pinned')
+  const rows = pinned ? keys : keys.slice(0, 6)
+  return `<div class="mt-top">${keys.length} goals from this spot${el.dataset.sit === 'penalty' ? ' · penalties' : ''}</div><div class="gsl">${rows.map(k => GROW.get(k)).join('')}</div>
+    <div class="gsm">${!pinned && keys.length > 6 ? `+${keys.length - 6} more · ` : ''}${pinned ? 'click a goal for its match · Esc or click outside to close' : 'click the dot to keep this open'}</div>`
+}
 // every squad photo of the clubs in this film, by player: the scorer's cutout on a goal's card (an opponent's too)
 let THUMBS: Record<string, string> | null = null
 const squadThumb = (id: string) => (THUMBS ??= Object.fromEntries(P.flatMap((t: Dict) => (t.squad || []).filter((p: Dict) => p.thumb).map((p: Dict) => [String(p.espnId), p.thumb]))))[id]
@@ -229,12 +238,19 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
   const href = (s: Dict) => ` data-href="matches.html?lg=${t.lg}&md=${s.md}&m=${s.mid}"`
   // a goal's three filter values (the side column's bars): how it came, with what, from where
   const inBox = (s: Dict) => s.x >= 88.5 && s.y >= 13.84 && s.y <= 54.16
+  // goals from (nearly) one spot: grouped, each group's members within 1.2 m of its first
+  const groups = (G: Dict[]) => { const out: Dict[][] = []; for (const g of G) { const k = out.find(o => Math.hypot(o[0].x - g.x, o[0].y - g.y) <= 1.2); k ? k.push(g) : out.push([g]) } return out }
   const fv = (s: Dict) => ` data-how="${SIT[s.sit] || 'other'}" data-with="${BODY[s.body] || ''}" data-from="${inBox(s) ? 'inside the box' : 'outside'}"`
   // the half pitch, attacking up (68 wide, the 35 m in front of the goal): ● a goal · ○ saved · × the rest. FotMob's y
   // runs from the shooter's RIGHT (checked against ESPN's "left / right side of the box": 1,453 to 4), so x = 68 − y
   const pitch = (L: Dict[], fill: string) => `<svg class="gp" viewBox="0 -1 68 36"><rect x="0" y="0" width="68" height="35" rx=".8" fill="#e8eee8"/><g fill="none" stroke="#fff" stroke-width=".4"><rect x="13.84" y="0" width="40.32" height="16.5"/><rect x="24.84" y="0" width="18.32" height="5.5"/><path d="M26.7 16.5a9.15 9.15 0 0 0 14.6 0"/></g><rect x="30.34" y="-1" width="7.32" height="1" fill="#15181d"/>
     ${L.filter(s => s.x >= 70 && s.out !== 'g').map(s => s.out === 's' ? `<circle cx="${68 - s.y}" cy="${105 - s.x}" r=".55" fill="#fff" style="stroke:${fill}" stroke-width=".3" opacity=".6"/>` : `<path d="M${68 - s.y - .45} ${105 - s.x - .45}l.9 .9m0-.9l-.9 .9" stroke="#9aa0a8" stroke-width=".25" opacity=".55"/>`).join('')}
-    ${L.filter(s => s.out === 'g').map(s => `<circle class="gm" data-gk="${s.key}"${href(s)}${fv(s)} cx="${68 - s.y}" cy="${Math.min(33.8, Math.max(1.3, 105 - s.x))}" r="1.2" style="fill:${fill}" stroke="#fff" stroke-width=".3"/>`).join('')}</svg>`
+    ${groups(L.filter(s => s.out === 'g')).map(G => { const s = G[0], cx = 68 - s.y, cy = Math.min(33.8, Math.max(1.3, 105 - s.x))
+      if (G.length === 1) return `<circle class="gm" data-gk="${s.key}"${href(s)}${fv(s)} cx="${cx}" cy="${cy}" r="1.2" style="fill:${fill}" stroke="#fff" stroke-width=".3"/>`
+      // several goals from one spot (every penalty, tap-ins): one dot with the count; hover lists them, click pins the list
+      for (const g of G) { GV.set(g.key, { how: SIT[g.sit] || 'other', with: BODY[g.body] || '', from: inBox(g) ? 'inside the box' : 'outside' })
+        GROW.set(g.key, `<a class="gsr" href="matches.html?lg=${t.lg}&md=${g.md}&m=${g.mid}"><b>${Math.floor(g.min)}′</b><span>MD ${g.md} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} ${g.gf}-${g.ga}</span><span class="nm">${esc(g.name || '?')}</span><em>${g.xg.toFixed(2)} xG</em></a>`) }
+      return `<g class="gm gst" data-gs="${G.map(g => g.key).join(' ')}" data-sit="${esc(SIT[s.sit] || '')}"><circle cx="${cx}" cy="${cy}" r="1.6" style="fill:${fill}" stroke="#fff" stroke-width=".3"/><text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" fill="#fff" font-weight="900">${G.length}</text></g>` }).join('')}</svg>`
   // the goal, from the shooter's side: posts at 0 and 2, the bar at .667 from the ground — goals only
   const frame = (L: Dict[], fill: string) => `<svg class="gf" viewBox="0 0 116 40"><rect x="8" y="4" width="100" height="33.3" fill="url(#gnet)"/><path d="M8 37.3V4H108V37.3" fill="none" stroke="#15181d" stroke-width="1.8" stroke-linejoin="round"/><line x1="0" x2="116" y1="37.3" y2="37.3" stroke="#c9ced4" stroke-width=".6"/>
     ${L.filter(s => s.out === 'g' && s.gx != null).map(s => `<circle class="gm" data-gk="${s.key}"${href(s)}${fv(s)} cx="${(8 + s.gx * 50).toFixed(1)}" cy="${(4 + (.6667 - s.gy) * 50).toFixed(1)}" r="2.2" style="fill:${fill}" stroke="#fff" stroke-width=".8"/>`).join('')}</svg>`
@@ -755,7 +771,7 @@ initLinks(film)
 initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!, el.dataset.after))
 // the Goals tab's help, on its "?" (in place of a legend line under the pitches)
 const GOALS_HELP = `<div class="mt-top">How to read it</div><div class="ghl"><p><b>Top</b>: where each goal went in, the goal seen from the shooter's side. <b>Bottom</b>: where every shot was taken from, attacking up.</p>
-  <p><b>●</b> a goal · <b>○</b> saved · <b>×</b> off target or blocked. Hover a goal: the same goal lights in the net and on the pitch, with its xG; click it for the match card.</p>
+  <p><b>●</b> a goal · <b>○</b> saved · <b>×</b> off target or blocked. Hover a goal: the same goal lights in the net and on the pitch, with its xG; click it for the match card. A <b>numbered dot</b> is several goals from one spot (every penalty): hover it for the list, click it to keep the list open.</p>
   <p><b>Left</b>: the goals scored — <b>right</b>: conceded. <b>xG</b>: how many goals the chances were worth; "vs xG": goals minus xG. The bars: how the goals came, with what, from where — <b>click a bar</b> to show only those goals (several bars: any of a group, all groups at once; click again to clear). Data: FotMob shot map.</p></div>`
 // xG, explained where it is used (the "?" by each column's xG)
 const XG_HELP = `<div class="mt-top">xG — expected goals</div><div class="ghl"><p>How likely a shot was to go in, judged from many thousands of similar shots: where it was taken, the angle, foot or head, the kind of chance. <b>0.90</b> is a tap-in (a 90% chance); <b>0.03</b> a hopeful shot from 25 metres (3%).</p>
@@ -770,20 +786,31 @@ film.addEventListener('click', e => {
   gk.querySelectorAll<HTMLElement>('.gkr.on').forEach(r => (want[r.dataset.g!] ||= []).push(r.dataset.v!))
   const any = Object.keys(want).length; gk.classList.toggle('filt', !!any)
   const col = gt.querySelector<HTMLElement>(`.gcol[data-side="${side}"]`)!
-  col.querySelectorAll<SVGElement>('.gm').forEach(g => g.classList.toggle('hid', Object.entries(want).some(([k, vs]) => !vs.includes(g.dataset[k] || ''))))
-  const n = gk.querySelector<HTMLElement>('.gkn b')!, shown = col.querySelectorAll('.gp .gm:not(.hid)').length
+  const ok = (v: Dict) => Object.entries(want).every(([k, vs]) => vs.includes(v[k] || ''))
+  col.querySelectorAll<SVGElement>('.gm[data-gk]').forEach(g => g.classList.toggle('hid', !ok(g.dataset)))
+  // a group: the goals that pass, its count redrawn; hidden when none does
+  let inGroups = 0
+  col.querySelectorAll<SVGElement>('.gst').forEach(g => { const vis = g.dataset.gs!.split(' ').filter(k => ok(GV.get(k) || {}))
+    g.dataset.vis = vis.join(' '); g.classList.toggle('hid', !vis.length); g.querySelector('text')!.textContent = String(vis.length); inGroups += vis.length })
+  const n = gk.querySelector<HTMLElement>('.gkn b')!, shown = col.querySelectorAll('.gp .gm[data-gk]:not(.hid)').length + inGroups
   n.textContent = any ? String(shown) : n.dataset.n!; gk.querySelector('.gof')!.textContent = any ? `of ${n.dataset.n} ` : ''
 })
 initTip(film, '.rv[data-rv]', el => RVTIPS.get(el.dataset.rv!) || '')   // a club in the Rivals tab: both meetings
 initTip(film, '.ghelp', el => el.classList.contains('xgh') ? XG_HELP : GOALS_HELP)
 // a goal in the Goals tab: its card above the column's goal, the same goal lit in the net and on the pitch, the rest faded
 // (own class names — .gm, .lit: the film's .gd / .hl styles scale and clear on hover)
-initTip(film, '.gm[data-gk]', el => GTIPS.get(el.dataset.gk!) || '', el => el.closest<HTMLElement>('.gcol')?.querySelector<HTMLElement>('.gf') || el, true)
+initTip(film, '.gm[data-gk], .gst', el => el.dataset.gs ? stackTip(el) : GTIPS.get(el.dataset.gk!) || '', el => el.closest<HTMLElement>('.gcol')?.querySelector<HTMLElement>('.gf') || el, true, el => !!el.dataset.gs)
 film.addEventListener('mouseover', e => {
-  const d = (e.target as Element).closest<SVGElement>('.gm[data-gk]'), gt = (e.target as Element).closest<HTMLElement>('.gt')
+  if (document.getElementById('mtip')?.classList.contains('pinned')) return   // a pinned list keeps its goals lit
+  const d = (e.target as Element).closest<SVGElement>('.gm[data-gk], .gst'), gt = (e.target as Element).closest<HTMLElement>('.gt')
   film.querySelectorAll('.gt.lit').forEach(g => { if (g !== gt || !d) { g.classList.remove('lit'); g.querySelectorAll('.gm.on').forEach(x => x.classList.remove('on')) } })
   if (!d || !gt) return
-  gt.classList.add('lit'); gt.querySelectorAll('.gm.on').forEach(x => x.classList.remove('on')); gt.querySelectorAll(`.gm[data-gk="${d.dataset.gk}"]`).forEach(x => x.classList.add('on'))
+  // the goals to light: the dot's own (a group: all of its visible goals), in the net and on the pitch; a goal inside a
+  // group lights the group's dot too
+  const keys = d.dataset.gs ? (d.dataset.vis ?? d.dataset.gs).split(' ') : [d.dataset.gk!]
+  gt.classList.add('lit'); gt.querySelectorAll('.gm.on').forEach(x => x.classList.remove('on')); d.classList.add('on')
+  keys.forEach(k => gt.querySelectorAll(`.gm[data-gk="${k}"]`).forEach(x => x.classList.add('on')))
+  gt.querySelectorAll<SVGElement>('.gst').forEach(g => { if (keys.some(k => g.dataset.gs!.split(' ').includes(k))) g.classList.add('on') })
 })
 initNav('teams', LG, SEASON)
 initFilm({ count: P.length + (ALL ? 5 : 3), key: KEY, onPaint, jumpHTML, self: 'teams.html' })

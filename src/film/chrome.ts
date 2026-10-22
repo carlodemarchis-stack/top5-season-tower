@@ -129,7 +129,8 @@ export function initHighlight(film: HTMLElement, hoverSel: string, partners: (ke
 // It opens above the element (below when there is no room), takes the card's club colour, closes on leave / scroll.
 // anchor(el): the element the card is placed against (default: el itself)
 // fit: the card takes the anchor's width (the Goals tab: as wide as the goal it sits on)
-export function initTip(film: HTMLElement, sel: string, render: (el: HTMLElement) => string, anchor?: (el: HTMLElement) => HTMLElement, fit = false) {
+// pin(el): a click on that element keeps its card open (mouse can move into it; click outside or Esc closes it)
+export function initTip(film: HTMLElement, sel: string, render: (el: HTMLElement) => string, anchor?: (el: HTMLElement) => HTMLElement, fit = false, pin?: (el: HTMLElement) => boolean) {
   // one card element for the page, shared when a film has more than one kind of hover card
   const tip = document.getElementById('mtip') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'mtip' }))
   let cur: HTMLElement | null = null
@@ -142,10 +143,17 @@ export function initTip(film: HTMLElement, sel: string, render: (el: HTMLElement
     tip.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px'
     tip.style.top = (r.top - h - 10 > 8 ? r.top - h - 10 : r.bottom + 10) + 'px'
   }
-  const hide = () => { cur = null; tip.classList.remove('on') }
-  film.addEventListener('mouseover', e => { const el = (e.target as HTMLElement).closest<HTMLElement>(sel); if (el) { if (el !== cur) show(el) } else if (cur) hide() })
-  film.addEventListener('mouseleave', hide)
-  film.addEventListener('click', e => { const el = (e.target as HTMLElement).closest<HTMLElement>(sel); if (el) show(el); else hide() })
+  const pinned = () => tip.classList.contains('pinned')
+  const hide = () => { cur = null; tip.classList.remove('on', 'pinned') }
+  film.addEventListener('mouseover', e => { if (pinned()) return; const el = (e.target as HTMLElement).closest<HTMLElement>(sel); if (el) { if (el !== cur) show(el) } else if (cur) hide() })
+  film.addEventListener('mouseleave', () => { if (!pinned()) hide() })
+  film.addEventListener('click', e => { const el = (e.target as HTMLElement).closest<HTMLElement>(sel)
+    if (el && pin?.(el)) { tip.classList.add('pinned'); cur = null; show(el); e.stopPropagation(); return }
+    if (el) { tip.classList.remove('pinned'); show(el) } else if (cur) hide() })   // a pinned card closes on the document click below
+  if (pin) {
+    document.addEventListener('click', e => { if (pinned() && !tip.contains(e.target as Node)) hide() })
+    addEventListener('keydown', e => { if (e.key === 'Escape' && pinned()) hide() })
+  }
   film.addEventListener('scroll', hide, { passive: true })
 }
 
