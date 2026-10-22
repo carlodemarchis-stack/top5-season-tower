@@ -195,7 +195,7 @@
     body.tab-rivals .pane-season,body:not(.tab-rivals) .pane-rivals{display:none}
     /* Rivals tab: the league circle, as big as the space under the tabs allows */
     .rvw{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;margin-top:8px}
-    .rvs{flex:1 1 auto;min-height:0;width:100%;max-width:calc(100vh - 330px);aspect-ratio:1}
+    .rvs{flex:1 1 auto;min-height:0;width:100%;max-width:calc((100vh - 330px) * 640 / 540);aspect-ratio:640/540}
     .rv{cursor:pointer}.rv:hover circle{stroke:#15181d}
     .rvleg{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;font-size:11px;color:#8a9099;margin-top:4px}.rvleg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px}
     /* Goals tab: scored | conceded, each the goal (where they went in) over the half pitch (where every shot came from) */

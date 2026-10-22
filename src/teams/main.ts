@@ -303,9 +303,9 @@ function rivalsPane(t: Dict) {
     // crest and code outside the dot, along its radius
     const cx = C + (R + rr + 14) * Math.cos(ang), cy = C + (R + rr + 14) * Math.sin(ang), tx = C + (R + rr + 30) * Math.cos(ang), ty = C + (R + rr + 30) * Math.sin(ang), cos = Math.cos(ang)
     const anchor = cos > .25 ? 'start' : cos < -.25 ? 'end' : 'middle', dy = Math.abs(cos) <= .25 ? (Math.sin(ang) < 0 ? -2 : 9) : 3.5
-    dots += `<circle cx="${cx}" cy="${cy}" r="10.5" fill="#fff"/><image href="${logo(o.code, t.lg)}" x="${cx - 9}" y="${cy - 9}" width="18" height="18"/><text x="${tx + (anchor === 'start' ? -4 : anchor === 'end' ? 4 : 0)}" y="${ty + dy}" text-anchor="${anchor}" font-size="10" font-weight="800" fill="#5b626c">${o.code}</text>`
+    dots += `<circle cx="${cx}" cy="${cy}" r="10.5" fill="#fff"/><image href="${logo(o.code, t.lg)}" x="${cx - 9}" y="${cy - 9}" width="18" height="18"/><text x="${tx + (anchor === 'start' ? -4 : anchor === 'end' ? 4 : 0)}" y="${ty + dy}" text-anchor="${anchor}" font-size="10" font-weight="800" fill="#5b626c">${o.code}<tspan font-weight="600" fill="#8a9099"> · ${o.pts} pts</tspan></text>`
   })
-  return `<div class="rvw"><svg class="rvs" viewBox="-10 -10 540 540">${arcs}${dots}</svg>
+  return `<div class="rvw"><svg class="rvs" viewBox="-60 -10 640 540">${arcs}${dots}</svg>
     <div class="rvleg"><span><i style="background:#2f9e58"></i>won</span><span><i style="background:#EAB308"></i>drew</span><span><i style="background:#dc5c5e"></i>lost</span><span><i style="background:#d9dde1"></i>to play</span><span>each club: left half at home, right half away · the table, 1st at the top · hover a club, click for its card</span></div></div>`
 }
 function fillRivals() {
