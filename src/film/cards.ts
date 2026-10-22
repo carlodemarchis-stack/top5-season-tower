@@ -121,7 +121,7 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
       <div>
         <h1 style="--len:${[...p.name].length};--word:${Math.max(...p.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(p.name)} · his card in the squad"` : ''}>${esc(p.name)}</h1>
       </div>
-      ${opt.noClub ? (opt.story ? tacSwitch(true) : '') : `<div class="club"><img src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">${esc(club.name || p.team)}
+      ${opt.noClub ? (opt.story ? tacSwitch(true) : '') : `<div class="club"><span class="clk" data-href="teams.html?lg=${p.lg}&t=${p.team}" title="${esc(club.name || p.team)} · team card"><img src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">${esc(club.name || p.team)}</span>
         <span class="tl"><b>${t.pos ? ord(t.pos) : '–'}</b> · <b>${t.pts}</b> pts · ${t.W}-${t.D}-${t.L} · GD ${t.GF - t.GA >= 0 ? '+' : ''}${t.GF - t.GA}</span>${opt.story ? tacSwitch() : ''}</div>`}${opt.story ? '<div class="pane-season">' : ''}
       <div class="nums">${opt.nums ?? `
         <div class="n big"><b>${p.G}</b><span>Goals${p.pens ? ` · ${p.pens} pen${p.pens > 1 ? 's' : ''}` : ''}</span></div>
@@ -300,7 +300,7 @@ export function keeperCard(ctx: Ctx, k: Dict, opt: CardOpt = {}) {
       <div>
         <h1 style="--len:${[...k.name].length};--word:${Math.max(...k.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(k.name)} · his card in the squad"` : ''}>${esc(k.name)}</h1>
       </div>
-      ${opt.noClub ? (opt.story ? tacSwitch(true) : '') : `<div class="club"><img src="${logo(k.lg, k.team)}" alt="" onerror="this.remove()">${esc(club.name || k.team)}
+      ${opt.noClub ? (opt.story ? tacSwitch(true) : '') : `<div class="club"><span class="clk" data-href="teams.html?lg=${k.lg}&t=${k.team}" title="${esc(club.name || k.team)} · team card"><img src="${logo(k.lg, k.team)}" alt="" onerror="this.remove()">${esc(club.name || k.team)}</span>
         <span class="tl">${k.teamLine ? (t => `<b>${t.pos ? ord(t.pos) : '–'}</b> · <b>${t.pts}</b> pts · ${t.W}-${t.D}-${t.L} · GD ${t.GF - t.GA >= 0 ? '+' : ''}${t.GF - t.GA}`)(k.teamLine) : `${LEAGUE_NAME[k.lg]}${k.tpos ? ` · <b>${ord(k.tpos)}</b>` : ''}`}</span>${opt.story ? tacSwitch() : ''}</div>`}${opt.story ? '<div class="pane-season">' : ''}
       <div class="nums">${opt.nums ?? `
         <div class="n big"><b>${k.SV}</b><span>Saves${k.PS ? ` · ${k.PS} pen${k.PS > 1 ? 's' : ''}` : ''}</span></div>
