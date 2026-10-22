@@ -213,10 +213,15 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
       // the goal's card: the scorer's cutout (his club's squad photo) on the left, then the game, his name, the
       // minute, xG and distance, and how it came
       if (r[5] === 'g') { const ph = squadThumb(r[8]), dist = Math.round(Math.hypot(105 - r[2], 34 - r[3]))
+        // the keeper beaten: the other side's starting keeper, or whoever replaced him before that minute
+        const D = r[0] === 'h' ? M.away : M.home, gk0 = (D.players as Dict[]).find(x => x.st && x.pos === 'G')
+        const swap = gk0 && (M.subs as Dict[]).find(x => String(x.off) === String(gk0.id) && parseInt(x.min) <= r[1])
+        const gk = swap ? (D.players as Dict[]).find(x => String(x.id) === String(swap.on)) : gk0, gph = gk && squadThumb(String(gk.id))
         GTIPS.set(sh.key, `<div class="gtip">${ph ? `<img src="${ph}" alt="" onerror="this.style.visibility='hidden'">` : `<i>${esc((sh.name || '?').split(/\s+/).map((w: string) => w[0]).slice(0, 2).join(''))}</i>`}
           <div><div class="mt-top">MD ${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} · ${m.gf}-${m.ga}</div><div class="gtn">${esc(sh.name || '?')}</div>
-          <div class="gtk"><span><b>${Math.floor(r[1])}′</b>minute</span><span><b>${r[4].toFixed(2)}</b>xG</span><span><b>${dist} m</b>out</span></div>
-          <div class="gts">${[SIT[r[6]], BODY[r[7]], sh.ast && `assist <b>${esc(sh.ast)}</b>`].filter(Boolean).join(' · ')}</div></div></div>`) }
+          <div class="gtk"><span><b>${Math.floor(r[1])}′</b>minute</span><span><b>${r[4].toFixed(2)}</b>xG · a ${Math.max(1, Math.round(r[4] * 100))}% chance</span><span><b>${dist} m</b>out</span></div>
+          <div class="gts">${[SIT[r[6]], BODY[r[7]], sh.ast && `assist <b>${esc(sh.ast)}</b>`].filter(Boolean).join(' · ')}</div></div>
+          ${gk ? `<div class="gtgk">${gph ? `<img src="${gph}" alt="" onerror="this.style.visibility='hidden'">` : ''}<span>${esc(gk.name.split(' ').slice(-1)[0])}</span><em>in goal</em></div>` : '<span></span>'}</div>`) }
     })
   }
   if (!F.length && !A.length) return '<p class="none">No shot maps yet.</p>'
@@ -239,7 +244,7 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
     const inBox = G.filter(s => s.x >= 88.5 && s.y >= 13.84 && s.y <= 54.16).length
     return `<div class="gk"><div class="sec">${lb}${help}</div>
       <div class="gkn"><b>${gN(L)}</b><span>goals${og ? ` <em>+${og} own goal${og === 1 ? '' : 's'}</em>` : ''}</span></div>
-      <div class="gks"><span><b>${L.length}</b> shots</span><span><b>${sot}</b> on target</span><span>xG <b>${xg(L).toFixed(1)}</b></span><span class="${d >= 0 ? 'up' : 'dn'}"><b>${d >= 0 ? '+' : ''}${d.toFixed(1)}</b> vs xG</span></div>
+      <div class="gks"><span><b>${L.length}</b> shots</span><span><b>${sot}</b> on target</span><span>xG <b>${xg(L).toFixed(1)}</b><i class="ghelp xgh" aria-label="What is xG">?</i></span><span class="${(lb === 'Conceded' ? d <= 0 : d >= 0) ? 'up' : 'dn'}"><b>${d >= 0 ? '+' : ''}${d.toFixed(1)}</b> vs xG</span></div>
       ${bars('How', count(G, s => SIT[s.sit] || 'other'), fill)}${bars('With', count(G.filter(s => BODY[s.body]), s => BODY[s.body]), fill)}${bars('From', ([['inside the box', inBox], ['outside', G.length - inBox]] as [string, number][]).filter(r => r[1]), fill)}</div>` }
   const col = (L: Dict[], fill: string) => `<div class="gcol">${frame(L, fill)}${pitch(L, fill)}</div>`
   const ogFor = Math.max(0, t.GF - gN(F)), ogAg = Math.max(0, t.GA - gN(A))
@@ -705,7 +710,10 @@ initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.close
 const GOALS_HELP = `<div class="mt-top">How to read it</div><div class="ghl"><p><b>Top</b>: where each goal went in, the goal seen from the shooter's side. <b>Bottom</b>: where every shot was taken from, attacking up.</p>
   <p><b>●</b> a goal · <b>○</b> saved · <b>×</b> off target or blocked. Hover a goal: the same goal lights in the net and on the pitch, with its xG; click it for the match card.</p>
   <p><b>Left</b>: the goals scored — <b>right</b>: conceded. <b>xG</b>: how many goals the chances were worth; "vs xG": goals minus xG. The bars: how the goals came, with what, from where. Data: FotMob shot map.</p></div>`
-initTip(film, '.ghelp', () => GOALS_HELP)
+// xG, explained where it is used (the "?" by each column's xG)
+const XG_HELP = `<div class="mt-top">xG — expected goals</div><div class="ghl"><p>How likely a shot was to go in, judged from many thousands of similar shots: where it was taken, the angle, foot or head, the kind of chance. <b>0.90</b> is a tap-in (a 90% chance); <b>0.03</b> a hopeful shot from 25 metres (3%).</p>
+  <p>Add up every shot and you get the goals a team <b>should</b> have scored. <b>vs xG</b> is goals minus that: above zero, finishing better than the chances (or luck); below, worse. For goals conceded, below zero means the keeper and defence did better than the chances allowed.</p></div>`
+initTip(film, '.ghelp', el => el.classList.contains('xgh') ? XG_HELP : GOALS_HELP)
 // a goal in the Goals tab: its card above the column's goal, the same goal lit in the net and on the pitch, the rest faded
 // (own class names — .gm, .lit: the film's .gd / .hl styles scale and clear on hover)
 initTip(film, '.gm[data-gk]', el => GTIPS.get(el.dataset.gk!) || '', el => el.closest<HTMLElement>('.gcol')?.querySelector<HTMLElement>('.gf') || el, true)
