@@ -192,6 +192,12 @@
     body.tab-squad .pane-season,body:not(.tab-squad) .pane-squad{display:none}
     body.tab-tac .pane-season,body:not(.tab-tac) .pane-tac{display:none}
     body.tab-goals .pane-season,body:not(.tab-goals) .pane-goals{display:none}
+    body.tab-rivals .pane-season,body:not(.tab-rivals) .pane-rivals{display:none}
+    /* Rivals tab: the league circle, as big as the space under the tabs allows */
+    .rvw{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;margin-top:8px}
+    .rvs{flex:1 1 auto;min-height:0;width:100%;max-width:calc(100vh - 330px);aspect-ratio:1}
+    .rv{cursor:pointer}.rv:hover circle{stroke:#15181d}
+    .rvleg{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;font-size:11px;color:#8a9099;margin-top:4px}.rvleg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px}
     /* Goals tab: scored | conceded, each the goal (where they went in) over the half pitch (where every shot came from) */
     .gt{display:grid;grid-template-columns:150px minmax(0,var(--gw)) minmax(0,var(--gw)) 150px;justify-content:center;gap:clamp(16px,2vw,36px);margin-top:12px;--gw:calc((100vh - var(--gtop,330px)) / .874)}
     .gcol{min-width:0;align-self:start}
@@ -344,6 +350,7 @@
       <li><b>Scorers</b>: goals (and assists). Hover or tap a scorer or a match to light up the goals.</li>
       <li><b>Squad</b> tab (<kbd>t</kbd>): the whole squad as player cards by position, most minutes first — minutes, goals and assists (saves and goals conceded for keepers), shirt number behind the photo; a red + marks an injury, a card colour a booking, faded players haven't played yet. Click a player for his own card, in a film of the whole squad.</li>
       <li><b>Goals</b> tab: in the middle, scored and conceded side by side — on top, where each goal went in (the goal from the shooter's side); below, where every shot was taken from: ● a goal, ○ saved, × off target or blocked; hover a goal to light it in the net and on the pitch at once, click it for the match card. On the left the goals scored, on the right those conceded: shots, on target, xG and goals against xG, then bars for how the goals came, with what and from where. Data: FotMob's shot map.</li>
+      <li><b>Rivals</b> tab: the league as a circle in table order, 1st at the top, the club at its own place. Every other club is a dot split into the two meetings — left half at home, right half away — in the result colour (green won, yellow drew, red lost, grey to play) with the score; an arc runs from the club to it for each meeting played, in the same colour. Hover a club for both games, click it for its team card.</li>
     </ul>
     <p><kbd>←</kbd> <kbd>→</kbd> previous / next · <kbd>space</kbd> play / pause · <kbd>Home</kbd> <kbd>End</kbd> first / last · <kbd>g</kbd> or <kbd>/</kbd> find a club · <kbd>f</kbd> fullscreen · <kbd>h</kbd> this help · <kbd>Esc</kbd> close</p>
     <p class="agwas-rel">Release notes <a class="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>

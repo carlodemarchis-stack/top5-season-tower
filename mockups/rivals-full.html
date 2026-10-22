@@ -1,0 +1,41 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Rivals end of season</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#f5f6f4;font-family:Archivo,system-ui,sans-serif;color:#15181d}.row{display:flex;gap:10px;padding:14px 16px}.box{width:470px}
+h2{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6a717b;margin:0 0 4px;height:28px}svg{display:block;width:470px;height:470px}text{font-family:Archivo}</style></head><body>
+<div class="row"><div class="box"><h2>1 — two arcs per opponent (one per meeting)</h2><svg id="a" viewBox="0 0 520 520"></svg></div>
+<div class="box"><h2>2 — one arc per opponent, coloured by points taken (0–6)</h2><svg id="b" viewBox="0 0 520 520"></svg></div>
+<div class="box"><h2>3 — no arcs: the split dots alone</h2><svg id="c" viewBox="0 0 520 520"></svg></div></div>
+<script>
+const D = {"code": "TOR", "name": "Torino", "color": "#6E1423", "table": [{"code": "INT", "name": "Inter", "pos": 1, "pts": 19, "color": "#0B4DA2"}, {"code": "LAZ", "name": "Lazio", "pos": 2, "pts": 19, "color": "#4FA9D6"}, {"code": "ROM", "name": "Roma", "pos": 3, "pts": 17, "color": "#8E1F2F"}, {"code": "MIL", "name": "Milan", "pos": 4, "pts": 15, "color": "#E4022B"}, {"code": "COM", "name": "Como", "pos": 5, "pts": 14, "color": "#0E63B3"}, {"code": "FRO", "name": "Frosinone", "pos": 6, "pts": 13, "color": "#2D5FAA"}, {"code": "CAG", "name": "Cagliari", "pos": 7, "pts": 13, "color": "#A31D2A"}, {"code": "JUV", "name": "Juventus", "pos": 8, "pts": 11, "color": "#141414"}, {"code": "NAP", "name": "Napoli", "pos": 9, "pts": 10, "color": "#12A0D7"}, {"code": "TOR", "name": "Torino", "pos": 10, "pts": 10, "color": "#6E1423"}, {"code": "ATA", "name": "Atalanta", "pos": 11, "pts": 9, "color": "#2472B6"}, {"code": "LEC", "name": "Lecce", "pos": 12, "pts": 9, "color": "#E01A22"}, {"code": "SAS", "name": "Sassuolo", "pos": 13, "pts": 8, "color": "#00A752"}, {"code": "MON", "name": "Monza", "pos": 14, "pts": 7, "color": "#8F0A1E"}, {"code": "BOL", "name": "Bologna", "pos": 15, "pts": 5, "color": "#9E1B32"}, {"code": "UDI", "name": "Udinese", "pos": 16, "pts": 4, "color": "#3A3A3A"}, {"code": "GEN", "name": "Genoa", "pos": 17, "pts": 4, "color": "#B4192A"}, {"code": "FIO", "name": "Fiorentina", "pos": 18, "pts": 4, "color": "#5A2D91"}, {"code": "PAR", "name": "Parma", "pos": 19, "pts": 4, "color": "#F4C400"}, {"code": "VEN", "name": "Venezia", "pos": 20, "pts": 3, "color": "#0E7A4D"}], "games": [{"w": 1, "opp": "MIL", "ha": "H", "gf": 1, "ga": 2}, {"w": 2, "opp": "SAS", "ha": "A", "gf": 1, "ga": 2}, {"w": 3, "opp": "FIO", "ha": "A", "gf": 2, "ga": 1}, {"w": 4, "opp": "ROM", "ha": "H", "gf": 0, "ga": 2}, {"w": 5, "opp": "BOL", "ha": "A", "gf": 1, "ga": 1}, {"w": 6, "opp": "UDI", "ha": "H", "gf": 2, "ga": 1}, {"w": 7, "opp": "PAR", "ha": "A", "gf": 3, "ga": 0}, {"w": 8, "opp": "MON", "ha": "H"}, {"w": 9, "opp": "COM", "ha": "H"}, {"w": 10, "opp": "FRO", "ha": "A"}, {"w": 11, "opp": "LEC", "ha": "H"}, {"w": 12, "opp": "NAP", "ha": "A"}, {"w": 13, "opp": "LAZ", "ha": "H"}, {"w": 14, "opp": "GEN", "ha": "A"}, {"w": 15, "opp": "INT", "ha": "A"}, {"w": 16, "opp": "CAG", "ha": "H"}, {"w": 17, "opp": "VEN", "ha": "H"}, {"w": 18, "opp": "JUV", "ha": "A"}, {"w": 19, "opp": "ATA", "ha": "H"}, {"w": 20, "opp": "MIL", "ha": "A"}, {"w": 21, "opp": "LEC", "ha": "A"}, {"w": 22, "opp": "FRO", "ha": "H"}, {"w": 23, "opp": "ROM", "ha": "A"}, {"w": 24, "opp": "SAS", "ha": "H"}, {"w": 25, "opp": "COM", "ha": "A"}, {"w": 26, "opp": "FIO", "ha": "H"}, {"w": 27, "opp": "ATA", "ha": "A"}, {"w": 28, "opp": "INT", "ha": "H"}, {"w": 29, "opp": "UDI", "ha": "A"}, {"w": 30, "opp": "JUV", "ha": "H"}, {"w": 31, "opp": "LAZ", "ha": "A"}, {"w": 32, "opp": "GEN", "ha": "H"}, {"w": 33, "opp": "VEN", "ha": "A"}, {"w": 34, "opp": "PAR", "ha": "H"}, {"w": 35, "opp": "BOL", "ha": "H"}, {"w": 36, "opp": "CAG", "ha": "A"}, {"w": 37, "opp": "NAP", "ha": "H"}, {"w": 38, "opp": "MON", "ha": "A"}]}, ME = D.code
+// a full season, simulated: results weighted by the gap in the table (seeded)
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+const myPos = D.table.find(t => t.code === ME).pos
+for (const g of D.games) if (g.gf == null) { const o = D.table.find(t => t.code === g.opp).pos, pw = Math.min(.75, Math.max(.12, .4 + (o - myPos) * .022 + (g.ha === 'H' ? .06 : -.04))), u = rnd()
+  const res = u < pw ? 'W' : u < pw + .27 ? 'D' : 'L', a = Math.floor(rnd() * 3); g.gf = res === 'W' ? a + 1 + Math.floor(rnd() * 2) : res === 'D' ? a : a; g.ga = res === 'W' ? a : res === 'D' ? a : a + 1 + Math.floor(rnd() * 2) }
+const RES = (gf, ga) => gf == null ? '#d9dde1' : gf > ga ? '#2f9e58' : gf < ga ? '#dc5c5e' : '#EAB308'
+const PTS = ['#b3323a', '#dc5c5e', '#EAB308', '#9fc96a', '#3a9e62', '#177a41', '#0f5a2e']   // 0..6 points from the pair (4 = win+draw … )
+const ptsOf = g => g?.gf == null ? null : g.gf > g.ga ? 3 : g.gf === g.ga ? 1 : 0
+const by = {}; for (const g of D.games) (by[g.opp] ||= {})[g.ha] = g
+const logo = c => `../public/logos/${c}.png`
+function draw(id, mode) {
+  const sv = document.getElementById(id), C = 260, R = 190, N = D.table.length
+  const pos = i => { const a = -Math.PI / 2 + i / N * 2 * Math.PI; return [C + R * Math.cos(a), C + R * Math.sin(a), a] }
+  const me = pos(D.table.findIndex(t => t.code === ME))
+  let lines = '', nodes = ''
+  D.table.forEach((t, i) => { const [x, y, ang] = pos(i)
+    if (t.code === ME) { nodes += `<circle cx="${x}" cy="${y}" r="27" fill="#fff" stroke="${D.color}" stroke-width="3"/><image href="${logo(ME)}" x="${x - 20}" y="${y - 20}" width="40" height="40"/>`; return }
+    const h = by[t.code]?.H || {}, a = by[t.code]?.A || {}, r = 21
+    const arc = k => { const mx = (me[0] + x) / 2, my = (me[1] + y) / 2; return `M${me[0]} ${me[1]}Q${mx + (C - mx) * k} ${my + (C - my) * k} ${x} ${y}` }
+    if (mode === 'a') [[h, .82], [a, .62]].forEach(([g, k]) => lines += `<path d="${arc(k)}" fill="none" stroke="${RES(g.gf, g.ga)}" stroke-width="1.6" opacity=".55"/>`)
+    if (mode === 'b') { const p = ptsOf(h) + ptsOf(a); lines += `<path d="${arc(.72)}" fill="none" stroke="${PTS[p]}" stroke-width="${1.2 + p * .45}" opacity=".7"/>` }
+    if (mode === 'c') lines += `<path d="${arc(.72)}" fill="none" stroke="#c9ced4" stroke-width=".7" opacity=".7"/>`
+    nodes += `<path d="M${x} ${y - r}A${r} ${r} 0 0 0 ${x} ${y + r}Z" fill="${RES(h.gf, h.ga)}"/><path d="M${x} ${y - r}A${r} ${r} 0 0 1 ${x} ${y + r}Z" fill="${RES(a.gf, a.ga)}"/>
+      <circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#fff" stroke-width="2"/><line x1="${x}" x2="${x}" y1="${y - r}" y2="${y + r}" stroke="#fff" stroke-width="1.5"/>
+      <text x="${x - r / 2}" y="${y + 4}" text-anchor="middle" font-size="10" font-weight="900" fill="#fff">${h.gf}-${h.ga}</text><text x="${x + r / 2}" y="${y + 4}" text-anchor="middle" font-size="10" font-weight="900" fill="#fff">${a.gf}-${a.ga}</text>`
+    const cx = C + (R + r + 14) * Math.cos(ang), cy = C + (R + r + 14) * Math.sin(ang), tx = C + (R + r + 30) * Math.cos(ang), ty = C + (R + r + 30) * Math.sin(ang), cos = Math.cos(ang)
+    const anchor = cos > .25 ? 'start' : cos < -.25 ? 'end' : 'middle', dy = Math.abs(cos) <= .25 ? (Math.sin(ang) < 0 ? -2 : 9) : 3.5
+    nodes += `<image href="${logo(t.code)}" x="${cx - 9}" y="${cy - 9}" width="18" height="18"/><text x="${tx + (anchor === 'start' ? -4 : anchor === 'end' ? 4 : 0)}" y="${ty + dy}" text-anchor="${anchor}" font-size="10" font-weight="800" fill="#5b626c">${t.code}</text>` })
+  sv.innerHTML = lines + nodes
+}
+draw('a', 'a'); draw('b', 'b'); draw('c', 'c')
+</script></body></html>

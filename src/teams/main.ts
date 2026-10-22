@@ -81,7 +81,7 @@ function card(t: Dict) {
         <div class="meta" style="margin-top:8px">${LEAGUE_NAME[t.lg]} · <b>${t.pos ? ord(t.pos) : '–'}</b> · ${t.W}-${t.D}-${t.L} · GD ${gd >= 0 ? '+' : ''}${gd}${topScorers(t)}</div>
         ${coachChip(COACHES_OF[t.lg], t.lg, t.code, playedOf(t, club))}
       </div>
-      <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button>${SEASON === '2026-27' ? '<button class="tab" data-tab="tac">Tactical</button><button class="tab" data-tab="goals">Goals</button>' : ''}${SORTBAR}</div>
+      <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button>${SEASON === '2026-27' ? '<button class="tab" data-tab="tac">Tactical</button><button class="tab" data-tab="goals">Goals</button>' : ''}<button class="tab" data-tab="rivals">Rivals</button>${SORTBAR}</div>
       <div class="pane pane-season">
       <div class="nums">
         <div class="n big"><b>${t.pts}</b><span>Points · ${ppg}/game</span></div>
@@ -99,6 +99,7 @@ function card(t: Dict) {
       <div class="pane pane-squad">${squadGrid(t)}</div>
       <div class="pane pane-tac"></div>
       <div class="pane pane-goals"></div>
+      <div class="pane pane-rivals"></div>
     </div>
   </section>`
 }
@@ -272,6 +273,44 @@ function sizeGoalDots() {
   film.querySelectorAll<SVGSVGElement>('.gt svg').forEach(sv => { const w = sv.clientWidth; if (w) sv.style.setProperty('--u', String(sv.viewBox.baseVal.width / w)) })
 }
 addEventListener('resize', sizeGoalDots)
+
+// ---------- Rivals tab: the league as a circle in table order, the club at its place; every other club a dot split
+// into the two meetings (left half at home, right half away) in the result colour with the score, an arc for each
+// meeting played from the club to it (bowed towards the middle, so it never runs under another dot) ----------
+const RV_RES = (gf?: number, ga?: number) => gf == null ? '#d9dde1' : gf > ga! ? '#2f9e58' : gf < ga! ? '#dc5c5e' : '#EAB308'
+const RVTIPS = new Map<string, string>()
+function rivalsPane(t: Dict) {
+  const table = [...CARDS_OF[t.lg].teams].sort((a: Dict, b: Dict) => a.pos - b.pos), N = table.length, C = 260, R = 190, rr = 21
+  const club = TEAMS_OF[t.lg][t.code] || {}, played: Record<string, Dict> = Object.fromEntries(t.matches.map((m: Dict) => [m.id, m]))
+  const by: Record<string, Dict> = {}
+  for (const g of club.games || []) (by[g.opp] ||= {})[g.ha] = { ...g, ...(played[g.id] || {}) }
+  const at = (i: number) => { const a = -Math.PI / 2 + i / N * 2 * Math.PI; return [C + R * Math.cos(a), C + R * Math.sin(a), a] }
+  const me = at(table.findIndex((x: Dict) => x.code === t.code))
+  let arcs = '', dots = ''
+  table.forEach((o: Dict, i: number) => {
+    const [x, y, ang] = at(i)
+    if (o.code === t.code) { dots += `<circle cx="${x}" cy="${y}" r="27" fill="#fff" stroke="${club.primary || '#555'}" stroke-width="3"/><image href="${logo(t.code, t.lg)}" x="${x - 20}" y="${y - 20}" width="40" height="40"/>`; return }
+    const h = by[o.code]?.H || {}, a = by[o.code]?.A || {}
+    const arc = (k: number) => { const mx = (me[0] + x) / 2, my = (me[1] + y) / 2; return `M${me[0]} ${me[1]}Q${mx + (C - mx) * k} ${my + (C - my) * k} ${x} ${y}` }
+    const done = [[h, .82], [a, .62]].filter(([g]) => (g as Dict).gf != null) as [Dict, number][]
+    done.forEach(([g, k]) => arcs += `<path d="${arc(k)}" fill="none" stroke="${RV_RES(g.gf, g.ga)}" stroke-width="1.7" opacity=".6"/>`)
+    if (!done.length) arcs += `<path d="${arc(.72)}" fill="none" stroke="#c9ced4" stroke-width=".8" stroke-dasharray="3 3" opacity=".7"/>`
+    const half = (g: Dict, side: number) => `<text x="${x + side * rr / 2}" y="${y + 4}" text-anchor="middle" font-size="10" font-weight="900" fill="${g.gf != null ? '#fff' : '#9aa0a8'}">${g.gf != null ? `${g.gf}-${g.ga}` : side < 0 ? 'H' : 'A'}</text>`
+    const name = TEAMS_OF[t.lg][o.code]?.name || o.code
+    RVTIPS.set(`${t.code}-${o.code}`, `<div class="mt-top">${esc(name)} · ${ord(o.pos)} · ${o.pts} pts</div>${[h, a].map(g => `<div class="mt-g"><span class="mt-min">MD ${g.w ?? '–'}</span><span>${g.ha === 'H' ? 'at home' : 'away'}${g.gf != null ? ` · <b style="color:${RV_RES(g.gf, g.ga)}">${g.gf}-${g.ga}</b>` : ' · to play'}</span></div>`).join('')}`)
+    dots += `<g class="rv" data-rv="${t.code}-${o.code}" data-href="teams.html?lg=${t.lg}&t=${o.code}"><path d="M${x} ${y - rr}A${rr} ${rr} 0 0 0 ${x} ${y + rr}Z" fill="${RV_RES(h.gf, h.ga)}"/><path d="M${x} ${y - rr}A${rr} ${rr} 0 0 1 ${x} ${y + rr}Z" fill="${RV_RES(a.gf, a.ga)}"/>
+      <circle cx="${x}" cy="${y}" r="${rr}" fill="none" stroke="#fff" stroke-width="2"/><line x1="${x}" x2="${x}" y1="${y - rr}" y2="${y + rr}" stroke="#fff" stroke-width="1.5"/>${half(h, -1)}${half(a, 1)}</g>`
+    // crest and code outside the dot, along its radius
+    const cx = C + (R + rr + 14) * Math.cos(ang), cy = C + (R + rr + 14) * Math.sin(ang), tx = C + (R + rr + 30) * Math.cos(ang), ty = C + (R + rr + 30) * Math.sin(ang), cos = Math.cos(ang)
+    const anchor = cos > .25 ? 'start' : cos < -.25 ? 'end' : 'middle', dy = Math.abs(cos) <= .25 ? (Math.sin(ang) < 0 ? -2 : 9) : 3.5
+    dots += `<circle cx="${cx}" cy="${cy}" r="10.5" fill="#fff"/><image href="${logo(o.code, t.lg)}" x="${cx - 9}" y="${cy - 9}" width="18" height="18"/><text x="${tx + (anchor === 'start' ? -4 : anchor === 'end' ? 4 : 0)}" y="${ty + dy}" text-anchor="${anchor}" font-size="10" font-weight="800" fill="#5b626c">${o.code}</text>`
+  })
+  return `<div class="rvw"><svg class="rvs" viewBox="-10 -10 540 540">${arcs}${dots}</svg>
+    <div class="rvleg"><span><i style="background:#2f9e58"></i>won</span><span><i style="background:#EAB308"></i>drew</span><span><i style="background:#dc5c5e"></i>lost</span><span><i style="background:#d9dde1"></i>to play</span><span>each club: left half at home, right half away · the table, 1st at the top · hover a club, click for its card</span></div></div>`
+}
+function fillRivals() {
+  film.querySelectorAll<HTMLElement>('.pane-rivals').forEach((p, i) => { if (!p.dataset.done) { p.innerHTML = rivalsPane(P[i]); p.dataset.done = '1' } })
+}
 
 // ---------- the season in two rows; the darker part of each box = the club's possession ----------
 const matchHref = (lg: string, md: number, id: string) => SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
@@ -606,13 +645,14 @@ function jumpHTML(q: string) {
 }
 
 // Season | Squad | Tactical tab: one choice for every card, remembered
-const TABS = SEASON === '2026-27' ? ['season', 'squad', 'tac', 'goals'] : ['season', 'squad']
+const TABS = SEASON === '2026-27' ? ['season', 'squad', 'tac', 'goals', 'rivals'] : ['season', 'squad', 'rivals']
 let TAB = 'season'
 try { const s = localStorage.getItem('top5.teams.tab') || ''; if (TABS.includes(s)) TAB = s } catch { }
 const setTab = (t: string) => {
-  TAB = t; document.body.classList.toggle('tab-squad', t === 'squad'); document.body.classList.toggle('tab-tac', t === 'tac'); document.body.classList.toggle('tab-goals', t === 'goals')
+  TAB = t; document.body.classList.toggle('tab-squad', t === 'squad'); document.body.classList.toggle('tab-tac', t === 'tac'); document.body.classList.toggle('tab-goals', t === 'goals'); document.body.classList.toggle('tab-rivals', t === 'rivals')
   if (t === 'tac') fillTactics()
   if (t === 'goals') { fillGoals(); requestAnimationFrame(sizeGoalDots) }
+  if (t === 'rivals') fillRivals()
   film.querySelectorAll<HTMLElement>('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t))
   try { localStorage.setItem('top5.teams.tab', t) } catch { }
   sizeDeck()
@@ -731,6 +771,7 @@ film.addEventListener('click', e => {
   const n = gk.querySelector<HTMLElement>('.gkn b')!, shown = col.querySelectorAll('.gp .gm:not(.hid)').length
   n.textContent = any ? String(shown) : n.dataset.n!; gk.querySelector('.gof')!.textContent = any ? `of ${n.dataset.n} ` : ''
 })
+initTip(film, '.rv[data-rv]', el => RVTIPS.get(el.dataset.rv!) || '')   // a club in the Rivals tab: both meetings
 initTip(film, '.ghelp', el => el.classList.contains('xgh') ? XG_HELP : GOALS_HELP)
 // a goal in the Goals tab: its card above the column's goal, the same goal lit in the net and on the pitch, the rest faded
 // (own class names — .gm, .lit: the film's .gd / .hl styles scale and clear on hover)
