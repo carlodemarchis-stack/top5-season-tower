@@ -195,6 +195,9 @@ const shotsOf = (lg: string) => SHOTS[lg] ??= (SHOT_FILES[`../data/shots-${lg}-$
 const SIT: Record<string, string> = { o: 'open play', c: 'counter-attack', s: 'set piece', k: 'corner', f: 'free kick', p: 'penalty', t: 'throw-in' }
 const BODY: Record<string, string> = { r: 'right foot', l: 'left foot', h: 'header', x: '' }
 const GTIPS = new Map<string, string>()   // a goal's hover card, by its key
+// every squad photo of the clubs in this film, by player: the scorer's cutout on a goal's card (an opponent's too)
+let THUMBS: Record<string, string> | null = null
+const squadThumb = (id: string) => (THUMBS ??= Object.fromEntries(P.flatMap((t: Dict) => (t.squad || []).filter((p: Dict) => p.thumb).map((p: Dict) => [String(p.espnId), p.thumb]))))[id]
 function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
   const games: Record<string, Dict> = Object.fromEntries((club.games || []).map((g: Dict) => [g.id, g])), recBy: Record<string, Dict> = Object.fromEntries(recs.map(M => [M.id, M]))
   const F: Dict[] = [], A: Dict[] = []
@@ -207,9 +210,14 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
          md: g.w, opp: g.opp, ha: g.ha, gf: m.gf, ga: m.ga, mid: m.id, side: r[0], min: r[1], x: r[2], y: r[3], xg: r[4], out: r[5], sit: r[6], body: r[7], name: p?.name || '', gx: r[9], gy: r[10],
         ast: r[5] === 'g' ? (M.goals as Dict[]).find(q => q.s === r[0] && String(q.byId) === r[8] && Math.abs(parseInt(q.min) - Math.floor(r[1])) <= 1)?.ast : null }
       ;(r[0] === side ? F : A).push(sh)
-      if (r[5] === 'g') GTIPS.set(sh.key, `<div class="mt-top">MD ${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} · ${m.gf}-${m.ga}</div>
-        <div class="mt-me" style="margin-top:0;padding-top:0;border-top:0"><b>${esc(sh.name || '?')}</b> · <b>${Math.floor(r[1])}′</b> · xG <b>${r[4].toFixed(2)}</b></div>
-        <div class="mt-stats"><span>${SIT[r[6]] || ''}</span>${BODY[r[7]] ? `<span>${BODY[r[7]]}</span>` : ''}${sh.ast ? `<span>assist <b>${esc(sh.ast)}</b></span>` : ''}</div>`) })
+      // the goal's card: the scorer's cutout (his club's squad photo) on the left, then the game, his name, the
+      // minute, xG and distance, and how it came
+      if (r[5] === 'g') { const ph = squadThumb(r[8]), dist = Math.round(Math.hypot(105 - r[2], 34 - r[3]))
+        GTIPS.set(sh.key, `<div class="gtip">${ph ? `<img src="${ph}" alt="" onerror="this.style.visibility='hidden'">` : `<i>${esc((sh.name || '?').split(/\s+/).map((w: string) => w[0]).slice(0, 2).join(''))}</i>`}
+          <div><div class="mt-top">MD ${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} · ${m.gf}-${m.ga}</div><div class="gtn">${esc(sh.name || '?')}</div>
+          <div class="gtk"><span><b>${Math.floor(r[1])}′</b>minute</span><span><b>${r[4].toFixed(2)}</b>xG</span><span><b>${dist} m</b>out</span></div>
+          <div class="gts">${[SIT[r[6]], BODY[r[7]], sh.ast && `assist <b>${esc(sh.ast)}</b>`].filter(Boolean).join(' · ')}</div></div></div>`) }
+    })
   }
   if (!F.length && !A.length) return '<p class="none">No shot maps yet.</p>'
   const href = (s: Dict) => ` data-href="matches.html?lg=${t.lg}&md=${s.md}&m=${s.mid}"`
@@ -700,7 +708,7 @@ const GOALS_HELP = `<div class="mt-top">How to read it</div><div class="ghl"><p>
 initTip(film, '.ghelp', () => GOALS_HELP)
 // a goal in the Goals tab: its card above the column's goal, the same goal lit in the net and on the pitch, the rest faded
 // (own class names — .gm, .lit: the film's .gd / .hl styles scale and clear on hover)
-initTip(film, '.gm[data-gk]', el => GTIPS.get(el.dataset.gk!) || '', el => el.closest<HTMLElement>('.gcol')?.querySelector<HTMLElement>('.gf') || el)
+initTip(film, '.gm[data-gk]', el => GTIPS.get(el.dataset.gk!) || '', el => el.closest<HTMLElement>('.gcol')?.querySelector<HTMLElement>('.gf') || el, true)
 film.addEventListener('mouseover', e => {
   const d = (e.target as Element).closest<SVGElement>('.gm[data-gk]'), gt = (e.target as Element).closest<HTMLElement>('.gt')
   film.querySelectorAll('.gt.lit').forEach(g => { if (g !== gt || !d) { g.classList.remove('lit'); g.querySelectorAll('.gm.on').forEach(x => x.classList.remove('on')) } })
