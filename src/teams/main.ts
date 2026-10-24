@@ -883,9 +883,10 @@ initTip(film, '.ghelp', el => el.classList.contains('xgh') ? XG_HELP : GOALS_HEL
 // (own class names — .gm, .lit: the film's .gd / .hl styles scale and clear on hover)
 const oneOf = (el: HTMLElement) => el.classList.contains('one') ? el.dataset.vis! : null   // a group filtered down to one goal
 initTip(film, '.gm[data-gk], .gst', el => el.dataset.gs ? (oneOf(el) ? GTIPS.get(oneOf(el)!) || '' : stackTip(el)) : GTIPS.get(el.dataset.gk!) || '',
-  // in the full view: laid on the Scorers column, so the net and pitch stay free to hover and click
+  // in the full view: laid on the Scorers column, its foot level with the pitch's, so the net and pitch stay free to
+  // hover and click
   el => el.closest('.gto')?.querySelector<HTMLElement>('.gksc') || el.closest<HTMLElement>('.gcol')?.querySelector<HTMLElement>('.gf') || el, true, el => !!el.dataset.gs && !oneOf(el),
-  el => !!el.closest('.gto'))
+  el => el.closest('.gto')?.querySelector<HTMLElement>('.gp'))
 film.addEventListener('mouseover', e => {
   if (document.getElementById('mtip')?.classList.contains('pinned')) return   // a pinned list keeps its goals lit
   const d = (e.target as Element).closest<SVGElement>('.gm[data-gk], .gst'), gt = (e.target as Element).closest<HTMLElement>('.gt')
