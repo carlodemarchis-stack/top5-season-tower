@@ -4,7 +4,7 @@
 // from, thicker for bigger margins. A double round robin gives two parallel lines per pair (first and second
 // leg); a pair with neither leg played yet is one faint dashed line. The tower's side columns drive it:
 // focus(i) keeps only club i's lines, pair(i, j) only the lines between i and j.
-export type PolyTeam = { n: string; pts: number; code: string }
+export type PolyTeam = { n: string; pts: number; code: string; logo?: string }
 export type PolyMatch = { i: number; j: number; md: number; gi?: number; gj?: number }   // i = home, j = away
 export type PolyApi = { focus: (i: number | null) => void; pair: (i: number | null, j: number | null) => void }
 
@@ -67,9 +67,14 @@ export function polyChart(box: HTMLElement, data: { teams: PolyTeam[]; ms: PolyM
     const p = P[i], r = 9 + Math.sqrt(t.pts) * 2.4, g = el('g', { class: 'poly-team' })
     g.append(el('circle', { class: 'ring', cx: p.x, cy: p.y, r: r + 4, fill: '#fff', stroke: '#15181d', 'stroke-width': 0 }))
     pie(g, p.x, p.y, r, REC[i], PC)
-    const lr = R + r + 10, c = Math.cos(p.a)
-    const tx = el('text', { x: cx + lr * Math.cos(p.a), y: cy + lr * Math.sin(p.a), 'text-anchor': narrow || Math.abs(c) < .25 ? 'middle' : c > 0 ? 'start' : 'end', 'dominant-baseline': 'central', 'font-size': fs, fill: '#15181d' })
-    tx.textContent = narrow ? `${i + 1}` : `${i + 1}. ${t.n} · ${t.pts}`
+    // outside the pie, along its radius: the crest, then the code and points (as on the team cards' Rivals tab)
+    const c = Math.cos(p.a), s = Math.sin(p.a), anchor = narrow || Math.abs(c) < .25 ? 'middle' : c > 0 ? 'start' : 'end'
+    const lr = R + r + 14, ix = cx + lr * c, iy = cy + lr * s, CR = 10
+    if (t.logo) { g.append(el('circle', { cx: ix, cy: iy, r: CR + 1.5, fill: '#fff' })); g.append(el('image', { href: t.logo, x: ix - CR, y: iy - CR, width: 2 * CR, height: 2 * CR })) }
+    const tr = lr + (t.logo ? CR + 6 : 0), vert = Math.abs(c) < .25
+    const tx = el('text', { x: cx + tr * c, y: cy + tr * s + (vert ? (s < 0 ? -4 : 6) : 0), 'text-anchor': anchor, 'dominant-baseline': 'central', 'font-size': fs, 'font-weight': 800, fill: '#5b626c' })
+    if (narrow) tx.textContent = `${i + 1}`
+    else { tx.textContent = t.code; const ts = el('tspan', { 'font-weight': 600, fill: '#8a9099' }); ts.textContent = ` · ${t.pts} pts`; tx.append(ts) }
     g.append(tx)
     g.addEventListener('mouseenter', () => on.enter?.(i))
     g.addEventListener('mouseleave', () => on.leave?.(i))

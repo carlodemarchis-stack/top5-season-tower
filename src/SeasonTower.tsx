@@ -1683,7 +1683,7 @@ export class SeasonTower extends React.Component<Props, State> {
 
     // EVERYONE VS EVERYONE — clubs in standings order, every fixture once (home side), played up to the matchday
     const poly = S.layout === 'poly' && !isUefa(S.league)
-    const polyTeams = poly ? list.map(e => ({ n: e.t.name, pts: e.Pts, code: e.code })) : []
+    const polyTeams = poly ? list.map(e => ({ n: e.t.name, pts: e.Pts, code: e.code, logo: `logos/${logoFile(S.league, e.code)}.png` })) : []
     const polyMs: Dict[] = []
     if (poly) {
       const ix: Dict = {}; list.forEach((e, i) => { ix[e.code] = i })
