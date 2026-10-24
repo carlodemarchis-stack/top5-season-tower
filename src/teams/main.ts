@@ -271,7 +271,7 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
     const nIn = G.filter(inBox).length
     return `<div class="gk" data-side="${lb}"><div class="sec">${lb}${help}</div>
       <div class="gkn"><b data-n="${gN(L)}">${gN(L)}</b><span><i class="gof"></i>goals${og ? ` <em>+${og} own goal${og === 1 ? '' : 's'}</em>` : ''}</span></div>
-      <div class="gks"><span><b>${L.length}</b> shots</span><span><b>${sot}</b> on target</span><span>xG <b>${xg(L).toFixed(1)}</b><i class="ghelp xgh" aria-label="What is xG">?</i></span><span class="${(lb === 'Conceded' ? d <= 0 : d >= 0) ? 'up' : 'dn'}"><b>${d >= 0 ? '+' : ''}${d.toFixed(1)}</b> vs xG</span></div>
+      <div class="gks"><span><b>${L.length}</b> shots · <b>${sot}</b> on target</span><span>xG <b>${xg(L).toFixed(1)}</b><i class="ghelp xgh" aria-label="What is xG">?</i> · <em class="${(lb === 'Conceded' ? d <= 0 : d >= 0) ? 'up' : 'dn'}"><b>${d >= 0 ? '+' : ''}${d.toFixed(1)}</b> vs xG</em></span></div>
       ${bars('How', count(G, s => SIT[s.sit] || 'other'), fill)}${bars('With', count(G.filter(s => BODY[s.body]), s => BODY[s.body]), fill)}${bars('From', ([['inside the box', nIn], ['outside', G.length - nIn]] as [string, number][]).filter(r => r[1]), fill)}${when(G, fill)}</div>` }
   // When: the goals by 15-minute spell, stoppage time apart (45+, 90+) — eight small columns, each a filter too
   const when = (G: Dict[], fill: string) => { const n = WHEN.map(w => G.filter(g => whenOf(g.min) === w).length), mx = Math.max(1, ...n)
