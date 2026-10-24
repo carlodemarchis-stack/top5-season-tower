@@ -1,7 +1,7 @@
 // Head coaches (scripts/update-coaches.mjs, from FotMob — ESPN has none): who was on the bench in each game, each
 // club's coaches this season in order, the chip the team and match cards show, and the coach card that closes each
 // squad film (player.html). Photos are FotMob's 192px head crops → a round portrait, never stretched to a full panel.
-import { RES6, res6, esc, ord, logo, lum, bio, matchHrefOf, cardsHTML, tacSwitch, type Ctx } from './cards'
+import { RES6, res6, esc, ord, logo, lum, bio, matchHrefOf, cardsHTML, tacSwitch, upBox, type Ctx } from './cards'
 type Dict = Record<string, any>
 export type Stint = { id: string; from: number | null; to: number | null; W: number; D: number; L: number; GF: number; GA: number; CS: number }
 
@@ -150,7 +150,7 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
   const booked = all.filter(g => byId[g.id] && coachOf(C, code, g.opp, g.ha) === cur.id).flatMap(g => cardsIn(g).map((x: string[]) => ({ g, k: x[1], min: x[2] })))
   const cell = (g: Dict) => {
     const m = byId[g.id], at = g.ha === 'A' ? '@' : ''
-    if (!m) return `<div class="c2 up"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
+    if (!m) return `<div class="c2 up"><div class="mk"></div>${upBox(g)}<div class="op">${at}${esc(g.opp)}</div></div>`
     const who = coachOf(C, code, g.opp, g.ha), his = counts(who, g.w), si = his && who !== cur.id, [bg, fg] = RES6[res6(m.gf, m.ga)]
     const title = `MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${g.opp} ${m.gf}-${m.ga}${who && who !== cur.id ? ` · ${C.coaches[who]?.name} on the bench${si ? ' (stand-in)' : ''}` : ''}`
     return `<div class="c2${his ? '' : ' dnp'}" data-mid="${g.id}"${matchHrefOf(ctx, lg, g.w, g.id)} title="${esc(title)}${FORM[g.id] ? ` · ${FORM[g.id]}` : ''}"><div class="mk">${FORM[g.id] ? `<span class="fm">${esc(FORM[g.id])}</span>` : ''}</div>

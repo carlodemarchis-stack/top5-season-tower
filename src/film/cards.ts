@@ -45,6 +45,10 @@ export function lum(hex: string) {
 const POS: Record<string, string> = { F: 'Forward', M: 'Midfielder', D: 'Defender', G: 'Goalkeeper' }
 const initials = (n: string) => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('')
 // a booking in a game, in the box's top-right corner (beside the result, not stacked with the goals)
+// a game still to play: its box carries the match day and a short date ("MD 8 · 25 Oct"), small
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+export const upBox = (g: Dict) => { const d = typeof g.et === 'string' ? g.et.match(/^\d{4}-(\d{2})-(\d{2})/) : null
+  return `<div class="bx"><span class="ud"><b>MD ${g.w}</b>${d ? `<i>${+d[2]} ${MON[+d[1] - 1]}</i>` : ''}</span></div>` }
 export const cardsHTML = (yc?: number, rc?: number) => (yc ? '<i class="cd y" title="yellow card"></i>' : '') + (rc ? `<i class="cd r${yc ? ' two' : ''}" title="red card"></i>` : '')
 const matchHref = (ctx: Ctx, lg: string, md: number, id: string) => ctx.SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
 export const matchHrefOf = matchHref
@@ -157,7 +161,7 @@ function strip2(ctx: Ctx, p: Dict, club: Dict, noLine = false) {
   const cell = (g: Dict) => {
     const m = byId[g.id]
     const at = g.ha === 'A' ? '@' : ''
-    if (!m) return `<div class="c2 up" data-gid="${g.id}"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, p.lg, '', 0)}</div>`
+    if (!m) return `<div class="c2 up" data-gid="${g.id}"><div class="mk"></div>${upBox(g)}<div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, p.lg, '', 0)}</div>`
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
     const marks = [...m.goals.map((x: Dict) => `<i class="gl${x.kind === 'pen' ? ' pen' : ''}"></i>`), ...Array.from({ length: m.A }, () => '<i class="as"></i>')].reverse().join('')
     // the box reads bottom-up as the 90': the unplayed share is veiled — at the top for a starter (he played the start),
@@ -273,7 +277,7 @@ function strip(ctx: Ctx, k: Dict, club: Dict) {
     const miss = !m && (k.missed || []).find((x: any[]) => x[0] === g.id)
     if (miss) { const [bg] = RES6[res6(miss[1], miss[2])], st = miss[3], out = st === 'X' || st === 'XR'
       return `<div class="c2 dnp${out ? ' out' : ''}${st === 'XR' ? ' sus' : ''}"${matchHref(ctx, k.lg, g.w, g.id)} title="MD${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} ${miss[1]}-${miss[2]} · ${OUT_TITLE[st] || "he didn't start"}"><div class="mk"></div><div class="bx" style="background:${bg};color:#15181d"><span class="vl" style="height:100%"></span><b>–</b></div><div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, k.lg, '', 0)}</div>` }
-    if (!m) return `<div class="c2 up"><div class="mk"></div><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, k.lg, '', 0)}</div>`
+    if (!m) return `<div class="c2 up"><div class="mk"></div>${upBox(g)}<div class="op">${at}${esc(g.opp)}</div>${voteHTML(ctx, k.lg, '', 0)}</div>`
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
     return `<div class="c2" data-mid="${m.id}"${matchHref(ctx, k.lg, g.w, m.id)} title="MD${m.md} · ${m.ha === 'H' ? 'vs' : 'at'} ${esc(m.opp)} ${m.gf}-${m.ga} · ${m.sv} saves · ${m.conc} conceded${m.min < 90 ? ` · ${m.min}'` : ''}">
       <div class="mk">${Array.from({ length: m.conc }, () => '<i class="ga"></i>').join('')}</div>

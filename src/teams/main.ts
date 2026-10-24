@@ -5,6 +5,7 @@ import '../film/film.css'
 import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
 import { loadCoaches, coachChip } from '../film/coach'
 import { rowsOf } from '../film/pitch'
+import { upBox } from '../film/cards'
 type Dict = Record<string, any>
 const QS = new URLSearchParams(location.search)
 const SEASON = QS.get('season') || '2026-27'
@@ -274,7 +275,7 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
       ${bars('How', count(G, s => SIT[s.sit] || 'other'), fill)}${bars('With', count(G.filter(s => BODY[s.body]), s => BODY[s.body]), fill)}${bars('From', ([['inside the box', nIn], ['outside', G.length - nIn]] as [string, number][]).filter(r => r[1]), fill)}${when(G, fill)}</div>` }
   // When: the goals by 15-minute spell, stoppage time apart (45+, 90+) — eight small columns, each a filter too
   const when = (G: Dict[], fill: string) => { const n = WHEN.map(w => G.filter(g => whenOf(g.min) === w).length), mx = Math.max(1, ...n)
-    return `<div class="gkb"><div class="gkt">When</div><div class="gkh">${WHEN.map((w, i) => `<div class="gkr gkc"${n[i] ? ` data-g="when" data-v="${w}" title="${w}': ${n[i]} goal${n[i] === 1 ? '' : 's'} — show only these"` : ''}><b>${n[i] || ''}</b><i style="height:${Math.round(n[i] / mx * 34)}px;background:${fill}"></i><span>${w.replace(/^\d+–/, '')}</span></div>`).join('')}</div></div>` }
+    return `<div class="gkb"><div class="gkt">When</div><div class="gkh">${WHEN.map((w, i) => `<div class="gkr gkc"${n[i] ? ` data-g="when" data-v="${w}" title="${w}': ${n[i]} goal${n[i] === 1 ? '' : 's'} — show only these"` : ''}><b${w.endsWith('+') ? ' class="xt"' : ''}>${n[i] || ''}</b><i style="height:${Math.round(n[i] / mx * 34)}px;background:${fill}"></i><span${w.endsWith('+') ? ' class="xt"' : ''}>${w.replace(/^\d+–/, '')}</span></div>`).join('')}</div></div>` }
   const col = (L: Dict[], fill: string, side: string) => `<div class="gcol" data-side="${side}">${frame(L, fill)}${pitch(L, fill)}</div>`
   const ogFor = Math.max(0, t.GF - gN(F)), ogAg = Math.max(0, t.GA - gN(A))
   return `<svg width="0" height="0" style="position:absolute"><defs><pattern id="gnet" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="#dfe3e6" stroke-width=".4"/></pattern></defs></svg>
@@ -347,7 +348,7 @@ function strip(t: Dict, club: Dict) {
   const half = Math.ceil(all.length / 2)
   const cell = (g: Dict) => {
     const m = byId[g.id], at = g.ha === 'A' ? '@' : ''
-    if (!m) return `<div class="c2 tm up" data-gid="${g.id}"><div class="bx"></div><div class="op">${at}${esc(g.opp)}</div></div>`
+    if (!m) return `<div class="c2 tm up" data-gid="${g.id}">${upBox(g)}<div class="op">${at}${esc(g.opp)}</div></div>`
     const [bg, fg] = RES6[res6(m.gf, m.ga)]
     const veil = Math.round(100 - Math.max(0, Math.min(100, m.poss)))
     const keys = [`m${m.id}`, ...m.for.filter((x: Dict) => x.kind !== 'og').map((x: Dict) => `p${slug(x.by)}`)].join(' ')
