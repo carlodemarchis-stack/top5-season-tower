@@ -798,7 +798,9 @@ function applyGoalFilters(gk: HTMLElement) {
   // a group: the goals that pass, its count redrawn; hidden when none does
   let inGroups = 0
   col.querySelectorAll<SVGElement>('.gst').forEach(g => { const vis = g.dataset.gs!.split(' ').filter(k => ok(GV.get(k) || {}))
-    g.dataset.vis = vis.join(' '); g.classList.toggle('hid', !vis.length); g.querySelector('text')!.textContent = String(vis.length); inGroups += vis.length })
+    // one goal left of a group: drawn as a plain goal (no number), its own card on hover
+    g.dataset.vis = vis.join(' '); g.classList.toggle('hid', !vis.length); g.classList.toggle('one', vis.length === 1)
+    g.querySelector('text')!.textContent = vis.length > 1 ? String(vis.length) : ''; inGroups += vis.length })
   const n = gk.querySelector<HTMLElement>('.gkn b')!, shown = col.querySelectorAll('.gp .gm[data-gk]:not(.hid)').length + inGroups
   n.textContent = any ? String(shown) : n.dataset.n!; gk.querySelector('.gof')!.textContent = any ? `of ${n.dataset.n} ` : ''
 }
@@ -813,7 +815,9 @@ initTip(film, '.rv[data-rv]', el => RVTIPS.get(el.dataset.rv!) || '')   // a clu
 initTip(film, '.ghelp', el => el.classList.contains('xgh') ? XG_HELP : GOALS_HELP)
 // a goal in the Goals tab: its card above the column's goal, the same goal lit in the net and on the pitch, the rest faded
 // (own class names — .gm, .lit: the film's .gd / .hl styles scale and clear on hover)
-initTip(film, '.gm[data-gk], .gst', el => el.dataset.gs ? stackTip(el) : GTIPS.get(el.dataset.gk!) || '', el => el.closest<HTMLElement>('.gcol')?.querySelector<HTMLElement>('.gf') || el, true, el => !!el.dataset.gs)
+const oneOf = (el: HTMLElement) => el.classList.contains('one') ? el.dataset.vis! : null   // a group filtered down to one goal
+initTip(film, '.gm[data-gk], .gst', el => el.dataset.gs ? (oneOf(el) ? GTIPS.get(oneOf(el)!) || '' : stackTip(el)) : GTIPS.get(el.dataset.gk!) || '',
+  el => el.closest<HTMLElement>('.gcol')?.querySelector<HTMLElement>('.gf') || el, true, el => !!el.dataset.gs && !oneOf(el))
 film.addEventListener('mouseover', e => {
   if (document.getElementById('mtip')?.classList.contains('pinned')) return   // a pinned list keeps its goals lit
   const d = (e.target as Element).closest<SVGElement>('.gm[data-gk], .gst'), gt = (e.target as Element).closest<HTMLElement>('.gt')
