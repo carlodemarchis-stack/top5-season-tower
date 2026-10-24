@@ -196,6 +196,10 @@ const shotsOf = (lg: string) => SHOTS[lg] ??= (SHOT_FILES[`../data/shots-${lg}-$
 const SIT: Record<string, string> = { o: 'open play', c: 'counter-attack', s: 'set piece', k: 'corner', f: 'free kick', p: 'penalty', t: 'throw-in' }
 const BODY: Record<string, string> = { r: 'right foot', l: 'left foot', h: 'header', x: '' }
 const GTIPS = new Map<string, string>()   // a goal's hover card, by its key
+// the 15-minute spell of a goal's minute (the shot map writes 45+2 as 45.02): stoppage time is its own spell
+const WHEN = ['1–15', '16–30', '31–45', '45+', '46–60', '61–75', '76–90', '90+']
+const whenOf = (m: number) => { const base = Math.floor(m), extra = Math.round((m - base) * 100)
+  return base >= 90 && extra ? '90+' : base >= 45 && base < 46 && extra ? '45+' : base <= 15 ? '1–15' : base <= 30 ? '16–30' : base <= 45 ? '31–45' : base <= 60 ? '46–60' : base <= 75 ? '61–75' : base <= 90 ? '76–90' : '90+' }
 const GROW = new Map<string, string>(), GV = new Map<string, Dict>()   // a grouped goal's row in the list card, and its filter values
 // the list card of a group of goals from one spot: every goal (the ones the filters leave), a row each — the first six on
 // hover, all of them once pinned (a click), each row opening its match card
@@ -240,7 +244,7 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
   const inBox = (s: Dict) => s.x >= 88.5 && s.y >= 13.84 && s.y <= 54.16
   // goals from (nearly) one spot: grouped, each group's members within 1.2 m of its first
   const groups = (G: Dict[]) => { const out: Dict[][] = []; for (const g of G) { const k = out.find(o => Math.hypot(o[0].x - g.x, o[0].y - g.y) <= 1.2); k ? k.push(g) : out.push([g]) } return out }
-  const fv = (s: Dict) => ` data-how="${SIT[s.sit] || 'other'}" data-with="${BODY[s.body] || ''}" data-from="${inBox(s) ? 'inside the box' : 'outside'}"`
+  const fv = (s: Dict) => ` data-how="${SIT[s.sit] || 'other'}" data-with="${BODY[s.body] || ''}" data-from="${inBox(s) ? 'inside the box' : 'outside'}" data-when="${whenOf(s.min)}"`
   // the half pitch, attacking up (68 wide, the 35 m in front of the goal): ● a goal · ○ saved · × the rest. FotMob's y
   // runs from the shooter's RIGHT (checked against ESPN's "left / right side of the box": 1,453 to 4), so x = 68 − y
   const pitch = (L: Dict[], fill: string) => `<svg class="gp" viewBox="0 -1 68 36"><rect x="0" y="0" width="68" height="35" rx=".8" fill="#e8eee8"/><g fill="none" stroke="#fff" stroke-width=".4"><rect x="13.84" y="0" width="40.32" height="16.5"/><rect x="24.84" y="0" width="18.32" height="5.5"/><path d="M26.7 16.5a9.15 9.15 0 0 0 14.6 0"/></g><rect x="30.34" y="-1" width="7.32" height="1" fill="#15181d"/>
@@ -248,7 +252,7 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
     ${groups(L.filter(s => s.out === 'g')).map(G => { const s = G[0], cx = 68 - s.y, cy = Math.min(33.8, Math.max(1.3, 105 - s.x))
       if (G.length === 1) return `<circle class="gm" data-gk="${s.key}"${href(s)}${fv(s)} cx="${cx}" cy="${cy}" r="1.2" style="fill:${fill}" stroke="#fff" stroke-width=".3"/>`
       // several goals from one spot (every penalty, tap-ins): one dot with the count; hover lists them, click pins the list
-      for (const g of G) { GV.set(g.key, { how: SIT[g.sit] || 'other', with: BODY[g.body] || '', from: inBox(g) ? 'inside the box' : 'outside' })
+      for (const g of G) { GV.set(g.key, { how: SIT[g.sit] || 'other', with: BODY[g.body] || '', from: inBox(g) ? 'inside the box' : 'outside', when: whenOf(g.min) })
         GROW.set(g.key, `<a class="gsr" href="matches.html?lg=${t.lg}&md=${g.md}&m=${g.mid}"><b>${Math.floor(g.min)}′</b><span>MD ${g.md} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} ${g.gf}-${g.ga}</span><span class="nm">${esc(g.name || '?')}</span><em>${g.xg.toFixed(2)} xG</em></a>`) }
       return `<g class="gm gst" data-gs="${G.map(g => g.key).join(' ')}" data-sit="${esc(SIT[s.sit] || '')}"><circle cx="${cx}" cy="${cy}" r="1.6" style="fill:${fill}" stroke="#fff" stroke-width=".3"/><text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" fill="#fff" font-weight="900">${G.length}</text></g>` }).join('')}</svg>`
   // the goal, from the shooter's side: posts at 0 and 2, the bar at .667 from the ground — goals only
@@ -266,7 +270,10 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
     return `<div class="gk" data-side="${lb}"><div class="sec">${lb}${help}</div>
       <div class="gkn"><b data-n="${gN(L)}">${gN(L)}</b><span><i class="gof"></i>goals${og ? ` <em>+${og} own goal${og === 1 ? '' : 's'}</em>` : ''}</span></div>
       <div class="gks"><span><b>${L.length}</b> shots</span><span><b>${sot}</b> on target</span><span>xG <b>${xg(L).toFixed(1)}</b><i class="ghelp xgh" aria-label="What is xG">?</i></span><span class="${(lb === 'Conceded' ? d <= 0 : d >= 0) ? 'up' : 'dn'}"><b>${d >= 0 ? '+' : ''}${d.toFixed(1)}</b> vs xG</span></div>
-      ${bars('How', count(G, s => SIT[s.sit] || 'other'), fill)}${bars('With', count(G.filter(s => BODY[s.body]), s => BODY[s.body]), fill)}${bars('From', ([['inside the box', nIn], ['outside', G.length - nIn]] as [string, number][]).filter(r => r[1]), fill)}</div>` }
+      ${bars('How', count(G, s => SIT[s.sit] || 'other'), fill)}${bars('With', count(G.filter(s => BODY[s.body]), s => BODY[s.body]), fill)}${bars('From', ([['inside the box', nIn], ['outside', G.length - nIn]] as [string, number][]).filter(r => r[1]), fill)}${when(G, fill)}</div>` }
+  // When: the goals by 15-minute spell, stoppage time apart (45+, 90+) — eight small columns, each a filter too
+  const when = (G: Dict[], fill: string) => { const n = WHEN.map(w => G.filter(g => whenOf(g.min) === w).length), mx = Math.max(1, ...n)
+    return `<div class="gkb"><div class="gkt">When</div><div class="gkh">${WHEN.map((w, i) => `<div class="gkr gkc"${n[i] ? ` data-g="when" data-v="${w}" title="${w}': ${n[i]} goal${n[i] === 1 ? '' : 's'} — show only these"` : ''}><b>${n[i] || ''}</b><i style="height:${Math.round(n[i] / mx * 34)}px;background:${fill}"></i><span>${w.replace(/^\d+–/, '')}</span></div>`).join('')}</div></div>` }
   const col = (L: Dict[], fill: string, side: string) => `<div class="gcol" data-side="${side}">${frame(L, fill)}${pitch(L, fill)}</div>`
   const ogFor = Math.max(0, t.GF - gN(F)), ogAg = Math.max(0, t.GA - gN(A))
   return `<svg width="0" height="0" style="position:absolute"><defs><pattern id="gnet" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="#dfe3e6" stroke-width=".4"/></pattern></defs></svg>
@@ -772,7 +779,7 @@ initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.close
 // the Goals tab's help, on its "?" (in place of a legend line under the pitches)
 const GOALS_HELP = `<div class="mt-top">How to read it</div><div class="ghl"><p><b>Top</b>: where each goal went in, the goal seen from the shooter's side. <b>Bottom</b>: where every shot was taken from, attacking up.</p>
   <p><b>●</b> a goal · <b>○</b> saved · <b>×</b> off target or blocked. Hover a goal: the same goal lights in the net and on the pitch, with its xG; click it for the match card. A <b>numbered dot</b> is several goals from one spot (every penalty): hover it for the list, click it to keep the list open.</p>
-  <p><b>Left</b>: the goals scored — <b>right</b>: conceded. <b>xG</b>: how many goals the chances were worth; "vs xG": goals minus xG. The bars: how the goals came, with what, from where — <b>click a bar</b> to show only those goals (several bars: any of a group, all groups at once; click again to clear). Data: FotMob shot map.</p></div>`
+  <p><b>Left</b>: the goals scored — <b>right</b>: conceded. <b>xG</b>: how many goals the chances were worth; "vs xG": goals minus xG. The bars: how the goals came, with what, from where, and when (15-minute spells, stoppage time apart) — <b>click a bar</b> to show only those goals (several bars: any of a group, all groups at once; click again to clear). Data: FotMob shot map.</p></div>`
 // xG, explained where it is used (the "?" by each column's xG)
 const XG_HELP = `<div class="mt-top">xG — expected goals</div><div class="ghl"><p>How likely a shot was to go in, judged from many thousands of similar shots: where it was taken, the angle, foot or head, the kind of chance. <b>0.90</b> is a tap-in (a 90% chance); <b>0.03</b> a hopeful shot from 25 metres (3%).</p>
   <p>Add up every shot and you get the goals a team <b>should</b> have scored. <b>vs xG</b> is goals minus that: above zero, finishing better than the chances (or luck); below, worse. For goals conceded, below zero means the keeper and defence did better than the chances allowed.</p></div>`
