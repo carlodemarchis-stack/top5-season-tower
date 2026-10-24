@@ -222,7 +222,7 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
     const side = M.h === t.code ? 'h' : 'a'
     rows.forEach((r, i) => { if (r[5] === 'og') return
       const T = r[0] === 'h' ? M.home : M.away, p = (T.players as Dict[]).find(x => String(x.id) === r[8])
-      const sh = { by: p ? (p.st ? 'starters' : 'off the bench') : '', key: `${t.code}-${m.id}-${i}`,   // the club in the key: both clubs' tabs draw the same match
+      const sh = { pid: String(r[8] || ''), by: p ? (p.st ? 'starters' : 'off the bench') : '', key: `${t.code}-${m.id}-${i}`,   // the club in the key: both clubs' tabs draw the same match
          md: g.w, opp: g.opp, ha: g.ha, gf: m.gf, ga: m.ga, mid: m.id, side: r[0], min: r[1], x: r[2], y: r[3], xg: r[4], out: r[5], sit: r[6], body: r[7], name: p?.name || '', gx: r[9], gy: r[10],
         ast: r[5] === 'g' ? (M.goals as Dict[]).find(q => q.s === r[0] && String(q.byId) === r[8] && Math.abs(parseInt(q.min) - Math.floor(r[1])) <= 1)?.ast : null }
       ;(r[0] === side ? F : A).push(sh)
@@ -246,7 +246,7 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
   const inBox = (s: Dict) => s.x >= 88.5 && s.y >= 13.84 && s.y <= 54.16
   // goals from (nearly) one spot: grouped, each group's members within 1.2 m of its first
   const groups = (G: Dict[]) => { const out: Dict[][] = []; for (const g of G) { const k = out.find(o => Math.hypot(o[0].x - g.x, o[0].y - g.y) <= 1.2); k ? k.push(g) : out.push([g]) } return out }
-  const fv = (s: Dict) => ` data-how="${SIT[s.sit] || 'other'}" data-with="${BODY[s.body] || ''}" data-from="${inBox(s) ? 'inside the box' : 'outside'}" data-when="${whenOf(s.min)}" data-by="${s.by}"`
+  const fv = (s: Dict) => ` data-how="${SIT[s.sit] || 'other'}" data-with="${BODY[s.body] || ''}" data-from="${inBox(s) ? 'inside the box' : 'outside'}" data-when="${whenOf(s.min)}" data-by="${s.by}" data-who="${s.pid}"`
   // the half pitch, attacking up (68 wide, the 35 m in front of the goal): ● a goal · ○ saved · × the rest. FotMob's y
   // runs from the shooter's RIGHT (checked against ESPN's "left / right side of the box": 1,453 to 4), so x = 68 − y
   const pitch = (L: Dict[], fill: string) => `<svg class="gp" viewBox="0 -1 68 36"><rect x="0" y="0" width="68" height="35" rx=".8" fill="#e8eee8"/><g fill="none" stroke="#fff" stroke-width=".4"><rect x="13.84" y="0" width="40.32" height="16.5"/><rect x="24.84" y="0" width="18.32" height="5.5"/><path d="M26.7 16.5a9.15 9.15 0 0 0 14.6 0"/></g><rect x="30.34" y="-1" width="7.32" height="1" fill="#15181d"/>
@@ -254,7 +254,7 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
     ${groups(L.filter(s => s.out === 'g')).map(G => { const s = G[0], cx = 68 - s.y, cy = Math.min(33.8, Math.max(1.3, 105 - s.x))
       if (G.length === 1) return `<circle class="gm" data-gk="${s.key}"${href(s)}${fv(s)} cx="${cx}" cy="${cy}" r="1.2" style="fill:${fill}" stroke="#fff" stroke-width=".3"/>`
       // several goals from one spot (every penalty, tap-ins): one dot with the count; hover lists them, click pins the list
-      for (const g of G) { GV.set(g.key, { how: SIT[g.sit] || 'other', with: BODY[g.body] || '', from: inBox(g) ? 'inside the box' : 'outside', when: whenOf(g.min), by: g.by })
+      for (const g of G) { GV.set(g.key, { how: SIT[g.sit] || 'other', with: BODY[g.body] || '', from: inBox(g) ? 'inside the box' : 'outside', when: whenOf(g.min), by: g.by, who: g.pid })
         GROW.set(g.key, `<a class="gsr" href="matches.html?lg=${t.lg}&md=${g.md}&m=${g.mid}"><b>${Math.floor(g.min)}′</b><span>MD ${g.md} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} ${g.gf}-${g.ga}</span><span class="nm">${esc(g.name || '?')}</span><em>${g.xg.toFixed(2)} xG</em></a>`) }
       return `<g class="gm gst" data-gs="${G.map(g => g.key).join(' ')}" data-sit="${esc(SIT[s.sit] || '')}"><circle cx="${cx}" cy="${cy}" r="1.6" style="fill:${fill}" stroke="#fff" stroke-width=".3"/><text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" fill="#fff" font-weight="900">${G.length}</text></g>` }).join('')}</svg>`
   // the goal, from the shooter's side: posts at 0 and 2, the bar at .667 from the ground — goals only
@@ -278,8 +278,19 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
     return `<div class="gkb"><div class="gkt">When</div><div class="gkh">${WHEN.map((w, i) => `<div class="gkr gkc"${n[i] ? ` data-g="when" data-v="${w}" data-n="${n[i]}" title="${w}': ${n[i]} goal${n[i] === 1 ? '' : 's'} — show only these"` : ''}><b${w.endsWith('+') ? ' class="xt"' : ''}>${n[i] || ''}</b><u class="cw" style="height:${Math.max(2, Math.round(n[i] / mx * 34))}px"><s style="background:${fill}"></s><i style="height:100%;background:${fill}"></i></u><span${w.endsWith('+') ? ' class="xt"' : ''}>${w.replace(/^\d+–/, '')}</span></div>`).join('')}</div></div>` }
   const col = (L: Dict[], fill: string, side: string) => `<div class="gcol" data-side="${side}">${frame(L, fill)}${pitch(L, fill)}</div>`
   const ogFor = Math.max(0, t.GF - gN(F)), ogAg = Math.max(0, t.GA - gN(A))
+  // the scorers (a filter group too): photo, name, a bar, goals — most first
+  const scorers = (G: Dict[], fill: string) => { const by: Record<string, Dict> = {}
+    for (const g of G) if (g.pid) { const o = (by[g.pid] ||= { id: g.pid, name: g.name, n: 0, xg: 0 }); o.n++; o.xg += g.xg }
+    const L = Object.values(by).sort((a, b) => b.n - a.n || b.xg - a.xg), mx = Math.max(1, ...L.map(x => x.n))
+    return `<div class="gk gksc" data-side="Scored"><div class="sec">Scorers<span class="gsum"><b>${L.length}</b> players</span></div><div class="gkb">${L.map(x => { const ph = squadThumb(x.id)
+      return `<div class="gkr gkp" data-g="who" data-v="${x.id}" data-n="${x.n}" data-mx="${mx}" title="${esc(x.name)}: ${x.n} goal${x.n === 1 ? '' : 's'}, xG ${x.xg.toFixed(1)} — show only his goals">${ph ? `<img src="${ph}" alt="" loading="lazy">` : '<i class="nop"></i>'}<span>${esc(x.name)}</span><u class="bw"><s style="width:${x.n / mx * 100}%;background:${fill}"></s><i style="width:${x.n / mx * 100}%;background:${fill}"></i></u><b>${x.n}</b></div>` }).join('')}</div></div>` }
+  // the takeover (the ⤢ by Scored): the goals scored on the whole card — a one-line club bar, the numbers, the net and
+  // pitch as big as the height allows, the scorers on the right
+  const clubC = club.primary || '#555', open = '<i class="gto-open" role="button" aria-label="Goals scored, full screen" title="Goals scored — full screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M15 4h5v5M9 20H4v-5"/></svg></i>'
+  const take = `<div class="gto" hidden><div class="gtob" style="background:${clubC};color:${lum(clubC) > 0.55 ? '#15181d' : '#fff'}"><img src="${logo(t.code, t.lg)}" alt=""><b>${esc(club.name || t.code)}</b><span>${LEAGUE_NAME[t.lg]} · ${t.pos ? ord(t.pos) : '–'} · ${t.pts} pts · ${t.W}-${t.D}-${t.L}</span><em>Goals scored</em><button class="gto-x" aria-label="Close" title="Close (Esc)">×</button></div>
+    <div class="gt gtbig">${kpis('Scored', F, 'var(--c2)', ogFor, '<i class="ghelp" aria-label="How to read it">?</i>')}${col(F, 'var(--c2)', 'Scored')}${scorers(F.filter(s => s.out === 'g'), 'var(--c2)')}</div></div>`
   return `<svg width="0" height="0" style="position:absolute"><defs><pattern id="gnet" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="#dfe3e6" stroke-width=".4"/></pattern></defs></svg>
-    <div class="gt">${kpis('Scored', F, 'var(--c2)', ogFor, '<i class="ghelp" aria-label="How to read it">?</i>')}${col(F, 'var(--c2)', 'Scored')}${col(A, '#15181d', 'Conceded')}${kpis('Conceded', A, '#15181d', ogAg)}</div>`
+    <div class="gt">${kpis('Scored', F, 'var(--c2)', ogFor, '<i class="ghelp" aria-label="How to read it">?</i>' + open)}${col(F, 'var(--c2)', 'Scored')}${col(A, '#15181d', 'Conceded')}${kpis('Conceded', A, '#15181d', ogAg)}</div>${take}`
 }
 let goalsBusy = false
 async function fillGoals() {
@@ -788,17 +799,17 @@ initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.close
 // the Goals tab's help, on its "?" (in place of a legend line under the pitches)
 const GOALS_HELP = `<div class="mt-top">How to read it</div><div class="ghl"><p><b>Top</b>: where each goal went in, the goal seen from the shooter's side. <b>Bottom</b>: where every shot was taken from, attacking up.</p>
   <p><b>●</b> a goal · <b>○</b> saved · <b>×</b> off target or blocked. Hover a goal: the same goal lights in the net and on the pitch, with its xG; click it for the match card. A <b>numbered dot</b> is several goals from one spot (every penalty): hover it for the list, click it to keep the list open.</p>
-  <p><b>Left</b>: the goals scored — <b>right</b>: conceded. <b>xG</b>: how many goals the chances were worth; "vs xG": goals minus xG. The bars: how the goals came, with what, from where, when (15-minute spells, stoppage time apart) and, for goals scored, by whom (starters or off the bench) — <b>click a bar</b> to show only those goals (several bars: any of a group, all groups at once; click again to clear). Data: FotMob shot map.</p></div>`
+  <p><b>Left</b>: the goals scored — <b>right</b>: conceded. <b>xG</b>: how many goals the chances were worth; "vs xG": goals minus xG. The bars: how the goals came, with what, from where, when (15-minute spells, stoppage time apart) and, for goals scored, by whom (starters or off the bench) — <b>click a bar</b> (or, in the full view — the ⤢ by Scored — a scorer) to show only those goals (several bars: any of a group, all groups at once; click again to clear). Data: FotMob shot map.</p></div>`
 // xG, explained where it is used (the "?" by each column's xG)
 const XG_HELP = `<div class="mt-top">xG — expected goals</div><div class="ghl"><p>How likely a shot was to go in, judged from many thousands of similar shots: where it was taken, the angle, foot or head, the kind of chance. <b>0.90</b> is a tap-in (a 90% chance); <b>0.03</b> a hopeful shot from 25 metres (3%).</p>
   <p>Add up every shot and you get the goals a team <b>should</b> have scored. <b>vs xG</b> is goals minus that: above zero, finishing better than the chances (or luck); below, worse. For goals conceded, below zero means the keeper and defence did better than the chances allowed.</p></div>`
 // the Goals tab's filters: a bar on/off; a goal shows when it matches every group that has a bar on (within a group,
 // any of its bars) — the big number then counts what is shown, "of 21"
-function applyGoalFilters(gk: HTMLElement) {
-  const side = gk.dataset.side, gt = gk.closest('.gt')!
+function applyGoalFilters(gk0: HTMLElement) {
+  const side = gk0.dataset.side, gt = gk0.closest('.gt')!, gks = [...gt.querySelectorAll<HTMLElement>(`.gk[data-side="${side}"]`)], gk = gks[0]
   const want: Record<string, string[]> = {}
-  gk.querySelectorAll<HTMLElement>('.gkr.on').forEach(r => (want[r.dataset.g!] ||= []).push(r.dataset.v!))
-  const any = Object.keys(want).length; gk.classList.toggle('filt', !!any)
+  gks.forEach(k => k.querySelectorAll<HTMLElement>('.gkr.on').forEach(r => (want[r.dataset.g!] ||= []).push(r.dataset.v!)))
+  const any = Object.keys(want).length; gks.forEach(k => k.classList.toggle('filt', !!any))
   const col = gt.querySelector<HTMLElement>(`.gcol[data-side="${side}"]`)!
   const ok = (v: Dict) => Object.entries(want).every(([k, vs]) => vs.includes(v[k] || ''))
   col.querySelectorAll<SVGElement>('.gm[data-gk]').forEach(g => g.classList.toggle('hid', !ok(g.dataset)))
@@ -814,7 +825,7 @@ function applyGoalFilters(gk: HTMLElement) {
   // the full-season bar stays behind as a ghost
   const goals: Dict[] = [...col.querySelectorAll<HTMLElement>('.gp .gm[data-gk]')].map(g => g.dataset)
   col.querySelectorAll<HTMLElement>('.gst').forEach(g => g.dataset.gs!.split(' ').forEach(k => goals.push(GV.get(k) || {})))
-  gk.querySelectorAll<HTMLElement>('.gkr[data-g]').forEach(r => {
+  gks.flatMap(k => [...k.querySelectorAll<HTMLElement>('.gkr[data-g]')]).forEach(r => {
     const grp = r.dataset.g!, full = +r.dataset.n!
     const cnt = any ? goals.filter(v => v[grp] === r.dataset.v && Object.entries(want).every(([k, vs]) => k === grp || vs.includes(v[k] || ''))).length : full
     r.querySelector('b')!.textContent = cnt || r.classList.contains('gkc') ? String(cnt || '') : '0'
@@ -824,6 +835,14 @@ function applyGoalFilters(gk: HTMLElement) {
     r.classList.toggle('zero', !!any && !cnt)
   })
 }
+// the goals-scored takeover: open from the ⤢, close with × or Esc
+film.addEventListener('click', e => {
+  const t = e.target as HTMLElement
+  // (moved up to the card itself, so it covers the whole card, panel included)
+  if (t.closest('.gto-open')) { const c = t.closest<HTMLElement>('.card')!, g = c.querySelector<HTMLElement>('.gto')!; if (g.parentElement !== c) c.append(g); g.hidden = false; document.body.classList.add('gto-on'); requestAnimationFrame(sizeGoalDots); e.stopPropagation(); return }
+  if (t.closest('.gto-x')) { t.closest<HTMLElement>('.gto')!.hidden = true; document.body.classList.remove('gto-on'); e.stopPropagation() }
+}, true)
+addEventListener('keydown', e => { if (e.key === 'Escape') film.querySelectorAll<HTMLElement>('.gto:not([hidden])').forEach(g => { g.hidden = true; document.body.classList.remove('gto-on') }) })
 film.addEventListener('click', e => {
   const t = e.target as HTMLElement, row = t.closest<HTMLElement>('.gkr[data-g]')
   if (row) { row.classList.toggle('on'); applyGoalFilters(row.closest<HTMLElement>('.gk')!); return }
