@@ -107,7 +107,8 @@ function card(t: Dict) {
 // the meta line's top scorer and his goals ("top scorer A · 3 goals"); every player tied on the most ("top scorers A, B and C · 2 goals each"), a count past three
 function topScorers(t: Dict) {
   const top = t.scorers[0]?.G; if (!top) return ''
-  const names = t.scorers.filter((s: Dict) => s.G === top).map((s: Dict) => `<b>${esc(s.name)}</b>`)
+  // each name opens his card in the club's squad film
+  const names = t.scorers.filter((s: Dict) => s.G === top).map((s: Dict) => `<b class="plk" data-href="player.html?lg=${t.lg}&team=${t.code}&p=${s.espnId}" title="${esc(s.name)} · his card">${esc(s.name)}</b>`)
   if (names.length > 3) return ` · top scorers: <b>${names.length}</b> players on ${top} goal${top === 1 ? '' : 's'} each`   // a long tie: the Scorers section lists them
   return names.length === 1 ? ` · top scorer ${names[0]} · ${top} goal${top === 1 ? '' : 's'}` : ` · top scorers ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]} · ${top} goal${top === 1 ? '' : 's'} each`
 }
@@ -785,10 +786,8 @@ const XG_HELP = `<div class="mt-top">xG — expected goals</div><div class="ghl"
   <p>Add up every shot and you get the goals a team <b>should</b> have scored. <b>vs xG</b> is goals minus that: above zero, finishing better than the chances (or luck); below, worse. For goals conceded, below zero means the keeper and defence did better than the chances allowed.</p></div>`
 // the Goals tab's filters: a bar on/off; a goal shows when it matches every group that has a bar on (within a group,
 // any of its bars) — the big number then counts what is shown, "of 21"
-film.addEventListener('click', e => {
-  const row = (e.target as HTMLElement).closest<HTMLElement>('.gkr[data-g]'); if (!row) return
-  const gk = row.closest<HTMLElement>('.gk')!, side = gk.dataset.side, gt = gk.closest('.gt')!
-  row.classList.toggle('on')
+function applyGoalFilters(gk: HTMLElement) {
+  const side = gk.dataset.side, gt = gk.closest('.gt')!
   const want: Record<string, string[]> = {}
   gk.querySelectorAll<HTMLElement>('.gkr.on').forEach(r => (want[r.dataset.g!] ||= []).push(r.dataset.v!))
   const any = Object.keys(want).length; gk.classList.toggle('filt', !!any)
@@ -801,6 +800,13 @@ film.addEventListener('click', e => {
     g.dataset.vis = vis.join(' '); g.classList.toggle('hid', !vis.length); g.querySelector('text')!.textContent = String(vis.length); inGroups += vis.length })
   const n = gk.querySelector<HTMLElement>('.gkn b')!, shown = col.querySelectorAll('.gp .gm[data-gk]:not(.hid)').length + inGroups
   n.textContent = any ? String(shown) : n.dataset.n!; gk.querySelector('.gof')!.textContent = any ? `of ${n.dataset.n} ` : ''
+}
+film.addEventListener('click', e => {
+  const t = e.target as HTMLElement, row = t.closest<HTMLElement>('.gkr[data-g]')
+  if (row) { row.classList.toggle('on'); applyGoalFilters(row.closest<HTMLElement>('.gk')!); return }
+  // a click anywhere else (not on a goal, which opens its match or its list) clears every filter
+  if (t.closest('.gm, .gst')) return
+  film.querySelectorAll<HTMLElement>('.gk.filt').forEach(gk => { gk.querySelectorAll('.gkr.on').forEach(r => r.classList.remove('on')); applyGoalFilters(gk) })
 })
 initTip(film, '.rv[data-rv]', el => RVTIPS.get(el.dataset.rv!) || '')   // a club in the Rivals tab: both meetings
 initTip(film, '.ghelp', el => el.classList.contains('xgh') ? XG_HELP : GOALS_HELP)
