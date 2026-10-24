@@ -1745,8 +1745,8 @@ export class SeasonTower extends React.Component<Props, State> {
       let bg: string, color: string, border: string, chipBg = '', chipText = ''
       if (type === 'pend') { bg = '#ffffff'; color = this.mix(oppPrim, '#ffffff', 0.15); border = '1px solid ' + this.mix(oppPrim, '#ffffff', 0.6) }
       // the points side (wins and the won-side tie) filled with the CLUB's own colour, so each club's points read as
-      // one solid bar in its colour (a tie a lighter shade); the opponent stays on its colour chip
-      else if (type === 'draw') { const own = t.primary || '#8A8F98', lt = this.mix(own, '#ffffff', 0.55); bg = lt; color = this.contrast(lt); border = '1.5px solid ' + lt; chipBg = oppPrim; chipText = this.contrast(oppPrim) }
+      // one solid bar in its colour (a tie too — its smaller box tells it apart); the opponent stays on its colour chip
+      else if (type === 'draw') { const own = t.primary || '#8A8F98'; bg = own; color = this.contrast(own); border = '1.5px solid ' + own; chipBg = oppPrim; chipText = this.contrast(oppPrim) }
       else if (type === 'loss' || type === 'drawlost') { bg = '#ffffff'; color = this.ink(oppPrim); border = '1.5px solid ' + oppPrim }   // reverse (below the line) — stays white
       else { const own = t.primary || '#8A8F98'; bg = own; color = this.contrast(own); border = '1.5px solid ' + own; chipBg = oppPrim; chipText = this.contrast(oppPrim) }   // win — solid club colour, the opponent on its colour chip
 
