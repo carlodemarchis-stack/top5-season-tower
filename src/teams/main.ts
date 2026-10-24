@@ -235,7 +235,7 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
           <div><div class="mt-top">MD ${g.w} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} · ${m.gf}-${m.ga}</div><div class="gtn">${esc(sh.name || '?')}</div>
           <div class="gtk"><span><b>${Math.floor(r[1])}′</b>minute</span><span><b>${r[4].toFixed(2)}</b>xG · a ${Math.max(1, Math.round(r[4] * 100))}% chance</span><span><b>${dist} m</b>out</span></div>
           <div class="gts">${[SIT[r[6]], BODY[r[7]], sh.ast && `assist <b>${esc(sh.ast)}</b>`].filter(Boolean).join(' · ')}</div></div>
-          ${gk ? `<div class="gtgk">${gph ? `<img src="${gph}" alt="" onerror="this.style.visibility='hidden'">` : ''}<span>${esc(gk.name.split(' ').slice(-1)[0])}</span><em>in goal</em></div>` : '<span></span>'}</div>`) }
+          ${gk ? `<div class="gtgk">${gph ? `<img src="${gph}" alt="" onerror="this.style.visibility='hidden'">` : ''}<span>${esc(gk.name.split(' ').slice(1).join(' ') || gk.name)}</span><em>in goal</em></div>` : '<span></span>'}</div>`) }
     })
   }
   if (!F.length && !A.length) return '<p class="none">No shot maps yet.</p>'
