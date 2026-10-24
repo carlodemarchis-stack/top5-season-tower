@@ -202,8 +202,17 @@
     body.tab-goals .pane-season,body:not(.tab-goals) .pane-goals{display:none}
     body.tab-rivals .pane-season,body:not(.tab-rivals) .pane-rivals{display:none}
     /* Rivals tab: the league circle, as big as the space under the tabs allows */
-    .rvw{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;margin-top:8px}
-    .rvs{flex:1 1 auto;min-height:0;width:100%;max-width:calc((100vh - 330px) * 640 / 540);aspect-ratio:640/540}
+    .rvw{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(200px,280px) minmax(0,1fr) minmax(200px,280px);gap:clamp(16px,2vw,40px);align-items:start;margin-top:10px}
+    .rvc{min-width:0;display:flex;flex-direction:column;align-items:center}
+    .rvs{width:100%;max-width:calc((100vh - 345px) * 640 / 540);aspect-ratio:640/540}
+    .rvl .sec{margin-bottom:4px}.rvl{display:flex;flex-direction:column}
+    .rvr{display:grid;grid-template-columns:20px 18px 18px minmax(0,1fr) auto;gap:6px;align-items:center;height:calc((100vh - 360px) / 19);max-height:30px;min-height:20px;font-size:12px;color:#3a3f47;border-bottom:1px solid #eceef0;cursor:default}
+    .rvr[data-href]{cursor:pointer}.rvr .md{color:#9aa0a8;font-weight:700;font-size:10.5px;text-align:right}.rvr .ha{color:#9aa0a8;font-size:10.5px}
+    .rvr img{width:16px;height:16px;object-fit:contain}.rvr .nm{font-weight:800;color:#15181d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .rvr b{color:#fff;font-size:11px;font-weight:900;padding:1px 6px;border-radius:4px;min-width:30px;text-align:center}.rvr em{font-style:normal;font-size:11px;color:#9aa0a8}
+    .rvr.rvtp .nm{color:#5b626c;font-weight:700}
+    .rvw.lit .rvr:not(.on){opacity:.35}.rvw.lit .rv:not(.on){opacity:.3}.rvr.on{background:#eceef0}
+    @media (max-width: 1100px){ .rvw{grid-template-columns:1fr} }
     .rv{cursor:pointer}.rv:hover circle{stroke:#15181d}
     .rvleg{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;font-size:11px;color:#8a9099;margin-top:4px}.rvleg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px}
     /* Goals tab: scored | conceded, each the goal (where they went in) over the half pitch (where every shot came from) */
@@ -294,14 +303,14 @@
         margin:0 0 calc(-1 * clamp(20px,3.4vh,40px) - 2px) calc(-1 * max(300px,36vw) - clamp(22px,3vw,48px));
         padding:0 0 calc(clamp(20px,3.4vh,40px) + 2px) clamp(22px,3vw,48px)}
     }
-    /* Goals tab: the whole width too (only the Season tab keeps the panel) */
+    /* Goals and Rivals tabs: the whole width too (only the Season tab keeps the panel) */
     @media (min-width: 761px){
-      body.tab-goals .card .body{overflow:visible;min-height:0}
-      body.tab-goals .card .pane-goals{position:relative;z-index:3;background:#F5F6F4;box-shadow:0 8px 0 #F5F6F4;
+      body.tab-goals .card .body,body.tab-rivals .card .body{overflow:visible;min-height:0}
+      body.tab-goals .card .pane-goals,body.tab-rivals .card .pane-rivals{position:relative;z-index:3;background:#F5F6F4;box-shadow:0 8px 0 #F5F6F4;
         margin:0 0 calc(-1 * clamp(20px,3.4vh,40px) - 2px) calc(-1 * max(300px,36vw) - clamp(22px,3vw,48px));
         padding:0 0 calc(clamp(20px,3.4vh,40px) + 2px) clamp(22px,3vw,48px)}
     }
-    @media (max-width: 760px){ body.tab-squad .card,body.tab-tac .card,body.tab-goals .card{grid-template-rows:1fr} body.tab-squad .card .pan,body.tab-tac .card .pan,body.tab-goals .card .pan{display:none} }
+    @media (max-width: 760px){ body.tab-squad .card,body.tab-tac .card,body.tab-goals .card,body.tab-rivals .card{grid-template-rows:1fr} body.tab-squad .card .pan,body.tab-tac .card .pan,body.tab-goals .card .pan,body.tab-rivals .card .pan{display:none} }
     /* squad deck: player tiles like the NBA team cards; the deck scrolls inside the card if a big squad doesn't fit */
     .sq{flex:1 1 auto;min-height:0;overflow:auto;max-width:1040px;padding:2px 2px 4px}
     .deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:7px}
@@ -371,7 +380,7 @@
       <li><b>Scorers</b>: goals (and assists). Hover or tap a scorer or a match to light up the goals.</li>
       <li><b>Squad</b> tab (<kbd>t</kbd>): the whole squad as player cards by position, most minutes first — minutes, goals and assists (saves and goals conceded for keepers), shirt number behind the photo; a red + marks an injury, a card colour a booking, faded players haven't played yet. Click a player for his own card, in a film of the whole squad.</li>
       <li><b>Goals</b> tab: in the middle, scored and conceded side by side — on top, where each goal went in (the goal from the shooter's side); below, where every shot was taken from: ● a goal, ○ saved, × off target or blocked; hover a goal to light it in the net and on the pitch at once, click it for the match card. On the left the goals scored, on the right those conceded: shots, on target, xG and goals against xG, then bars for how the goals came, with what and from where. Data: FotMob's shot map.</li>
-      <li><b>Rivals</b> tab: the league as a circle in table order, 1st at the top, the club at its own place. Every other club is a dot split into the two meetings — left half at home, right half away — in the result colour (green won, yellow drew, red lost, grey to play) with the score; an arc runs from the club to it for each meeting played, in the same colour. Hover a club for both games, click it for its team card.</li>
+      <li><b>Rivals</b> tab: the league as a circle in table order, 1st at the top, the club at its own place. Every other club is a dot split into the two meetings — left half at home, right half away — in the result colour (green won, yellow drew, red lost, grey to play) with the score; an arc runs from the club to it for each meeting played, in the same colour. Beside it, the club's games: first half on the left, second half on the right — hover a row to light that club in the circle, click a played game for its match card. Hover a club for both games, click it for its team card.</li>
     </ul>
     <p><kbd>←</kbd> <kbd>→</kbd> previous / next · <kbd>space</kbd> play / pause · <kbd>Home</kbd> <kbd>End</kbd> first / last · <kbd>g</kbd> or <kbd>/</kbd> find a club · <kbd>f</kbd> fullscreen · <kbd>h</kbd> this help · <kbd>Esc</kbd> close</p>
     <p class="agwas-rel">Release notes <a class="agwas-ver" data-agwas-ver="football" href="https://dataviz.aguywithascarf.com/releases/#football" target="_blank" rel="noopener"></a></p>

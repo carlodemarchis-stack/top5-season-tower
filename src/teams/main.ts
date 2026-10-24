@@ -333,8 +333,15 @@ function rivalsPane(t: Dict) {
     const anchor = cos > .25 ? 'start' : cos < -.25 ? 'end' : 'middle', dy = Math.abs(cos) <= .25 ? (Math.sin(ang) < 0 ? -2 : 9) : 3.5
     dots += `<circle cx="${cx}" cy="${cy}" r="10.5" fill="#fff"/><image href="${logo(o.code, t.lg)}" x="${cx - 9}" y="${cy - 9}" width="18" height="18"/><text x="${tx + (anchor === 'start' ? -4 : anchor === 'end' ? 4 : 0)}" y="${ty + dy}" text-anchor="${anchor}" font-size="10" font-weight="800" fill="#5b626c">${o.code}<tspan font-weight="600" fill="#8a9099"> · ${o.pts} pts</tspan></text>`
   })
-  return `<div class="rvw"><svg class="rvs" viewBox="-60 -10 640 540">${arcs}${dots}</svg>
-    <div class="rvleg"><span><i style="background:#2f9e58"></i>won</span><span><i style="background:#EAB308"></i>drew</span><span><i style="background:#dc5c5e"></i>lost</span><span><i style="background:#d9dde1"></i>to play</span><span>each club: left half at home, right half away · the table, 1st at the top · hover a club, click for its card</span></div></div>`
+  // beside the circle, the club's games as a list: first half on the left, second on the right (as the league's
+  // everyone-vs-everyone view): match day, home/away, opponent, score or date; hover a row to light that club
+  const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const all = [...(club.games || [])].sort((a: Dict, b: Dict) => a.w - b.w), half = Math.ceil(all.length / 2)
+  const row = (g: Dict) => { const m = played[g.id], d = typeof g.et === 'string' ? g.et.match(/^\d{4}-(\d{2})-(\d{2})/) : null, o = TEAMS_OF[t.lg][g.opp] || {}
+    return `<div class="rvr${m ? '' : ' rvtp'}" data-rv="${t.code}-${g.opp}"${m ? ` data-href="matches.html?lg=${t.lg}&md=${g.w}&m=${g.id}"` : ''}><span class="md">${g.w}</span><span class="ha">${g.ha === 'H' ? 'vs' : '→'}</span><img src="${logo(g.opp, t.lg)}" alt="" loading="lazy"><span class="nm">${esc(o.name || g.opp)}</span>${m ? `<b style="background:${RV_RES(m.gf, m.ga)}">${m.gf}–${m.ga}</b>` : `<em>${d ? `${+d[2]} ${MO[+d[1] - 1]}` : ''}</em>`}</div>` }
+  const list = (gs: Dict[], lb: string) => `<div class="rvl"><div class="sec">${lb}</div>${gs.map(row).join('')}</div>`
+  return `<div class="rvw">${list(all.slice(0, half), `First half · MD 1–${half}`)}<div class="rvc"><svg class="rvs" viewBox="-60 -10 640 540">${arcs}${dots}</svg>
+    <div class="rvleg"><span><i style="background:#2f9e58"></i>won</span><span><i style="background:#EAB308"></i>drew</span><span><i style="background:#dc5c5e"></i>lost</span><span><i style="background:#d9dde1"></i>to play</span><span>each club: left half at home, right half away · the table, 1st at the top · hover a club, click for its card</span></div></div>${list(all.slice(half), `Second half · MD ${half + 1}–${all.length}`)}</div>`
 }
 function fillRivals() {
   film.querySelectorAll<HTMLElement>('.pane-rivals').forEach((p, i) => { if (!p.dataset.done) { p.innerHTML = rivalsPane(P[i]); p.dataset.done = '1' } })
@@ -812,6 +819,13 @@ film.addEventListener('click', e => {
   film.querySelectorAll<HTMLElement>('.gk.filt').forEach(gk => { gk.querySelectorAll('.gkr.on').forEach(r => r.classList.remove('on')); applyGoalFilters(gk) })
 })
 initTip(film, '.rv[data-rv]', el => RVTIPS.get(el.dataset.rv!) || '')   // a club in the Rivals tab: both meetings
+// a row of the Rivals lists (or a dot): that club lit in the circle and in both lists
+film.addEventListener('mouseover', e => {
+  const el = (e.target as HTMLElement).closest<HTMLElement>('.rvr[data-rv], .rv[data-rv]'), w = (e.target as HTMLElement).closest<HTMLElement>('.rvw')
+  film.querySelectorAll('.rvw.lit').forEach(x => { if (x !== w || !el) { x.classList.remove('lit'); x.querySelectorAll('.on').forEach(o => o.classList.remove('on')) } })
+  if (!el || !w) return
+  w.classList.add('lit'); w.querySelectorAll('.on').forEach(o => o.classList.remove('on')); w.querySelectorAll(`[data-rv="${el.dataset.rv}"]`).forEach(o => o.classList.add('on'))
+})
 initTip(film, '.ghelp', el => el.classList.contains('xgh') ? XG_HELP : GOALS_HELP)
 // a goal in the Goals tab: its card above the column's goal, the same goal lit in the net and on the pitch, the rest faded
 // (own class names — .gm, .lit: the film's .gd / .hl styles scale and clear on hover)
