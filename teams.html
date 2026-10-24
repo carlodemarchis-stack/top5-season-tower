@@ -168,11 +168,12 @@
     .cc-ab{height:26px;margin-top:3px;font-size:8.5px;font-weight:900;letter-spacing:.3px;writing-mode:vertical-rl;transform:rotate(180deg)}
     .cc-lg{width:12px;height:12px;object-fit:contain;margin-top:2px;flex:none}
     @media (max-width: 760px){ .cc-wrap{overflow-x:auto;padding-bottom:4px} .cc{flex:0 0 12px} }
-    /* Season | Squad */
-    .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:-4px}
+    /* the tabs: a switch at the right end of the coach line (as on the player and coach cards), a line under it */
+    .crow{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;margin-top:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+    .crow .coach{margin-top:0}.crow .tacsw .tab{margin:0}.crow .tacsw .tab.on span{color:inherit;opacity:.75}
     .tab{font:inherit;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8a9099;background:none;border:none;border-bottom:2.5px solid transparent;padding:2px 10px 4px;cursor:pointer;margin-bottom:-1px}
     .tab span{font-weight:700;color:#b0b5bc;margin-left:3px}
-    /* Squad order: right end of the tab line, Squad tab only */
+    /* Squad order: right end of the key line under the deck, Squad tab only */
     .sortby{margin-left:auto;display:none;align-items:center;gap:2px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8a9099;padding-bottom:3px}
     body.tab-squad .sortby{display:flex}
     .sortby button{font:inherit;color:#8a9099;background:none;border:1px solid transparent;border-radius:6px;padding:2px 7px;margin-left:4px;cursor:pointer}

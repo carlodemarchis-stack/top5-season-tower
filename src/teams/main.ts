@@ -80,9 +80,8 @@ function card(t: Dict) {
       <div>
         <h1 style="--len:${[...club.name || t.code].length};--word:${Math.max(...(club.name || t.code).split(/[\s-]+/).map((w: string) => [...w].length))}">${esc(club.name || t.code)}</h1>
         <div class="meta" style="margin-top:8px">${LEAGUE_NAME[t.lg]} · <b>${t.pos ? ord(t.pos) : '–'}</b> · ${t.W}-${t.D}-${t.L} · GD ${gd >= 0 ? '+' : ''}${gd}${topScorers(t)}</div>
-        ${coachChip(COACHES_OF[t.lg], t.lg, t.code, playedOf(t, club))}
+        <div class="crow">${coachChip(COACHES_OF[t.lg], t.lg, t.code, playedOf(t, club))}<div class="tacsw" role="tablist"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button>${SEASON === '2026-27' ? '<button class="tab" data-tab="tac">Tactical</button><button class="tab" data-tab="goals">Goals</button>' : ''}<button class="tab" data-tab="rivals">Rivals</button></div></div>
       </div>
-      <div class="tabs"><button class="tab" data-tab="season">Season</button><button class="tab" data-tab="squad">Squad <span>${(t.squad || []).length}</span></button>${SEASON === '2026-27' ? '<button class="tab" data-tab="tac">Tactical</button><button class="tab" data-tab="goals">Goals</button>' : ''}<button class="tab" data-tab="rivals">Rivals</button>${SORTBAR}</div>
       <div class="pane pane-season">
       <div class="nums">
         <div class="n big"><b>${t.pts}</b><span>Points · ${ppg}/game</span></div>
@@ -472,7 +471,7 @@ function fitNames() {
   long.filter(el => el.scrollWidth > el.clientWidth).forEach(el => { el.textContent = el.dataset.s!.replace(/^\S\. /, '') })
 }
 // what the four numbers on a tile are, once, under the deck
-const SQKEY = `<div class="sqkey"><span><b>age</b> · minutes · goals · assists</span><span>goalkeepers: <b>age</b> · minutes · saves · goals conceded</span></div>`
+const SQKEY = `<div class="sqkey"><span><b>age</b> · minutes · goals · assists</span><span>goalkeepers: <b>age</b> · minutes · saves · goals conceded</span>${SORTBAR}</div>`
 const POSN: [string, string, string][] = [['G', 'Goalkeepers', 'GK'], ['D', 'Defenders', 'DEF'], ['M', 'Midfielders', 'MID'], ['F', 'Forwards', 'FWD']]
 function squadGrid(t: Dict) {
   const sq: Dict[] = played(t)
@@ -767,7 +766,7 @@ function setSort(k: string) {
   SORT.rev = k === SORT.k && k !== 'role' ? !SORT.rev : false; SORT.k = k
   try { localStorage.setItem('top5.teams.sort', k + (SORT.rev ? '-r' : '')) } catch { }
   film.querySelectorAll<HTMLElement>('.pane-squad').forEach((el, i) => el.innerHTML = squadGrid(P[i]))
-  markSort(); fitNames()
+  markSort(); markShow0(); fitNames()
 }
 const markShow0 = () => film.querySelectorAll('.u0').forEach(b => b.classList.toggle('on', SHOW0))
 markSort(); markShow0()
