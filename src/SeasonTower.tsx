@@ -1414,10 +1414,11 @@ export class SeasonTower extends React.Component<Props, State> {
                 <button onClick={() => this.stepTeam(1)} title="Next club (→)" aria-label="Next club" style={{ position: 'absolute', right: '-19px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4E7EB', background: '#fff', color: '#15181d', fontSize: '18px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,18,22,.22)', lineHeight: 1, paddingBottom: '2px' }}>›</button>
                 <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '86vh', borderRadius: '16px', overflow: 'hidden' }}>
                 <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '14px', ...v.tm.headStyleObj }}>
-                  <img src={`logos/${v.tm.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ flex: '0 0 auto', width: '46px', height: '46px', objectFit: 'contain', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,.35))' }} />
+                  <a href={v.tm.cardHref || undefined} title={v.tm.cardHref ? `${v.tm.name} · team card` : undefined} style={{ flex: '0 0 auto', display: 'flex', cursor: v.tm.cardHref ? 'pointer' : 'default' }}><img src={`logos/${v.tm.crest}.png`} alt="" aria-hidden onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} style={{ width: '46px', height: '46px', objectFit: 'contain', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,.35))' }} /></a>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '9px' }}>
-                      <span style={{ fontSize: '19px', fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.tm.name}</span>
+                      {v.tm.cardHref ? <a className="tmname" href={v.tm.cardHref} title={`${v.tm.name} · team card`} style={{ fontSize: '19px', fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'inherit', textDecoration: 'none' }}>{v.tm.name}</a>
+                        : <span style={{ fontSize: '19px', fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.tm.name}</span>}
                       <span style={{ fontSize: '12px', fontWeight: 700, opacity: .82, whiteSpace: 'nowrap' }}>{v.tm.zoneName}</span>
                     </div>
                     <div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '12px', fontWeight: 700, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1432,7 +1433,7 @@ export class SeasonTower extends React.Component<Props, State> {
                       </span>
                     </div>
                   </div>
-                  {/* prominent rank + points on the right */}
+                  {/* prominent rank + points on the right, then the way to the club's team card */}
                   <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: '16px', paddingLeft: '8px' }}>
                     <div style={{ textAlign: 'right', lineHeight: 1 }}>
                       <div style={{ fontSize: '32px', fontWeight: 900, letterSpacing: '-.5px' }}>{v.tm.rankOrd}</div>
@@ -1443,6 +1444,7 @@ export class SeasonTower extends React.Component<Props, State> {
                       <div style={{ fontSize: '32px', fontWeight: 900, letterSpacing: '-.5px' }}>{v.tm.Pts}</div>
                       <div style={{ fontSize: '9.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.6px', opacity: .68, marginTop: '4px' }}>Points</div>
                     </div>
+                    {v.tm.cardHref && <a href={v.tm.cardHref} title={`${v.tm.name} · the team card: squad, tactics, goals, rivals`} style={{ marginLeft: '6px', display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '9px 13px', borderRadius: '10px', background: 'rgba(255,255,255,.96)', color: '#15181d', fontSize: '12.5px', fontWeight: 800, textDecoration: 'none', whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,0,0,.18)' }}>Team card <span aria-hidden style={{ fontSize: '15px', lineHeight: 1 }}>→</span></a>}
                   </div>
                 </div>
                 <div style={{ display: 'flex', minHeight: 0, overflow: 'hidden' }}>
@@ -1976,6 +1978,8 @@ export class SeasonTower extends React.Component<Props, State> {
       }
       const ord = (n: number) => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`
       tm = {
+        // the club's team card (the five leagues only — the UEFA cups have none)
+        cardHref: isUefa(S.league) ? '' : `teams.html?lg=${S.league}&t=${code}${S.season === '2026-27' ? '' : `&season=${S.season}`}`,
         name: t.name, crest: crestOf(code), rankLine: `${ord(rank)} · ${zoneFor(S.league, nTeams)(rank).label || 'Mid-table'}`,
         rankOrd: ord(rank), zoneName: zoneFor(S.league, nTeams)(rank).label || 'Mid-table',
         Pts: e.Pts, rec: `${e.W}W · ${e.D}D · ${e.L}L`, goals: `${e.GF}:${e.GA} (${e.GD >= 0 ? '+' : ''}${e.GD})`,
