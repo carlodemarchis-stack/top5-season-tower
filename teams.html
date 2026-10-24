@@ -225,11 +225,17 @@
     .gkb{display:flex;flex-direction:column;gap:clamp(1px,.25vh,3px)}.gkt{font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#9aa0a8}
     .card .pane-goals .gt{flex:1 1 auto;min-height:0}.gk{align-self:stretch}.gk>.gkb:last-child{margin-top:auto}   /* When at the foot of the screen */   /* When sits at the foot of the column, level with the pitch's bottom line */
     .gkh .gkr .xt{color:#d92d20}   /* stoppage time (45+, 90+): count and label in red */
+    /* bars as filters, recounted: the solid part = goals in the current selection, the faint ghost = the whole season */
+    .gkr .bw{position:relative;display:block;height:7px;text-decoration:none}.gkr .bw s,.gkr .bw i{position:absolute;left:0;top:0;height:100%;border-radius:2px;min-width:0;transition:width .15s}
+    .gkr .bw s{opacity:0}.gk.filt .gkr .bw s{opacity:.2}
+    .gkh .gkr .cw{position:relative;display:block;width:70%;text-decoration:none}.gkh .gkr .cw s,.gkh .gkr .cw i{position:absolute;left:0;right:0;bottom:0;width:auto;min-height:0;border-radius:2px 2px 0 0;transition:height .15s}
+    .gkh .gkr .cw s{top:0;opacity:0}.gk.filt .gkh .gkr .cw s{opacity:.2}
+    .gk.filt .gkr.zero:not(.on){opacity:.35}
     .gkh{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;align-items:end;margin-top:2px}   /* When: eight columns */
     .gkh .gkr{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;margin:0;padding:2px 0;grid-template-columns:none;font-size:9px}
     .gkh .gkr i{width:70%;min-height:2px;border-radius:2px 2px 0 0}.gkh .gkr b{font-size:10px;line-height:1}.gkh .gkr span{color:#9aa0a8;font-weight:700;white-space:nowrap}
     .gkr[data-g]{cursor:pointer;border-radius:4px;margin:0 -4px;padding:clamp(0px,.12vh,1px) 4px}.gkr[data-g]:hover{background:#eceef0}
-    .gk.filt .gkr:not(.on){opacity:.4}.gkr.on{background:#e3e6ea}.gkr.on span{color:#15181d;font-weight:800}   /* the bars as filters */
+    .gkr.on{background:#e3e6ea}.gkr.on span{color:#15181d;font-weight:800}   /* the bars as filters */
     .gm.hid{display:none}.gof{font-style:normal;margin-right:4px}
     .gkr{display:grid;grid-template-columns:78px 1fr 18px;align-items:center;gap:5px;font-size:11px;color:#5b626c}.gkr span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gkr i{height:7px;border-radius:2px;min-width:2px}.gkr b{text-align:right;color:#15181d;font-weight:800}
     .gt svg{display:block;width:100%}.gt .gf{margin-bottom:4px}

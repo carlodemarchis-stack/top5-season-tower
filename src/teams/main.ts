@@ -265,7 +265,7 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
   // from where (inside / outside the box)
   // each bar is a filter: click to show only those goals in the column's net and pitch (src: the click handler below)
   const bars = (title: string, rows: [string, number][], fill: string) => { const mx = Math.max(1, ...rows.map(r => r[1]))
-    return rows.length ? `<div class="gkb"><div class="gkt">${title}</div>${rows.map(([k, n]) => `<div class="gkr" data-g="${title.toLowerCase()}" data-v="${k}" title="Show only these goals (click again to clear)"><span>${k}</span><i style="width:${Math.round(n / mx * 100)}%;background:${fill}"></i><b>${n}</b></div>`).join('')}</div>` : '' }
+    return rows.length ? `<div class="gkb"><div class="gkt">${title}</div>${rows.map(([k, n]) => `<div class="gkr" data-g="${title.toLowerCase()}" data-v="${k}" data-n="${n}" data-mx="${mx}" title="Show only these goals (click again to clear)"><span>${k}</span><u class="bw"><s style="width:${Math.round(n / mx * 100)}%;background:${fill}"></s><i style="width:${Math.round(n / mx * 100)}%;background:${fill}"></i></u><b>${n}</b></div>`).join('')}</div>` : '' }
   const count = (L: Dict[], key: (s: Dict) => string) => Object.entries(L.reduce((o: Dict, s) => (o[key(s)] = (o[key(s)] || 0) + 1, o), {})).sort((a: any, b: any) => b[1] - a[1]) as [string, number][]
   const kpis = (lb: string, L: Dict[], fill: string, og: number, help = '') => { const G = L.filter(s => s.out === 'g'), d = gN(L) - xg(L), sot = L.filter(s => s.out === 'g' || s.out === 's').length
     const nIn = G.filter(inBox).length
@@ -275,7 +275,7 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
       ${bars('How', count(G, s => SIT[s.sit] || 'other'), fill)}${bars('With', count(G.filter(s => BODY[s.body]), s => BODY[s.body]), fill)}${bars('From', ([['inside the box', nIn], ['outside', G.length - nIn]] as [string, number][]).filter(r => r[1]), fill)}${lb === 'Scored' ? bars('By', (['starters', 'off the bench'].map(k => [k, G.filter(g => g.by === k).length]) as [string, number][]).filter(r => r[1]), fill) : ''}${when(G, fill)}</div>` }
   // When: the goals by 15-minute spell, stoppage time apart (45+, 90+) — eight small columns, each a filter too
   const when = (G: Dict[], fill: string) => { const n = WHEN.map(w => G.filter(g => whenOf(g.min) === w).length), mx = Math.max(1, ...n)
-    return `<div class="gkb"><div class="gkt">When</div><div class="gkh">${WHEN.map((w, i) => `<div class="gkr gkc"${n[i] ? ` data-g="when" data-v="${w}" title="${w}': ${n[i]} goal${n[i] === 1 ? '' : 's'} — show only these"` : ''}><b${w.endsWith('+') ? ' class="xt"' : ''}>${n[i] || ''}</b><i style="height:${Math.round(n[i] / mx * 34)}px;background:${fill}"></i><span${w.endsWith('+') ? ' class="xt"' : ''}>${w.replace(/^\d+–/, '')}</span></div>`).join('')}</div></div>` }
+    return `<div class="gkb"><div class="gkt">When</div><div class="gkh">${WHEN.map((w, i) => `<div class="gkr gkc"${n[i] ? ` data-g="when" data-v="${w}" data-n="${n[i]}" title="${w}': ${n[i]} goal${n[i] === 1 ? '' : 's'} — show only these"` : ''}><b${w.endsWith('+') ? ' class="xt"' : ''}>${n[i] || ''}</b><u class="cw" style="height:${Math.max(2, Math.round(n[i] / mx * 34))}px"><s style="background:${fill}"></s><i style="height:100%;background:${fill}"></i></u><span${w.endsWith('+') ? ' class="xt"' : ''}>${w.replace(/^\d+–/, '')}</span></div>`).join('')}</div></div>` }
   const col = (L: Dict[], fill: string, side: string) => `<div class="gcol" data-side="${side}">${frame(L, fill)}${pitch(L, fill)}</div>`
   const ogFor = Math.max(0, t.GF - gN(F)), ogAg = Math.max(0, t.GA - gN(A))
   return `<svg width="0" height="0" style="position:absolute"><defs><pattern id="gnet" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="#dfe3e6" stroke-width=".4"/></pattern></defs></svg>
@@ -810,6 +810,19 @@ function applyGoalFilters(gk: HTMLElement) {
     g.querySelector('text')!.textContent = vis.length > 1 ? String(vis.length) : ''; inGroups += vis.length })
   const n = gk.querySelector<HTMLElement>('.gkn b')!, shown = col.querySelectorAll('.gp .gm[data-gk]:not(.hid)').length + inGroups
   n.textContent = any ? String(shown) : n.dataset.n!; gk.querySelector('.gof')!.textContent = any ? `of ${n.dataset.n} ` : ''
+  // every bar recounted within the OTHER groups' filters (its own group stays whole, so a sibling can still be added);
+  // the full-season bar stays behind as a ghost
+  const goals: Dict[] = [...col.querySelectorAll<HTMLElement>('.gp .gm[data-gk]')].map(g => g.dataset)
+  col.querySelectorAll<HTMLElement>('.gst').forEach(g => g.dataset.gs!.split(' ').forEach(k => goals.push(GV.get(k) || {})))
+  gk.querySelectorAll<HTMLElement>('.gkr[data-g]').forEach(r => {
+    const grp = r.dataset.g!, full = +r.dataset.n!
+    const cnt = any ? goals.filter(v => v[grp] === r.dataset.v && Object.entries(want).every(([k, vs]) => k === grp || vs.includes(v[k] || ''))).length : full
+    r.querySelector('b')!.textContent = cnt || r.classList.contains('gkc') ? String(cnt || '') : '0'
+    const bar = r.querySelector<HTMLElement>('u > i')!
+    if (r.classList.contains('gkc')) bar.style.height = `${full ? cnt / full * 100 : 0}%`
+    else bar.style.width = `${(cnt / +r.dataset.mx!) * 100}%`
+    r.classList.toggle('zero', !!any && !cnt)
+  })
 }
 film.addEventListener('click', e => {
   const t = e.target as HTMLElement, row = t.closest<HTMLElement>('.gkr[data-g]')
