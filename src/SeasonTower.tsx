@@ -1860,7 +1860,8 @@ export class SeasonTower extends React.Component<Props, State> {
         const dropped = [...d2, ...losses]   // flex-end → losses land nearest the team box
         const rowStyle = `position:relative;z-index:1;flex:0 0 ${rowH}px;height:${rowH}px;min-height:0;display:flex;flex-direction:row;align-items:stretch;${isZoneStart ? 'margin-top:10px;' : ''}`
         const droppedStyle = `flex:0 0 ${rowsDroppedW}px;height:${rowH}px;display:flex;flex-direction:row;justify-content:flex-end;align-items:stretch;overflow:hidden;`
-        const wonStyle = `flex:0 0 auto;height:${rowH}px;display:flex;flex-direction:row;justify-content:flex-start;align-items:stretch;overflow:hidden;`
+        // a white line between the team box and its points (both in the club colour)
+        const wonStyle = `flex:0 0 auto;height:${rowH}px;display:flex;flex-direction:row;justify-content:flex-start;align-items:stretch;overflow:hidden;border-left:3px solid #fff;`
         // sticky horizontally so the team column never disappears when scrolling left/right.
         // UEFA: one row (fits 36 teams tightly); domestic: two rows (original)
         const labelStyle = uefa
@@ -1880,7 +1881,7 @@ export class SeasonTower extends React.Component<Props, State> {
       const colStyle = uefa
         ? `position:relative;z-index:1;flex:0 0 ${colW}px;width:${colW}px;min-width:0;max-width:${colW}px;display:flex;flex-direction:column;align-items:stretch;${isZoneStart ? 'margin-left:14px;' : ''}`
         : `position:relative;z-index:1;flex:0 0 ${colW}px;display:flex;flex-direction:column;align-items:stretch;${isZoneStart ? 'margin-left:14px;' : ''}`
-      const aboveStyle = `display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;`
+      const aboveStyle = `display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;border-bottom:3px solid #fff;`   // the same white line over the team box
       const belowStyle = `flex:0 0 ${belowH}px;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;padding-top:2px;`
       // sticky vertically (both edges) so the team row never disappears when scrolling up/down.
       // UEFA: tight padding for narrow columns; domestic: original padding
