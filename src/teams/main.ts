@@ -292,6 +292,17 @@ function goalsPane(t: Dict, club: Dict, recs: Dict[], S: Dict) {
   return `<svg width="0" height="0" style="position:absolute"><defs><pattern id="gnet" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="#dfe3e6" stroke-width=".4"/></pattern></defs></svg>
     <div class="gt">${kpis('Scored', F, 'var(--c2)', ogFor, '<i class="ghelp" aria-label="How to read it">?</i>' + open)}${col(F, 'var(--c2)', 'Scored')}${col(A, '#15181d', 'Conceded')}${kpis('Conceded', A, '#15181d', ogAg)}</div>${take}`
 }
+// the takeover on a card (open / closed is remembered: a reload brings it back on the same card)
+function openTakeover(c: HTMLElement) {
+  const g = c.querySelector<HTMLElement>('.gto'); if (!g) return
+  if (g.parentElement !== c) c.append(g)   // moved up to the card itself, so it covers the whole card, panel included
+  g.hidden = false; document.body.classList.add('gto-on'); requestAnimationFrame(sizeGoalDots)
+  try { localStorage.setItem('top5.teams.gto', '1') } catch { }
+}
+function closeTakeover() {
+  film.querySelectorAll<HTMLElement>('.gto:not([hidden])').forEach(g => { g.hidden = true }); document.body.classList.remove('gto-on')
+  try { localStorage.removeItem('top5.teams.gto') } catch { }
+}
 let goalsBusy = false
 async function fillGoals() {
   if (goalsBusy) return; goalsBusy = true
@@ -302,6 +313,9 @@ async function fillGoals() {
       panes[i].innerHTML = goalsPane(t, TEAMS_OF[t.lg][t.code] || {}, recs, S); panes[i].dataset.done = '1' })
   }
   goalsBusy = false; sizeGoalDots()
+  // reopen the takeover after a reload, on the card on screen
+  let reopen = false; try { reopen = localStorage.getItem('top5.teams.gto') === '1' } catch { }
+  if (reopen && TAB === 'goals' && !film.querySelector('.gto:not([hidden])')) { const i = +(location.hash.match(/#(\d+)/)?.[1] || 1) - 1, c = film.children[i] as HTMLElement | undefined; if (c?.querySelector('.gto')) openTakeover(c) }
 }
 // the goal dots keep one size on screen however big the drawings get (a bigger pitch = more room between goals):
 // --u = drawing units per screen pixel, the dots' radius is set in pixels × --u
@@ -839,10 +853,10 @@ function applyGoalFilters(gk0: HTMLElement) {
 film.addEventListener('click', e => {
   const t = e.target as HTMLElement
   // (moved up to the card itself, so it covers the whole card, panel included)
-  if (t.closest('.gto-open')) { const c = t.closest<HTMLElement>('.card')!, g = c.querySelector<HTMLElement>('.gto')!; if (g.parentElement !== c) c.append(g); g.hidden = false; document.body.classList.add('gto-on'); requestAnimationFrame(sizeGoalDots); e.stopPropagation(); return }
-  if (t.closest('.gto-x')) { t.closest<HTMLElement>('.gto')!.hidden = true; document.body.classList.remove('gto-on'); e.stopPropagation() }
+  if (t.closest('.gto-open')) { openTakeover(t.closest<HTMLElement>('.card')!); e.stopPropagation(); return }
+  if (t.closest('.gto-x')) { closeTakeover(); e.stopPropagation() }
 }, true)
-addEventListener('keydown', e => { if (e.key === 'Escape') film.querySelectorAll<HTMLElement>('.gto:not([hidden])').forEach(g => { g.hidden = true; document.body.classList.remove('gto-on') }) })
+addEventListener('keydown', e => { if (e.key === 'Escape') closeTakeover() })
 film.addEventListener('click', e => {
   const t = e.target as HTMLElement, row = t.closest<HTMLElement>('.gkr[data-g]')
   if (row) { row.classList.toggle('on'); applyGoalFilters(row.closest<HTMLElement>('.gk')!); return }
