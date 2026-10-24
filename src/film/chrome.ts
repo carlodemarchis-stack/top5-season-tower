@@ -130,7 +130,7 @@ export function initHighlight(film: HTMLElement, hoverSel: string, partners: (ke
 // anchor(el): the element the card is placed against (default: el itself)
 // fit: the card takes the anchor's width (the Goals tab: as wide as the goal it sits on)
 // pin(el): a click on that element keeps its card open (mouse can move into it; click outside or Esc closes it)
-export function initTip(film: HTMLElement, sel: string, render: (el: HTMLElement) => string, anchor?: (el: HTMLElement) => HTMLElement, fit = false, pin?: (el: HTMLElement) => boolean) {
+export function initTip(film: HTMLElement, sel: string, render: (el: HTMLElement) => string, anchor?: (el: HTMLElement) => HTMLElement, fit = false, pin?: (el: HTMLElement) => boolean, over?: (el: HTMLElement) => boolean) {
   // one card element for the page, shared when a film has more than one kind of hover card
   const tip = document.getElementById('mtip') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'mtip' }))
   let cur: HTMLElement | null = null
@@ -138,10 +138,11 @@ export function initTip(film: HTMLElement, sel: string, render: (el: HTMLElement
     const card = el.closest<HTMLElement>('.card'); const html = card ? render(el) : ''; if (!html) return hide()
     cur = el; tip.innerHTML = html; tip.style.setProperty('--c', getComputedStyle(card!).getPropertyValue('--c')); tip.classList.add('on')
     const r = (anchor?.(el) || el).getBoundingClientRect()
-    tip.style.width = fit ? `${Math.round(r.width)}px` : ''; tip.classList.toggle('fit', fit)
+    // over: laid on the anchor itself, from its top (a side column), instead of above or below it
+    const on = !!over?.(el); tip.style.width = fit ? `${Math.round(r.width)}px` : ''; tip.classList.toggle('fit', fit); tip.classList.toggle('side', on)
     const w = tip.offsetWidth, h = tip.offsetHeight
     tip.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px'
-    tip.style.top = (r.top - h - 10 > 8 ? r.top - h - 10 : r.bottom + 10) + 'px'
+    tip.style.top = (on ? r.top : r.top - h - 10 > 8 ? r.top - h - 10 : r.bottom + 10) + 'px'
   }
   const pinned = () => tip.classList.contains('pinned')
   const hide = () => { cur = null; tip.classList.remove('on', 'pinned') }

@@ -262,6 +262,11 @@
     .gtk{display:flex;gap:22px;margin:8px 0 6px}.gtk span{display:flex;flex-direction:column;font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#9aa0a8}
     .gtk b{font-size:20px;font-weight:900;letter-spacing:0;color:var(--c);line-height:1.05;text-transform:none}
     .gts{font-size:12px;color:#5b626c}.gts b{color:#15181d}
+    /* the full view: the card on the Scorers column — scorer and keeper on top, the numbers below, wrapping */
+    #mtip.side .gtip{grid-template-columns:auto 1fr;grid-template-areas:"ph gk" "in in";gap:2px 12px}
+    #mtip.side .gtip>img,#mtip.side .gtip>i{grid-area:ph}#mtip.side .gtip>div{grid-area:in}#mtip.side .gtip>.gtgk,#mtip.side .gtip>span{grid-area:gk;justify-self:end}
+    #mtip.side .gtk{flex-wrap:wrap;gap:6px 18px}#mtip.side .gtn{white-space:normal}
+    #mtip.side .gsr{grid-template-columns:30px minmax(0,1.3fr) minmax(0,1fr) 50px;gap:6px}#mtip.side .gsr span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     /* the goals-scored takeover: the whole card */
     .gto-open{display:inline-grid;place-items:center;width:20px;height:20px;margin-left:6px;border-radius:6px;background:#15181d;color:#fff;cursor:pointer;vertical-align:-4px}
     .gto-open svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}.gto-open:hover{background:var(--c)}
