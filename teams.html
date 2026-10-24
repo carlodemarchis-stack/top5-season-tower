@@ -141,6 +141,14 @@
     .pp.big .ppc{width:44px;height:44px}
     .ppc:hover{transform:translate(-50%,50%) scale(1.6);z-index:2}
     .pp-ax{position:absolute;font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#6b717a}.pp-ax.x{right:0;bottom:2px}.pp-ax.y{left:0;top:0;transform-origin:0 0;transform:rotate(-90deg) translateX(-100%)}
+    /* minutes leading / level / trailing: a donut (white, half white, faint), its three shares beside it */
+    .card .pan .wdl .gs1p{display:flex;align-items:center;gap:12px;margin-top:10px}
+    .card .pan .wdl .gs1p>i{width:calc(var(--rk) * .62);height:calc(var(--rk) * .62);flex:none;border-radius:50%;
+      background:conic-gradient(currentColor 0 var(--a),color-mix(in srgb,currentColor 45%,transparent) var(--a) var(--b),color-mix(in srgb,currentColor 18%,transparent) var(--b) 100%);
+      -webkit-mask:radial-gradient(circle,transparent 46%,#000 47%);mask:radial-gradient(circle,transparent 46%,#000 47%)}
+    .card .pan .wdl .gs1p>span{display:flex;flex-direction:column;gap:3px;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:lowercase}
+    .card .pan .wdl .gs1p s{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:0}
+    .card .pan .wdl .gs1p b{letter-spacing:.04em}
     .card .pan .wdl .gs1{display:flex;width:calc(var(--rk) * 2.6);height:6px;margin-top:10px;border-radius:2px;overflow:hidden}.card .pan .wdl .gs1 i{background:currentColor}
     @media (max-width: 760px){
       .tb-grid.gs{grid-template-columns:1fr}

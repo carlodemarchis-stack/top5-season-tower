@@ -71,7 +71,7 @@ function card(t: Dict) {
     <div class="pan">
       <img class="wm team" src="${logo(t.code, t.lg)}" alt="" onerror="this.remove()">
       <div class="rk">#${ALL ? t.rank : t.pos ?? '–'}</div>
-      <div class="wdl"><span><b>${t.W}</b>–<b>${t.D}</b>–<b>${t.L}</b></span><span class="wl">W – D – L</span>${(g => g.n ? `<span class="gs1" title="Minutes leading / level / trailing"><i style="width:${g.lead * 100}%"></i><i style="width:${g.level * 100}%;opacity:.4"></i><i style="width:${g.trail * 100}%;opacity:.14"></i></span><span class="wl">led ${pc(g.lead)}% · level ${pc(g.level)}% · behind ${pc(g.trail)}%</span>` : '')(gameState(t))}</div>
+      <div class="wdl"><span><b>${t.W}</b>–<b>${t.D}</b>–<b>${t.L}</b></span><span class="wl">W – D – L</span>${(g => g.n ? `<span class="gs1p" title="Minutes leading / level / trailing"><i style="--a:${g.lead * 100}%;--b:${(g.lead + g.level) * 100}%"></i><span><span><s></s>led <b>${pc(g.lead)}%</b></span><span><s style="opacity:.45"></s>level <b>${pc(g.level)}%</b></span><span><s style="opacity:.18"></s>behind <b>${pc(g.trail)}%</b></span></span></span>` : '')(gameState(t))}</div>
       <div class="gbig${ALL ? ' ppg' : ''}">${ALL ? `<b>${ppg}</b><span>points per game</span>` : `<b>${t.pts}</b><span>point${t.pts === 1 ? '' : 's'}</span>`}</div>
       ${group}
     </div>
