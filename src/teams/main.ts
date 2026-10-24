@@ -676,6 +676,10 @@ $('cnote').innerHTML = `${ALL ? `All ${P.length} clubs of the five leagues, rank
 const KEY = 'top5.teams.card.' + LG + (SEASON === '2026-27' ? '' : '.' + SEASON)
 function onPaint(i: number) {
   const t = P[i]
+  // the goals-scored full view follows the film: open on one club, it opens on the next one too
+  let keep = false; try { keep = localStorage.getItem('top5.teams.gto') === '1' } catch { }
+  if (keep && TAB === 'goals') { film.querySelectorAll<HTMLElement>('.gto:not([hidden])').forEach(g => { if (g.closest('.card') !== film.children[i]) g.hidden = true })
+    const c = film.children[i] as HTMLElement | undefined; if (c?.querySelector('.gto')) openTakeover(c); else document.body.classList.remove('gto-on') }
   $('statsb').classList.toggle('on', !t)
   if (!t) {   // All Leagues: the table card, the column chart; then (every film) the game-state card
     const what = STATS[i - P.length].toLowerCase()
