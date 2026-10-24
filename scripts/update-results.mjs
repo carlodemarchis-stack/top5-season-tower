@@ -11,11 +11,16 @@
  *
  * Never writes a wrong result: any match whose two clubs can't both be resolved to our codes is SKIPPED and logged
  * ("UNMATCHED …") — add the football-data team name to OVERRIDES below and re-run.
+ *
+ * ESPN fills the gaps: football-data.org can post a final score hours late (24 Oct 2026: 18 games, some 8+ hours), so
+ * games ESPN's scoreboard has final over the last few days but football-data hasn't are added from ESPN ("ESPN FILL").
+ * football-data stays the source of record: when it posts the game, its score is written over ESPN's on the next run.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execSync } from 'node:child_process'
+import { get, espn, makeCodeFor } from './lib/football.mjs'
 
 const __dir = path.dirname(fileURLToPath(import.meta.url))
 const DATA = path.join(__dir, '..', 'src', 'data')
@@ -102,6 +107,28 @@ async function validate() {
 const SCORE_FIX = {
 }
 
+// ESPN's finals of the last DAYS days (UTC) → { matchId: {hg, ag} }; a game on our schedule only, by its two clubs
+// (each home/away pair is played once a season, so no matchday needed)
+const DAYS = 4
+async function espnFinals(lg, TEAMS) {
+  const ymd = (d) => d.toISOString().slice(0, 10).replace(/-/g, '')
+  // one day a request (the soccer scoreboard refuses a date range)
+  const days = await Promise.all(Array.from({ length: DAYS }, (_, i) => get(espn(lg, `/scoreboard?dates=${ymd(new Date(Date.now() - i * 864e5))}`))))
+  const errors = [], codeFor = makeCodeFor({ [lg]: { TEAMS } }, SEASON, errors), out = {}
+  for (const e of days.flatMap(d => d?.events || [])) {
+    const st = e.competitions?.[0]?.status?.type || e.status?.type
+    if (!st?.completed || /POSTPONED|CANCELED|ABANDONED|SUSPENDED/.test(st.name || '')) continue
+    const cs = e.competitions[0].competitors, h = cs.find(c => c.homeAway === 'home'), a = cs.find(c => c.homeAway === 'away')
+    const hc = codeFor(lg, h.team), ac = codeFor(lg, a.team)
+    const g = hc && ac && (TEAMS[hc]?.games || []).find(x => x.ha === 'H' && x.opp === ac)
+    if (!g) { console.log(`    ESPN: no fixture ${lg} ${h.team.displayName} vs ${a.team.displayName} — skipped`); continue }
+    const hg = Number(h.score), ag = Number(a.score)
+    if (Number.isInteger(hg) && Number.isInteger(ag)) out[g.id] = { hg, ag, name: `${hc} ${hg}-${ag} ${ac}`, w: g.w }
+  }
+  errors.forEach(x => console.log(`    ESPN: ${x}`))
+  return out
+}
+
 async function run() {
   const key = process.env.FOOTBALL_DATA_API_KEY
   if (!key) { console.error('Set FOOTBALL_DATA_API_KEY (get a free key at football-data.org/client/register).'); process.exit(1) }
@@ -109,13 +136,13 @@ async function run() {
   for (const [lg, comp] of Object.entries(COMP)) {
     let TEAMS; try { TEAMS = await loadSchedule(lg) } catch { console.log(`  ${lg}: no schedule for ${SEASON}, skip`); continue }
     const url = `https://api.football-data.org/v4/competitions/${comp}/matches?season=${SEASON_START}&status=FINISHED`
-    let data
+    let data = {}
     try {
       const r = await fetch(url, { headers: { 'X-Auth-Token': key } })
-      if (!r.ok) { console.log(`  ${lg}: HTTP ${r.status} ${r.statusText}`); continue }
-      data = await r.json()
-    } catch (e) { console.log(`  ${lg}: fetch failed ${e.message}`); continue }
-    const results = loadResults(lg)
+      if (!r.ok) console.log(`  ${lg}: HTTP ${r.status} ${r.statusText}`)
+      else data = await r.json()
+    } catch (e) { console.log(`  ${lg}: fetch failed ${e.message}`) }
+    const results = loadResults(lg), before = JSON.stringify(results), fd = new Set()
     let added = 0, skipped = 0
     for (const m of (data.matches || [])) {
       if (m.status !== 'FINISHED' || m.score?.fullTime?.home == null) continue
@@ -126,10 +153,18 @@ async function run() {
       if (!id) { skipped++; console.log(`    NO FIXTURE ${lg} MD${m.matchday}: ${home} vs ${away}`); continue }
       const fix = SCORE_FIX[lg]?.[id]
       if (fix) console.log(`    SCORE FIX ${lg} MD${m.matchday} ${home}-${away}: ${fix.join('-')} (football-data says ${m.score.fullTime.home}-${m.score.fullTime.away}${fix[0] === m.score.fullTime.home && fix[1] === m.score.fullTime.away ? ' — now agrees, the fix can go' : ''})`)
-      results[id] = fix ? { hg: fix[0], ag: fix[1] } : { hg: m.score.fullTime.home, ag: m.score.fullTime.away }; added++
+      results[id] = fix ? { hg: fix[0], ag: fix[1] } : { hg: m.score.fullTime.home, ag: m.score.fullTime.away }; added++; fd.add(id)
     }
-    console.log(`  ${lg}: ${added} results (${skipped} skipped), total ${Object.keys(results).length}`)
-    if (!DRY && added) { writeResults(lg, results); wroteAny = true }
+    // the games football-data hasn't posted yet, from ESPN (a failure here never blocks football-data's results)
+    let filled = 0
+    try {
+      for (const [id, r] of Object.entries(await espnFinals(lg, TEAMS))) {
+        if (fd.has(id)) { const o = results[id]; if (o.hg !== r.hg || o.ag !== r.ag) console.log(`    ESPN DIFFERS ${lg} MD${r.w} ${r.name} (football-data: ${o.hg}-${o.ag}, kept)`); continue }
+        if (!results[id] || results[id].hg !== r.hg || results[id].ag !== r.ag) { results[id] = { hg: r.hg, ag: r.ag }; filled++; console.log(`    ESPN FILL ${lg} MD${r.w} ${r.name}`) }
+      }
+    } catch (e) { console.log(`    ESPN: ${e.message}`) }
+    console.log(`  ${lg}: ${added} results (${skipped} skipped) + ${filled} from ESPN, total ${Object.keys(results).length}`)
+    if (!DRY && JSON.stringify(results) !== before) { writeResults(lg, results); wroteAny = true }
   }
   if (PUSH && wroteAny) {
     console.log('git commit + push …')
