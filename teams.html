@@ -219,16 +219,16 @@
     .gt{display:grid;grid-template-columns:150px minmax(0,var(--gw)) minmax(0,var(--gw)) 150px;justify-content:center;gap:clamp(16px,2vw,36px);margin-top:12px;--gw:calc((100vh - var(--gtop,330px)) / .874)}
     .gcol{min-width:0;align-self:start}
     /* the side columns: Scored (left), Conceded (right) — the numbers, then small bars */
-    .gk{min-width:0;display:flex;flex-direction:column;gap:8px}.gk .sec{margin:0}
+    .gk{min-width:0;display:flex;flex-direction:column;gap:clamp(4px,.9vh,8px)}.gk .sec{margin:0}
     .gkn{display:flex;align-items:baseline;gap:6px}.gkn b{font-size:40px;font-weight:900;line-height:.9;color:#15181d}.gkn span{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8a9099}.gkn em{display:block;font-style:normal;letter-spacing:0;text-transform:none;font-weight:600}
     .gks{display:flex;flex-direction:column;gap:2px;font-size:12px;color:#5b626c}.gks b{color:#15181d;font-weight:800}.gks em{font-style:normal}.gks .up b{color:#177a41}.gks .dn b{color:#b3323a}
-    .gkb{display:flex;flex-direction:column;gap:3px}.gkt{font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#9aa0a8}
-    .gk{align-self:stretch}.gk>.gkb:last-child{margin-top:auto}   /* When sits at the foot of the column, level with the pitch's bottom line */
+    .gkb{display:flex;flex-direction:column;gap:clamp(1px,.25vh,3px)}.gkt{font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#9aa0a8}
+    .card .pane-goals .gt{flex:1 1 auto;min-height:0}.gk{align-self:stretch}.gk>.gkb:last-child{margin-top:auto}   /* When at the foot of the screen */   /* When sits at the foot of the column, level with the pitch's bottom line */
     .gkh .gkr .xt{color:#d92d20}   /* stoppage time (45+, 90+): count and label in red */
     .gkh{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;align-items:end;margin-top:2px}   /* When: eight columns */
     .gkh .gkr{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;margin:0;padding:2px 0;grid-template-columns:none;font-size:9px}
     .gkh .gkr i{width:70%;min-height:2px;border-radius:2px 2px 0 0}.gkh .gkr b{font-size:10px;line-height:1}.gkh .gkr span{color:#9aa0a8;font-weight:700;white-space:nowrap}
-    .gkr[data-g]{cursor:pointer;border-radius:4px;margin:0 -4px;padding:1px 4px}.gkr[data-g]:hover{background:#eceef0}
+    .gkr[data-g]{cursor:pointer;border-radius:4px;margin:0 -4px;padding:clamp(0px,.12vh,1px) 4px}.gkr[data-g]:hover{background:#eceef0}
     .gk.filt .gkr:not(.on){opacity:.4}.gkr.on{background:#e3e6ea}.gkr.on span{color:#15181d;font-weight:800}   /* the bars as filters */
     .gm.hid{display:none}.gof{font-style:normal;margin-right:4px}
     .gkr{display:grid;grid-template-columns:78px 1fr 18px;align-items:center;gap:5px;font-size:11px;color:#5b626c}.gkr span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gkr i{height:7px;border-radius:2px;min-width:2px}.gkr b{text-align:right;color:#15181d;font-weight:800}
