@@ -31,6 +31,10 @@
   <!-- Umami --><script>try{/[?&#]noumami\b/.test(location.href)&&localStorage.setItem('umami.disabled','1')}catch(e){}</script><script defer src="https://m.aguywithascarf.com/k.js" data-website-id="795be6fc-5a41-4d66-85bc-774157d5d2c7"></script>
     <script defer src="https://dataviz.aguywithascarf.com/ver.js"></script><!-- End Umami -->
   <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "b7ca744dce3341b2a233a864179a4f42"}'></script><!-- End Cloudflare Web Analytics -->
+  <!-- a deploy renames the scripts in assets/: a page held from before one (a tab the browser parked, a cached copy)
+       asks for files that are gone and stays blank. Any assets/ script or module that fails to load: fetch this page
+       past the cache, then reload (once a minute at most, so never a loop) -->
+  <script>(function(){var k='top5.stale',go=function(){try{if(Date.now()-(+sessionStorage.getItem(k)||0)<6e4)return;sessionStorage.setItem(k,String(Date.now()))}catch(e){}fetch(location.href,{cache:'reload'}).catch(function(){}).then(function(){location.reload()})};addEventListener('error',function(e){var t=e.target;if(t&&(t.tagName==='SCRIPT'||t.tagName==='LINK')&&/\/assets\//.test(t.src||t.href||''))go()},true);addEventListener('vite:preloadError',go);addEventListener('unhandledrejection',function(e){if(/dynamically imported module|Importing a module script failed|module script/i.test(String(e.reason&&e.reason.message||e.reason)))go()})})()</script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
