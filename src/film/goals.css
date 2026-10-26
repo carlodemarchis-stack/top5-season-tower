@@ -61,7 +61,12 @@
 .pane-pgoals{display:none;flex:1 1 auto;min-height:0;container-type:size;padding-top:4px}
 body.view-goals .card.hasg .pane-season{display:none}
 body.view-goals .card.hasg .pane-pgoals{display:block}
-.gt.gtme{margin:0;height:100%;grid-template-columns:200px minmax(0,var(--gwm));justify-content:start;align-items:stretch;--gwm:min(100cqw - 236px, 100cqh / .89)}
+.gt.gtme{margin:0;height:100%;grid-template-columns:196px minmax(0,var(--gwm)) 100px;gap:20px;justify-content:start;align-items:stretch;--gwm:min(100cqw - 340px, 100cqh / .89)}
+/* the games he scored in, a narrow list on the right: the result box as in the season strip, opponent, his goals */
+.gkms>.gkb:last-child{margin-top:0}.gkms .gkb{gap:3px;overflow:auto;min-height:0}.gkms{min-height:0}
+.gkm{grid-template-columns:36px minmax(0,1fr) 12px;height:24px}
+.gkm i{height:20px;min-width:0;border-radius:4px;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:900}
+.gkm span{font-weight:800;color:#15181d}
 .gtme .gcol{align-self:start}.gtme .gk{gap:clamp(3px,.7vh,8px)}
 @media (max-width: 760px){ .pane-pgoals{container-type:normal;flex:none} .gt.gtme{grid-template-columns:1fr;--gwm:100%} }
 .gk[data-side="Scored"] .gkn b{color:var(--c2)}   /* goals scored: the big number in the club colour, like its bars */

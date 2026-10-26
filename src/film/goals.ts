@@ -59,7 +59,7 @@ export function goalKit(lg: string, code: string, recs: Dict[], S: Dict, squad: 
   const inBox = (s: Dict) => s.x >= 88.5 && s.y >= 13.84 && s.y <= 54.16
   // goals from (nearly) one spot: grouped, each group's members within 1.2 m of its first
   const groups = (G: Dict[]) => { const out: Dict[][] = []; for (const g of G) { const k = out.find(o => Math.hypot(o[0].x - g.x, o[0].y - g.y) <= 1.2); k ? k.push(g) : out.push([g]) } return out }
-  const fv = (s: Dict) => ` data-how="${SIT[s.sit] || 'other'}" data-with="${BODY[s.body] || ''}" data-from="${inBox(s) ? 'inside the box' : 'outside'}" data-when="${whenOf(s.min)}" data-by="${s.by}" data-role="${s.role}" data-who="${s.pid}"`
+  const fv = (s: Dict) => ` data-how="${SIT[s.sit] || 'other'}" data-with="${BODY[s.body] || ''}" data-from="${inBox(s) ? 'inside the box' : 'outside'}" data-when="${whenOf(s.min)}" data-by="${s.by}" data-role="${s.role}" data-who="${s.pid}" data-gm="${s.mid}"`
   // the half pitch, attacking up (68 wide, the 35 m in front of the goal): ● a goal · ○ saved · × the rest. FotMob's y
   // runs from the shooter's RIGHT (checked against ESPN's "left / right side of the box": 1,453 to 4), so x = 68 − y
   const pitch = (L: Dict[], fill: string) => `<svg class="gnp" viewBox="0 -1 68 36"><rect x="0" y="0" width="68" height="35" rx=".8" fill="#e8eee8"/><g fill="none" stroke="#fff" stroke-width=".4"><rect x="13.84" y="0" width="40.32" height="16.5"/><rect x="24.84" y="0" width="18.32" height="5.5"/><path d="M26.7 16.5a9.15 9.15 0 0 0 14.6 0"/></g><rect x="30.34" y="-1" width="7.32" height="1" fill="#15181d"/>
@@ -67,7 +67,7 @@ export function goalKit(lg: string, code: string, recs: Dict[], S: Dict, squad: 
     ${groups(L.filter(s => s.out === 'g')).map(G => { const s = G[0], cx = 68 - s.y, cy = Math.min(33.8, Math.max(1.3, 105 - s.x))
       if (G.length === 1) return `<circle class="gm" data-gk="${s.key}"${href(s)}${fv(s)} cx="${cx}" cy="${cy}" r="1.2" style="fill:${fill}" stroke="#fff" stroke-width=".3"/>`
       // several goals from one spot (every penalty, tap-ins): one dot with the count; hover lists them, click pins the list
-      for (const g of G) { GV.set(g.key, { how: SIT[g.sit] || 'other', with: BODY[g.body] || '', from: inBox(g) ? 'inside the box' : 'outside', when: whenOf(g.min), by: g.by, role: g.role, who: g.pid })
+      for (const g of G) { GV.set(g.key, { how: SIT[g.sit] || 'other', with: BODY[g.body] || '', from: inBox(g) ? 'inside the box' : 'outside', when: whenOf(g.min), by: g.by, role: g.role, who: g.pid, gm: g.mid })
         GROW.set(g.key, `<a class="gsr" href="matches.html?lg=${lg}&md=${g.md}&m=${g.mid}"><b>${Math.floor(g.min)}′</b><span>MD ${g.md} · ${g.ha === 'H' ? 'vs' : 'at'} ${esc(g.opp)} ${g.gf}-${g.ga}</span><span class="nm">${esc(g.name || '?')}</span><em>${g.xg.toFixed(2)} xG</em></a>`) }
       return `<g class="gm gst" data-gs="${G.map(g => g.key).join(' ')}" data-sit="${esc(SIT[s.sit] || '')}"><circle cx="${cx}" cy="${cy}" r="1.6" style="fill:${fill}" stroke="#fff" stroke-width=".3"/><text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" fill="#fff" font-weight="900">${G.length}</text></g>` }).join('')}</svg>`
   // the goal, from the shooter's side: posts at 0 and 2, the bar at .667 from the ground — goals only
@@ -134,9 +134,9 @@ export function applyGoalFilters(gk0: HTMLElement) {
     const grp = r.dataset.g!, full = +r.dataset.n!
     const cnt = any ? goals.filter(v => v[grp] === r.dataset.v && Object.entries(want).every(([k, vs]) => k === grp || vs.includes(v[k] || ''))).length : full
     r.querySelector('b')!.textContent = cnt || r.classList.contains('gkc') ? String(cnt || '') : '0'
-    const bar = r.querySelector<HTMLElement>('u > i')!
-    if (r.classList.contains('gkc')) bar.style.height = `${full ? cnt / full * 100 : 0}%`
-    else bar.style.width = `${(cnt / +r.dataset.mx!) * 100}%`
+    const bar = r.querySelector<HTMLElement>('u > i')   // (a game row in a player's list has no bar)
+    if (bar && r.classList.contains('gkc')) bar.style.height = `${full ? cnt / full * 100 : 0}%`
+    else if (bar) bar.style.width = `${(cnt / +r.dataset.mx!) * 100}%`
     r.classList.toggle('zero', !!any && !cnt)
   })
 }

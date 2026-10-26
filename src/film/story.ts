@@ -4,7 +4,7 @@
 // minutes (↑ on / ↓ off), goals ●, assists ○, cards and, in Serie A, the mark. The match cards load the first time
 // the tab is used (a league's at a time), and each card's pane is drawn when it comes into view.
 import { rowsOf } from './pitch'
-import { esc, type Ctx } from './cards'
+import { esc, RES6, res6, type Ctx } from './cards'
 import { loadCoaches, stints, headOf, coachOf, surname } from './coach'
 import { initTip } from './chrome'
 import { goalKit, shotsOf, applyGoalFilters, sizeGoalDots, initGoals, GNET } from './goals'
@@ -236,7 +236,7 @@ const TEAM_FILES = import.meta.glob('../data/teams-*.js')
 const TEAMCARDS: Record<string, Promise<Dict>> = {}
 const teamsOf = (lg: string, season: string) => TEAMCARDS[lg + season] ??= (TEAM_FILES[`../data/teams-${lg}-${season}.js`]?.() ?? Promise.resolve({ TEAMCARDS: { teams: [] } })).then(m => (m as Dict).TEAMCARDS)
 const PLAYER_GOALS_HELP = `<div class="mt-top">How to read it</div><div class="ghl"><p>His goals among his club's. <b>Top</b>: where each goal went in, the goal seen from the shooter's side. <b>Bottom</b>: where every shot of the club was taken from, attacking up — <b>●</b> a goal · <b>○</b> saved · <b>×</b> off target or blocked.</p>
-  <p>His goals are in full colour, his team-mates' faded. In the bars, the faint full bar is the club's season, the solid part his share; shots and xG are his. Hover a goal for its card, click it for the match; <b>click a bar</b> to keep only those of his goals (click again, or anywhere else, to clear). Data: FotMob shot map.</p></div>`
+  <p>His goals are in full colour, his team-mates' faded. In the bars, the faint full bar is the club's season, the solid part his share; shots and xG are his. On the right, the games he scored in: the result, the opponent (@ away), his goals. Hover a goal for its card, click it for the match; <b>click a bar</b> or a game to keep only those of his goals (click again, or anywhere else, to clear). Data: FotMob shot map.</p></div>`
 async function fillGoals(pg: HTMLElement, season: string) {
   if (pg.dataset.done) return; pg.dataset.done = '1'
   const [lg, code, id] = pg.dataset.goals!.split('|')
@@ -246,7 +246,13 @@ async function fillGoals(pg: HTMLElement, season: string) {
   const thumbs: Record<string, string> = Object.fromEntries((T.teams as Dict[]).flatMap(t => (t.squad || []).filter((p: Dict) => p.thumb).map((p: Dict) => [String(p.espnId), p.thumb])))
   const K = goalKit(lg, code, recs, S, club?.squad || [], i => thumbs[i])
   if (!K.F.some(s => s.out === 'g' && s.pid === id)) { pg.innerHTML = '<p class="none">No shot map for his goals yet.</p>'; return }
-  pg.innerHTML = `${GNET}<div class="gt gtme">${K.kpis('Scored', K.F, 'var(--c2)', 0, '<i class="ghelp" aria-label="How to read it">?</i>', true, id)}${K.col(K.F, 'var(--c2)', 'Scored')}</div>`
+  // the games he scored in, on the right: the result as in the season strip, the opponent (@ away), his goals there —
+  // each a filter like the bars (data-gm: the goal's match)
+  const by = new Map<string, Dict[]>()
+  for (const s of K.F) if (s.out === 'g' && s.pid === id) { if (!by.has(s.mid)) by.set(s.mid, []); by.get(s.mid)!.push(s) }
+  const games = [...by.values()].sort((a, b) => a[0].md - b[0].md).map(G => { const s = G[0], [bg, fg] = RES6[res6(s.gf, s.ga)], n = G.length
+    return `<div class="gkr gkm" data-g="gm" data-v="${s.mid}" data-n="${n}" title="MD ${s.md} · ${s.ha === 'H' ? 'vs' : 'at'} ${esc(s.opp)} ${s.gf}-${s.ga}: ${n} goal${n === 1 ? '' : 's'} — show only these"><i style="background:${bg};color:${fg}">${s.gf}-${s.ga}</i><span>${s.ha === 'H' ? '' : '@'}${esc(s.opp)}</span><b>${n}</b></div>` }).join('')
+  pg.innerHTML = `${GNET}<div class="gt gtme">${K.kpis('Scored', K.F, 'var(--c2)', 0, '<i class="ghelp" aria-label="How to read it">?</i>', true, id)}${K.col(K.F, 'var(--c2)', 'Scored')}<div class="gk gkms" data-side="Scored"><div class="sec">Scored in</div><div class="gkb">${games}</div></div></div>`
   applyGoalFilters(pg.querySelector<HTMLElement>('.gk')!); requestAnimationFrame(sizeGoalDots)
 }
 
