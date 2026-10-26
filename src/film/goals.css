@@ -55,7 +55,7 @@
 .ghelp:hover{background:#15181d;color:#fff}
 .gks .ghelp{width:13px;height:13px;font-size:9px;margin-left:5px}
 .ghl p{margin:0 0 6px;font-size:11.5px;line-height:1.4;color:#3a3f47}.ghl p:last-child{margin:0}
-.gm.dim{opacity:.2}   /* a player's tab: the club's other goals, faded */
+.gm.dim{opacity:.2;pointer-events:none}   /* a player's tab: the club's other goals, faded — no hover card, no click */
 /* a player card's Goals view: his column + the goal over the pitch, in the card's right part (the Season view's place),
    the drawing as big as the pane's height allows */
 .pane-pgoals{display:none;flex:1 1 auto;min-height:0;container-type:size;padding-top:4px}
