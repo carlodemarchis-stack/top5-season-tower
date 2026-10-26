@@ -571,23 +571,23 @@ function longestRun(t: Dict, r: 'W' | 'L') {
 function statsCard() {
   const coachesOf = (t: Dict) => new Set(stints(COACHES_OF[t.lg], t.code, playedOf(t, TEAMS_OF[t.lg][t.code] || {})).map(s => s.id)).size
   const per = (n: number, t: Dict) => t.played ? n / t.played : 0
-  type Col = { title: string, sub: string, v: (t: Dict) => number, show: (t: Dict) => string, low?: boolean, now?: (t: Dict) => boolean }
+  type Col = { title: string, sub: string, v: (t: Dict) => number, show: (t: Dict) => string, low?: boolean, now?: (t: Dict) => boolean, min?: number }
   const COLS: Col[] = [
     { title: 'Goals', sub: 'scored', v: t => t.GF, show: t => String(t.GF) },
     { title: 'Per game', sub: 'scored', v: t => per(t.GF, t), show: t => per(t.GF, t).toFixed(2) },
     { title: 'Conceded', sub: 'fewest', v: t => t.GA, show: t => String(t.GA), low: true },
     { title: 'Per game', sub: 'conceded, fewest', v: t => per(t.GA, t), show: t => per(t.GA, t).toFixed(2), low: true },
     { title: 'Scorers', sub: 'players with a goal', v: t => (t.scorers || []).filter((s: Dict) => s.G > 0).length, show: t => String((t.scorers || []).filter((s: Dict) => s.G > 0).length) },
-    ...(SEASON === '2026-27' ? [{ title: 'Coaches', sub: 'on the bench', v: (t: Dict) => coachesOf(t), show: (t: Dict) => String(coachesOf(t)) }] : []),
+    ...(SEASON === '2026-27' ? [{ title: 'Coaches', sub: 'clubs that changed', v: (t: Dict) => coachesOf(t), show: (t: Dict) => String(coachesOf(t)), min: 2 }] : []),
     { title: 'Wins', sub: 'longest run', v: t => longestRun(t, 'W').n, show: t => String(longestRun(t, 'W').n), now: t => longestRun(t, 'W').now },
     { title: 'Defeats', sub: 'longest run', v: t => longestRun(t, 'L').n, show: t => String(longestRun(t, 'L').n), now: t => longestRun(t, 'L').now },
   ]
   const N = Math.min(20, P.length)
   const col = (c: Col) => {
-    const L = P.filter(t => t.played).map(t => ({ t, v: c.v(t) })).sort((a, b) => (c.low ? a.v - b.v : b.v - a.v) || a.t.rank - b.t.rank).slice(0, N)
+    const L = P.filter(t => t.played).map(t => ({ t, v: c.v(t) })).filter(x => c.min == null || x.v >= c.min).sort((a, b) => (c.low ? a.v - b.v : b.v - a.v) || a.t.rank - b.t.rank).slice(0, N)
     const rows = L.map((x, i) => { const club = TEAMS_OF[x.t.lg][x.t.code] || {}, bg = club.primary || '#555', fg = lum(bg) > 0.55 ? '#15181d' : '#fff'
       const rk = L.findIndex(y => y.v === x.v) + 1, on = c.now?.(x.t)
-      return `<a class="tsr" data-i="${x.t.rank - 1}" title="${esc(nameOf(x.t))}${ALL ? ` · ${LEAGUE_NAME[x.t.lg]}` : ''} · ${c.title.toLowerCase()} ${c.sub}: ${c.show(x.t)}${on ? ' (still going)' : ''}"><span class="tr-rk">${i && L[i - 1].v === x.v ? '' : rk}</span>${ALL ? `<img class="tr-lg" src="leagues/${x.t.lg}.png" alt="">` : ''}<b class="tcode" style="background:${bg};color:${fg}">${esc(club.abbr || x.t.code)}</b><em>${c.show(x.t)}${on ? '<i class="tsn" title="still going">●</i>' : ''}</em></a>` }).join('')
+      return `<a class="tsr" data-i="${x.t.rank - 1}" title="${esc(nameOf(x.t))}${ALL ? ` · ${LEAGUE_NAME[x.t.lg]}` : ''} · ${c.title.toLowerCase()} ${c.sub}: ${c.show(x.t)}${on ? ' (still going)' : ''}"><span class="tr-rk">${i && L[i - 1].v === x.v ? '' : rk}</span>${ALL ? `<img class="tr-lg" src="leagues/${x.t.lg}.png" alt="">` : ''}<b class="tcode" style="background:${bg};color:${fg}">${esc(club.abbr || x.t.code)}</b><em>${on ? '<i class="tsn" title="still going">●</i>' : ''}${c.show(x.t)}</em></a>` }).join('')
     return `<div class="tsc-col"><div class="tsh"><b>${c.title}</b><span>${c.sub}</span></div>${rows}</div>`
   }
   return `<section class="card tbl" id="t-stats"><div class="tb">
