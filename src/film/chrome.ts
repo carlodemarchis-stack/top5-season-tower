@@ -111,6 +111,8 @@ export function initFilm(o: Opts) {
   else if (h.startsWith('s=')) i = Math.max(0, cards.findIndex(c => c.id === decodeURIComponent(h.slice(2))))   // a stats card by its id (else card 1)
   else { try { const s = localStorage.getItem(o.key); if (s != null) i = +s } catch { } }
   go(i, false)
+  // the splash (in the page itself, shown before any script) fades out now the film is drawn
+  const boot = document.getElementById('boot'); if (boot) { boot.style.opacity = '0'; setTimeout(() => boot.remove(), 260) }
   addEventListener('resize', () => go(cur, false))
   addEventListener('hashchange', () => { const n = +location.hash.slice(1); if (n >= 1 && n - 1 !== cur) go(n - 1, false) })
   return { go, step, openMod, closeMods }
