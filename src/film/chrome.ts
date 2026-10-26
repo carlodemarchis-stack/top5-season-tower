@@ -38,6 +38,10 @@ export function initFilm(o: Opts) {
     $('counter').classList.toggle('named', !!o.label)
     history.replaceState(null, '', '#' + (cur + 1))
     try { localStorage.setItem(o.key, String(cur)) } catch { }
+    // on a stats card (.tbl) the top-bar leagues open the same stats card there (by its id: its number differs per
+    // league), else their card 1
+    const keep = cards[cur]?.classList.contains('tbl') && cards[cur].id ? `#s=${cards[cur].id}` : '#1'
+    document.querySelectorAll<HTMLAnchorElement>('#lgs a.lgb[href]').forEach(a => { const h = a.getAttribute('href')!; if (!h.startsWith('#')) a.setAttribute('href', h.replace(/#.*$/, '') + keep) })
     o.onPaint(cur)
   }
   function go(i: number, smooth = true) {
@@ -104,6 +108,7 @@ export function initFilm(o: Opts) {
   let i = 0
   const h = location.hash.replace('#', '')
   if (/^\d+$/.test(h)) i = +h - 1
+  else if (h.startsWith('s=')) i = Math.max(0, cards.findIndex(c => c.id === decodeURIComponent(h.slice(2))))   // a stats card by its id (else card 1)
   else { try { const s = localStorage.getItem(o.key); if (s != null) i = +s } catch { } }
   go(i, false)
   addEventListener('resize', () => go(cur, false))
