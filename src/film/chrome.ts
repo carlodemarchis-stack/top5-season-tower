@@ -130,6 +130,22 @@ export function initHighlight(film: HTMLElement, hoverSel: string, partners: (ke
 // anchor(el): the element the card is placed against (default: el itself)
 // fit: the card takes the anchor's width (the Goals tab: as wide as the goal it sits on)
 // pin(el): a click on that element keeps its card open (mouse can move into it; click outside or Esc closes it)
+// phones: a card's name and its view switch in one strip pinned at the top while the card scrolls (the team line, the
+// photo and the rest scroll away) — moved into a .mhead on a narrow screen, put back where they were on a wider one
+export function initPinnedHead(film: HTMLElement) {
+  const mq = matchMedia('(max-width: 760px)'), home = new WeakMap<Element, [Element, Element | null]>()
+  const place = () => film.querySelectorAll<HTMLElement>('.card').forEach(card => {
+    const body = card.querySelector<HTMLElement>(':scope > .body'), h1 = body?.querySelector('h1'); if (!body || !h1) return
+    const els = [h1, card.querySelector('.tacsw:not(.corner)')].filter(Boolean) as Element[]
+    let head = body.querySelector<HTMLElement>(':scope > .mhead')
+    if (mq.matches) {
+      if (!head) { head = document.createElement('div'); head.className = 'mhead'; body.prepend(head) }
+      els.forEach(e => { if (e.parentElement !== head) { home.set(e, [e.parentElement!, e.nextElementSibling]); head!.append(e) } })
+    } else if (head) { els.forEach(e => { const h = home.get(e); if (h) h[0].insertBefore(e, h[1]) }); head.remove() }
+  })
+  place(); mq.addEventListener('change', place)
+}
+
 export function initTip(film: HTMLElement, sel: string, render: (el: HTMLElement) => string, anchor?: (el: HTMLElement) => HTMLElement, fit = false, pin?: (el: HTMLElement) => boolean, over?: (el: HTMLElement) => HTMLElement | null | undefined) {
   // one card element for the page, shared when a film has more than one kind of hover card
   const tip = document.getElementById('mtip') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'mtip' }))

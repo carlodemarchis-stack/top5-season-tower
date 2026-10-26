@@ -6,7 +6,7 @@
 import { rowsOf } from './pitch'
 import { esc, RES6, res6, type Ctx } from './cards'
 import { loadCoaches, stints, headOf, coachOf, surname } from './coach'
-import { initTip } from './chrome'
+import { initTip, initPinnedHead } from './chrome'
 import { goalKit, shotsOf, applyGoalFilters, sizeGoalDots, initGoals, GNET } from './goals'
 type Dict = Record<string, any>
 
@@ -300,4 +300,5 @@ export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view')
   // 't' cycles Season → Tactical → Heatmaps → Goals
   addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector('.mod.on') && !e.metaKey && !e.ctrlKey && !(e.target as HTMLElement).closest?.('input')) set(VIEWS[(VIEWS.indexOf(view) + 1) % VIEWS.length]) })
   set(view)
+  initPinnedHead(film)
 }

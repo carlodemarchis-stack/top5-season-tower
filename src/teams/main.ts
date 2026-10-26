@@ -2,7 +2,7 @@
 // or all five leagues in one film ranked by points per game (?lg=ALL), so leagues of 18 and 20 clubs compare fairly.
 // Data: src/data/teams-<LG>-<season>.js (built + verified by scripts/update-teams.mjs); club colours/names from the schedule.
 import '../film/film.css'
-import { initFilm, initHighlight, initTip, initLinks, initNav } from '../film/chrome'
+import { initFilm, initHighlight, initTip, initLinks, initNav, initPinnedHead } from '../film/chrome'
 import { loadCoaches, coachChip } from '../film/coach'
 import { rowsOf } from '../film/pitch'
 import { upBox } from '../film/cards'
@@ -723,6 +723,7 @@ function matchTip(t: Dict, gid: string, after?: string) {
 }
 initLinks(film)
 initTip(film, '[data-gid]', el => matchTip(P[[...film.children].indexOf(el.closest('.card')!)], el.dataset.gid!, el.dataset.after))
+initPinnedHead(film)   // phones: the club name + tabs pinned on top
 // the Goals tab's help, on its "?" (in place of a legend line under the pitches)
 const GOALS_HELP = `<div class="mt-top">How to read it</div><div class="ghl"><p><b>Top</b>: where each goal went in, the goal seen from the shooter's side. <b>Bottom</b>: where every shot was taken from, attacking up.</p>
   <p><b>●</b> a goal · <b>○</b> saved · <b>×</b> off target or blocked. Hover a goal: the same goal lights in the net and on the pitch, with its xG; click it for the match card. A <b>numbered dot</b> is several goals from one spot (every penalty): hover it for the list, click it to keep the list open.</p>
