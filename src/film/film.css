@@ -116,9 +116,10 @@ h1{font-weight:900;font-size:min(clamp(34px,4.6vw,68px),calc(100cqi / (var(--len
 
 .sec{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#6a717b;margin-bottom:8px}
 .glist{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
-.goals{display:flex;flex-wrap:wrap;gap:5px 6px;max-width:1040px;overflow:auto;min-height:0;align-content:flex-start}
+.goals{display:flex;flex-wrap:wrap;gap:3px 5px;max-width:1040px;overflow:auto;min-height:0;align-content:flex-start}
 .goals+.sec{margin-top:14px}   /* the assists, under the goals */
-.g{font-size:11.5px;font-weight:600;color:#3a3f47;background:#fff;border:1px solid #e3e6ea;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.gal1{display:inline-flex;align-items:center;gap:5px;margin-left:8px}.gal{font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#9aa0a8}   /* after the goals, in the same flow: the assists, the label kept with the first one */
+.g{font-size:11.5px;font-weight:600;color:#3a3f47;background:#fff;border:1px solid #e3e6ea;border-radius:999px;padding:2px 8px;white-space:nowrap}
 .g b{font-weight:800;color:#15181d}
 .g em{font-style:normal;font-weight:800;font-size:10.5px;letter-spacing:.06em;color:#fff;background:#15181d;border-radius:4px;padding:1px 5px;margin-left:4px}
 
@@ -345,12 +346,14 @@ body:not(.view-heat) .coachc .pane-subs,body.view-heat .coachc .pane-story{displ
 .hsc:hover{background:#15181d;color:#fff}
 .hsc.off{display:none}
 /* scorer card bottom: the goals list left, his shots on one goal right */
-.gsplit{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:clamp(16px,2vw,30px);flex:1 1 auto;min-height:0}
+.gsplit{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,240px);gap:clamp(16px,2vw,30px);flex:1 1 auto;min-height:0}
 .gsplit>.glist{min-height:0}
 .shotg{display:flex;flex-direction:column;min-height:0}
 .shotg .sec{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px}.shotg .sec .gsum{margin-left:0;justify-content:flex-start}
 .shotg svg{width:100%;height:auto;max-height:200px;flex:0 1 auto;min-height:0}
 @media (max-width: 760px){ .gsplit{grid-template-columns:1fr} }
+/* phones: the card body scrolls, so the goals, assists and shots take their full height instead of shrinking to fit */
+@media (max-width: 760px){ .card .gsplit,.card .glist,.card .goals,.card .shotg{flex:none;min-height:auto;overflow:visible} }
 /* ---------- the Tactical tab of a player card (src/film/story.ts): Season | Tactical switch top right, no height taken ---------- */
 .card{position:relative}
 .card .body{position:relative}

@@ -107,11 +107,14 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
   const c2 = light ? '#15181d' : c                     // the big goals number takes the club colour unless it is too pale to read
   const hlInk = lum(c) > 0.183 ? '#15181d' : '#fff'     // text on the club-colour highlight: white only where it reaches 4.5:1
   const t = p.teamLine
+  // his goals, compact so a whole season fits without scrolling: minute + opponent (@ away, as in the strip) + how
+  // (PEN / HEAD / FK); the full line, assist included, on hover
+  const opp = (m: Dict) => `${m.ha === 'H' ? '' : '@'}${esc(m.opp)}`, full = (min: string, m: Dict, rest: string) => `${min} ${m.ha === 'H' ? 'vs' : 'at'} ${m.opp}${rest}`
   const goals = p.matches.flatMap((m: Dict) => m.goals.map((g: Dict) => ({ ...g, m })))
-    .map((g: Dict) => `<span class="g" data-mid="${g.m.id}"><b>${esc(g.min)}</b> ${g.m.ha === 'H' ? 'vs' : 'at'} ${esc(g.m.opp)}${g.kind === 'pen' ? '<em>PEN</em>' : g.kind === 'head' ? '<em>HEAD</em>' : g.kind === 'fk' ? '<em>FK</em>' : ''}${g.ast ? ` · ast ${esc(g.ast)}` : ''}</span>`).join('')
-  // his assists — minute, opponent, who scored: under the goals, or on their own when he has none yet (squad film)
-  const assists = p.matches.flatMap((m: Dict) => (m.assists || []).map((a: Dict) =>
-    `<span class="g" data-mid="${m.id}"><b>${esc(a.min)}</b> ${m.ha === 'H' ? 'vs' : 'at'} ${esc(m.opp)}${a.to ? ` · for ${esc(a.to)}` : ''}</span>`)).join('')
+    .map((g: Dict) => `<span class="g" data-mid="${g.m.id}" title="${esc(full(g.min, g.m, g.ast ? ` · assist ${g.ast}` : ''))}"><b>${esc(g.min)}</b> ${opp(g.m)}${g.kind === 'pen' ? '<em>PEN</em>' : g.kind === 'head' ? '<em>HEAD</em>' : g.kind === 'fk' ? '<em>FK</em>' : ''}</span>`).join('')
+  // his assists — minute, opponent, who scored (surname): under the goals, or on their own when he has none yet (squad film)
+  const astL = p.matches.flatMap((m: Dict) => (m.assists || []).map((a: Dict) =>
+    `<span class="g" data-mid="${m.id}" title="${esc(full(a.min, m, a.to ? ` · for ${a.to}` : ''))}"><b>${esc(a.min)}</b> ${opp(m)}${a.to ? ` · ${esc(String(a.to).trim().split(/\s+/).slice(-1)[0])}` : ''}</span>`)), assists = astL.join('')
   const minPerGoal = p.G ? Math.round(p.min / p.G) : null
   const [bigN, bigW] = opt.big || [p.G, `goal${p.G === 1 ? '' : 's'}`]
   const hasG = !!opt.story && p.G > 0   // his league goals get the Goals view
@@ -141,9 +144,7 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
       ${strip2(ctx, p, club, !goals && opt.noGoals != null)}
       ${(() => { const list = goals || opt.noGoals == null ? `<div class="glist">
         <div class="sec">The goals</div>
-        <div class="goals">${goals}</div>${goals && assists ? `
-        <div class="sec">The assists</div>
-        <div class="goals">${assists}</div>` : ''}
+        <div class="goals">${goals}${goals && assists ? `<span class="gal1"><span class="gal">Assists</span>${astL[0]}</span>${astL.slice(1).join('')}` : ''}</div>
       </div>` : assists ? `<div class="glist"><div class="sec">The assists</div><div class="goals">${assists}</div></div>`
         : `<div class="glist"><div class="sec">The goals</div><div class="goals"><span style="color:#9aa0a8;font-size:12px">${opt.noGoals}</span></div></div>`
         // his shots on one goal, at the bottom right — when the match reports have them
