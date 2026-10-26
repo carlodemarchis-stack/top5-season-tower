@@ -4,7 +4,7 @@
 // minutes (↑ on / ↓ off), goals ●, assists ○, cards and, in Serie A, the mark. The match cards load the first time
 // the tab is used (a league's at a time), and each card's pane is drawn when it comes into view.
 import { rowsOf } from './pitch'
-import { esc, RES6, res6, type Ctx } from './cards'
+import { esc, RES6, res6, upDate, type Ctx } from './cards'
 import { loadCoaches, stints, headOf, coachOf, surname } from './coach'
 import { initTip, initPinnedHead } from './chrome'
 import { goalKit, shotsOf, applyGoalFilters, sizeGoalDots, initGoals, GNET } from './goals'
@@ -121,7 +121,7 @@ function storyHTML(ctx: Ctx, lg: string, code: string, ID: string, recs: Dict[],
   let anyKm = false      // no tracking for him (LaLiga, Ligue 1, Bundesliga): no km row
   const cell = (g: Dict) => {
     const M = byId[g.id], at = g.ha === 'A' ? '@' : ''
-    if (!M) return `<div class="msc up"><div class="mst"><span>${at}${esc(g.opp)}</span></div><div class="msp"></div></div>`
+    if (!M) return `<div class="msc up"><div class="mst"><span>${at}${esc(g.opp)}</span></div><div class="msp"><span class="mup"><span class="mw">MD ${g.w}</span><span>${upDate(g)}</span></span></div></div>`
     const side = M.h === code ? 'h' : 'a', op = side === 'h' ? 'a' : 'h', T = side === 'h' ? M.home : M.away, gf = M.score[side], ga = M.score[op]
     const top = `<div class="mst"><span>${at}${esc(g.opp)}</span><b class="rs" style="background:${RES[res(gf, ga)]}">${gf}-${ga}</b></div>`
     const p = (T.players as Dict[]).find(x => String(x.id) === ID)
@@ -188,7 +188,7 @@ function coachStoryHTML(ctx: Ctx, lg: string, code: string, cid: string, recs: D
   for (const M of his) for (const p of (M.h === code ? M.home : M.away).players as Dict[]) if (p.st) starts[p.id] = (starts[p.id] || 0) + 1
   const cell = (g: Dict) => {
     const M = byId[g.id], at = g.ha === 'A' ? '@' : ''
-    if (!M) return `<div class="msc up"><div class="mst"><span>${at}${esc(g.opp)}</span></div><div class="msp"></div></div>`
+    if (!M) return `<div class="msc up"><div class="mst"><span>${at}${esc(g.opp)}</span></div><div class="msp"><span class="mup"><span class="mw">MD ${g.w}</span><span>${upDate(g)}</span></span></div></div>`
     const side = M.h === code ? 'h' : 'a', op = side === 'h' ? 'a' : 'h', T = side === 'h' ? M.home : M.away, gf = M.score[side], ga = M.score[op]
     const top = `<div class="mst"><span>${at}${esc(g.opp)}</span><b class="rs" style="background:${RES[res(gf, ga)]}">${gf}-${ga}</b></div>`
     const who = coachOf(C, code, M[op], side === 'h' ? 'H' : 'A')

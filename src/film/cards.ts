@@ -47,8 +47,9 @@ const initials = (n: string) => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('
 // a booking in a game, in the box's top-right corner (beside the result, not stacked with the goals)
 // a game still to play: its box carries the match day and a short date ("MD 8 · 25 Oct"), small
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-export const upBox = (g: Dict) => { const d = typeof g.et === 'string' ? g.et.match(/^\d{4}-(\d{2})-(\d{2})/) : null
-  return `<div class="bx"><span class="ud"><b>MD ${g.w}</b>${d ? `<i>${+d[2]} ${MON[+d[1] - 1]}</i>` : ''}</span></div>` }
+// a game still to play: its matchday and date ("MD 9" over "28 Oct") — in the season strip's box and the Tactical grid
+export const upDate = (g: Dict) => { const d = typeof g.et === 'string' ? g.et.match(/^\d{4}-(\d{2})-(\d{2})/) : null; return d ? `${+d[2]} ${MON[+d[1] - 1]}` : '' }
+export const upBox = (g: Dict) => `<div class="bx"><span class="ud"><b>MD ${g.w}</b>${upDate(g) ? `<i>${upDate(g)}</i>` : ''}</span></div>`
 export const cardsHTML = (yc?: number, rc?: number) => (yc ? '<i class="cd y" title="yellow card"></i>' : '') + (rc ? `<i class="cd r${yc ? ' two' : ''}" title="red card"></i>` : '')
 const matchHref = (ctx: Ctx, lg: string, md: number, id: string) => ctx.SEASON === '2026-27' ? ` data-href="matches.html?lg=${lg}&md=${md}&m=${id}"` : ''
 export const matchHrefOf = matchHref
