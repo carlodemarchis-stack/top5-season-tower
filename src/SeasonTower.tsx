@@ -1191,6 +1191,12 @@ export class SeasonTower extends React.Component<Props, State> {
               <span style={{ position: 'absolute', left: `${12 + (v.throughWeek / (v.sliderMax || 1)) * (170 - 24)}px`, top: '50%', transform: 'translate(-50%,-50%)', pointerEvents: 'none', fontSize: '10px', fontWeight: 800, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>{v.throughWeek}</span>
             </div>
           </div>}
+          {/* match count */}
+          {!v.overview && <span style={{ fontSize: '13px', fontWeight: 700, color: '#22262d', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>{v.playedStr}</span>}
+          {/* top-5 overview: matches played across the five leagues / the five seasons' total (a match per pair of clubs per matchday) */}
+          {v.overview && v.ovKind !== 'uefa' && v.ovData && <span style={{ fontSize: '13px', fontWeight: 700, color: '#22262d', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>
+            {(v.ovData as any[]).reduce((a, lg) => a + lg.played, 0)} / {(v.ovData as any[]).reduce((a, lg) => a + lg.totalMd * Math.floor(lg.clubs.length / 2), 0)}
+          </span>}
 
           {/* help + fullscreen */}
           {v.overview && v.ovKind !== 'uefa' && v.ovMode === 'barcode' && this.state.cw >= 900 && (
@@ -1222,12 +1228,6 @@ export class SeasonTower extends React.Component<Props, State> {
           <button onClick={() => this.setState({ helpOpen: true })} title="How to read this" aria-label="Help" style={{ ...iconBtn, fontSize: '17px', fontWeight: 800 }}>?</button>
           <button onClick={() => this.toggleFullscreen()} title="Fullscreen" aria-label="Fullscreen" style={iconBtn}>⛶</button>
 
-          {/* match count */}
-          {!v.overview && <span style={{ fontSize: '13px', fontWeight: 700, color: '#22262d', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>{v.playedStr}</span>}
-          {/* top-5 overview: matches played across the five leagues / the five seasons' total (a match per pair of clubs per matchday) */}
-          {v.overview && v.ovKind !== 'uefa' && v.ovData && <span style={{ fontSize: '13px', fontWeight: 700, color: '#22262d', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>
-            {(v.ovData as any[]).reduce((a, lg) => a + lg.played, 0)} / {(v.ovData as any[]).reduce((a, lg) => a + lg.totalMd * Math.floor(lg.clubs.length / 2), 0)}
-          </span>}
           {/* the card films, at the right end: Matches · Teams · Scorers · Keepers · Coaches */}
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '9px' }}>
             {/* the match-card film: one card per match (leagues with match cards so far: MATCH_LEAGUES) */}

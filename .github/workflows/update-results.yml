@@ -49,6 +49,9 @@ jobs:
           FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
         run: node scripts/update-results.mjs --season 2026-27
 
+      - name: Kickoff dates and times (ESPN)
+        run: node scripts/update-kickoffs.mjs --season 2026-27 || echo "::warning::kickoff times not updated — will retry on the next trigger"
+
       - name: Fetch official standings (football-data.org)
         env:
           FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
@@ -139,7 +142,7 @@ jobs:
         run: |
           git config user.name "results-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/data/results-*-2026-27.js src/data/standings-*-2026-27.js src/data/highlights-*-2026-27.js src/data/schedule-CL-2026-27.js src/data/schedule-EL-2026-27.js src/data/schedule-ECL-2026-27.js src/data/scorers-TOP5-2026-27.js public/players scripts/scorers-photo-cache.json src/data/teams-*-2026-27.js public/flags public/squad scripts/squad-photo-cache.json src/data/matches-*-2026-27-md*.js src/data/keepers-TOP5-2026-27.js src/data/votes-ITA-2026-27.js scripts/votes-ids-ITA.json src/data/coaches-*-2026-27.js scripts/coaches-cache.json public/coaches src/data/heat-*-2026-27.js src/data/run-*-2026-27.js src/data/shots-*-2026-27.js
+          git add src/data/results-*-2026-27.js src/data/standings-*-2026-27.js src/data/highlights-*-2026-27.js src/data/schedule-CL-2026-27.js src/data/schedule-EL-2026-27.js src/data/schedule-ECL-2026-27.js src/data/schedule-ITA-2026-27.js src/data/schedule-ENG-2026-27.js src/data/schedule-ESP-2026-27.js src/data/schedule-FRA-2026-27.js src/data/schedule-GER-2026-27.js src/data/scorers-TOP5-2026-27.js public/players scripts/scorers-photo-cache.json src/data/teams-*-2026-27.js public/flags public/squad scripts/squad-photo-cache.json src/data/matches-*-2026-27-md*.js src/data/keepers-TOP5-2026-27.js src/data/votes-ITA-2026-27.js scripts/votes-ids-ITA.json src/data/coaches-*-2026-27.js scripts/coaches-cache.json public/coaches src/data/heat-*-2026-27.js src/data/run-*-2026-27.js src/data/shots-*-2026-27.js
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No new results — nothing to deploy."
