@@ -33,8 +33,9 @@ const MARKS: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as
 const CTX: Ctx = { TEAMS, SEASON, VOTES: {} }
 
 // ---------- every coach of every club this season, with his record there ----------
-type Entry = { lg: string; code: string; id: string; former: boolean; G: number; P: number; GD: number; ppg: number; gpg: number; gapg: number; CS: number; used: number; age: number | null; played: Dict[]; recs: Dict[]; teamLine: Dict; squad: Dict[] }
+type Entry = { lg: string; code: string; id: string; former: boolean; G: number; P: number; GD: number; ppg: number; gpg: number; used: number; age: number | null; played: Dict[]; recs: Dict[]; teamLine: Dict; squad: Dict[] }
 const ENTRIES: Entry[] = []
+const GONE: { lg: string; code: string; id: string; G: number }[] = []   // every coach who left during the season (interims aside), however few his games
 for (const lg of FULL) {
   const C = COACHES[lg]; if (!C) continue
   for (const code of Object.keys(TEAMS[lg])) {
@@ -46,14 +47,16 @@ for (const lg of FULL) {
     for (const id of new Set([H.id, ...S.map(s => s.id)])) {
       if (id !== H.id && S.filter(s => s.id === id).every(s => H.standIn.includes(s))) continue   // a stand-in: his games are the head coach's
       const mine = S.filter(s => s.id === id || (id === H.id && H.standIn.includes(s))), G = mine.reduce((a, s) => a + s.W + s.D + s.L, 0)
-      const former = id !== H.id; if (former && G < MIN_GAMES) continue   // a one- or two-game stand-in gets no card
-      const P = mine.reduce((a, s) => a + 3 * s.W + s.D, 0), GD = mine.reduce((a, s) => a + s.GF - s.GA, 0), GF = mine.reduce((a, s) => a + s.GF, 0), GA = mine.reduce((a, s) => a + s.GA, 0)
+      // gone: a coach who left — not an interim of a game or two between two others (fewer than 3 games, not there from the start)
+      const former = id !== H.id; if (former && (G >= MIN_GAMES || S.find(s => s.id === id)?.from === S[0]?.from)) GONE.push({ lg, code, id, G })
+      if (former && G < MIN_GAMES) continue   // a one- or two-game stand-in gets no card
+      const P = mine.reduce((a, s) => a + 3 * s.W + s.D, 0), GD = mine.reduce((a, s) => a + s.GF - s.GA, 0), GF = mine.reduce((a, s) => a + s.GF, 0)
       // the players he has used: everyone who started or came on in his games (his stints' matchdays)
       const his = recs.filter(M => mine.some(s => s.from != null && M.md >= s.from && M.md <= s.to!)), used = new Set<string>()
       for (const M of his) { const T = M.h === code ? M.home : M.away, ids = new Set((T.players as Dict[]).map(p => String(p.id)))
         for (const p of T.players as Dict[]) if (p.st) used.add(String(p.id))
         for (const x of (M.subs || []) as Dict[]) if (ids.has(String(x.on))) used.add(String(x.on)) }
-      ENTRIES.push({ lg, code, id, former, G, P, GD, ppg: G ? P / G : 0, gpg: G ? GF / G : 0, gapg: G ? GA / G : 0, CS: mine.reduce((a, s) => a + s.CS, 0), used: used.size,
+      ENTRIES.push({ lg, code, id, former, G, P, GD, ppg: G ? P / G : 0, gpg: G ? GF / G : 0, used: used.size,
         age: ageOf(C.coaches[id]?.dob), played, recs, teamLine, squad: t.squad || [] })
     }
   }
@@ -78,21 +81,28 @@ const card = (e: Entry, i: number) => coachCard(CTX, COACHES[e.lg], e.lg, e.code
 // ---------- the closing card: Coach stats — six numbers, a ranked column each (the top 20), every row his club's code
 // in its colour + his name; rates only for three games or more; a row opens his card ----------
 function statsCard() {
-  type Col = { title: string, sub: string, v: (e: Entry) => number | null, show: (e: Entry) => string, low?: boolean }
+  type Row = { lg: string; code: string; id: string; G: number; former: boolean }
+  type Col = { title: string, sub: string, v: (e: Entry) => number | null, show: (e: Entry) => string, low?: boolean, src?: Row[] }
   const rated = (f: (e: Entry) => number) => (e: Entry) => e.G >= MIN_GAMES ? f(e) : null
+  const ages = (e: Entry) => e.age
   const COLS: Col[] = [
     { title: 'Points', sub: 'per game', v: rated(e => e.ppg), show: e => e.ppg.toFixed(2) },
-    { title: 'Scored', sub: 'goals per game', v: rated(e => e.gpg), show: e => e.gpg.toFixed(2) },
-    { title: 'Conceded', sub: 'per game, fewest', v: rated(e => e.gapg), show: e => e.gapg.toFixed(2), low: true },
-    { title: 'Clean sheets', sub: 'games without conceding', v: e => e.CS || null, show: e => String(e.CS) },
     { title: 'Players used', sub: 'started or came on', v: e => e.used || null, show: e => String(e.used) },
-    { title: 'Youngest', sub: 'age', v: e => e.age, show: e => String(e.age), low: true },
+    // the coaches who left the club during the season (sacked, or gone), the shortest stays first
+    { title: 'Fired', sub: 'left during the season · fewest games first', v: e => e.G, show: e => String(e.G), low: true,
+      src: GONE.filter(g => LIST === 'ALL' || g.lg === LIST).map(g => ({ ...g, former: true })) },
+    { title: 'Youngest', sub: 'age', v: ages, show: e => String(e.age), low: true },
+    { title: 'Oldest', sub: 'age', v: ages, show: e => String(e.age) },
   ]
   const N = Math.min(20, P.length), all = LIST === 'ALL'
+  // a row: his card in the film when he has one (a coach gone after one or two games has none)
+  const at = (r: Row) => P.findIndex(e => e.lg === r.lg && e.code === r.code && e.id === r.id)
   const col = (c: Col) => {
-    const L = P.map((e, i) => ({ e, i, v: c.v(e) })).filter(x => x.v != null).sort((a, b) => (c.low ? a.v! - b.v! : b.v! - a.v!) || a.i - b.i).slice(0, N)
+    const src = (c.src ?? P) as Row[], ent = (r: Row) => (P[at(r)] ?? { ...r, age: ageOf(COACHES[r.lg].coaches[r.id]?.dob) }) as Entry
+    const L = src.map(r => ({ e: ent(r), i: at(r), v: c.v(ent(r)) })).filter(x => x.v != null).sort((a, b) => (c.low ? a.v! - b.v! : b.v! - a.v!) || (a.i < 0 ? 1e9 : a.i) - (b.i < 0 ? 1e9 : b.i)).slice(0, N)
+    if (!L.length) return `<div class="tsc-col"><div class="tsh"><b>${c.title}</b><span>${c.sub}</span></div><p class="tsnone">none so far</p></div>`
     const rows = L.map((x, k) => { const club = TEAMS[x.e.lg][x.e.code] || {}, bg = club.primary || '#555', fg = lum(bg) > 0.55 ? '#15181d' : '#fff', nm = nameOf(x.e)
-      return `<a class="tsr" data-i="${x.i}" title="${esc(nm)} · ${esc(club.name || x.e.code)}${x.e.former ? ' (former)' : ''}${all ? ` · ${LEAGUE_NAME[x.e.lg]}` : ''} · ${c.title.toLowerCase()} ${c.sub}: ${c.show(x.e)} · ${x.e.G} game${x.e.G === 1 ? '' : 's'}"><span class="tr-rk">${k && L[k - 1].v === x.v ? '' : L.findIndex(y => y.v === x.v) + 1}</span>${all ? `<img class="tr-lg" src="leagues/${x.e.lg}.png" alt="">` : ''}<b class="tcode" style="background:${bg};color:${fg}">${esc(club.abbr || x.e.code)}</b><span class="tnm${x.e.former ? ' fm' : ''}">${esc(surname(COACHES[x.e.lg].coaches[x.e.id]))}</span><em>${c.show(x.e)}</em></a>` }).join('')
+      return `<a class="tsr"${x.i >= 0 ? ` data-i="${x.i}"` : ' style="cursor:default"'} title="${esc(nm)} · ${esc(club.name || x.e.code)}${x.e.former ? ' (former)' : ''}${all ? ` · ${LEAGUE_NAME[x.e.lg]}` : ''} · ${c.title.toLowerCase()} ${c.sub}: ${c.show(x.e)} · ${x.e.G} game${x.e.G === 1 ? '' : 's'}${x.i < 0 ? ' · no card (fewer than three games)' : ''}"><span class="tr-rk">${k && L[k - 1].v === x.v ? '' : L.findIndex(y => y.v === x.v) + 1}</span>${all ? `<img class="tr-lg" src="leagues/${x.e.lg}.png" alt="">` : ''}<b class="tcode" style="background:${bg};color:${fg}">${esc(club.abbr || x.e.code)}</b><span class="tnm${x.e.former ? ' fm' : ''}">${esc(surname(COACHES[x.e.lg].coaches[x.e.id]))}</span><em>${c.show(x.e)}</em></a>` }).join('')
     return `<div class="tsc-col"><div class="tsh"><b>${c.title}</b><span>${c.sub}</span></div>${rows}</div>`
   }
   return `<section class="card tbl" id="c-stats"><div class="tb">
@@ -102,7 +112,7 @@ function statsCard() {
 const $ = (id: string) => document.getElementById(id)!
 const film = $('film')
 film.innerHTML = P.map(card).join('') + statsCard()
-film.addEventListener('click', e => { const r = (e.target as HTMLElement).closest<HTMLElement>('.tsr'); if (r) (window as any).go(+r.dataset.i!) })
+film.addEventListener('click', e => { const r = (e.target as HTMLElement).closest<HTMLElement>('.tsr[data-i]'); if (r) (window as any).go(+r.dataset.i!) })
 const listUrl = (l: string) => { const q = new URLSearchParams(location.search); l === 'ALL' ? q.delete('lg') : q.set('lg', l); const qs = q.toString(); return location.pathname + (qs ? '?' + qs : '') + '#1' }   // a top-bar switch starts at card 1
 // a league not loaded counts from its coaches file alone: every current coach + anyone else on its benches 3+ times
 function countOf(lg: string) {
@@ -134,9 +144,12 @@ const INDEX = P.map((e, i) => { const k = COACHES[e.lg].coaches[e.id]
 function jumpHTML(q: string) {
   const qq = q.trim().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   const hits = /^\d+$/.test(qq) ? INDEX.filter(x => x.i === +qq - 1) : INDEX.filter(x => qq.split(/\s+/).every(w => x.key.includes(w)))
-  return LG_ORDER.map(lg => { const rows = hits.filter(x => x.lg === lg); if (!rows.length) return ''
+  // the closing Coach stats card, on top (as the team film's Stats)
+  const st = !qq || (/^\d+$/.test(qq) ? +qq === P.length + 1 : qq.split(/\s+/).every(w => 'stats coach stats points players used fired youngest oldest'.includes(w)))
+  const statsSec = st ? `<div class="jsec"><div class="jsechd">Stats<span>1</span></div><div class="jgrid"><div class="jrow" data-i="${P.length}"><span class="jn">${P.length + 1}</span><span class="jl">Coach stats<span class="jt">points, players used, fired, youngest, oldest</span></span></div></div></div>` : ''
+  return statsSec + LG_ORDER.map(lg => { const rows = hits.filter(x => x.lg === lg); if (!rows.length) return ''
     return `<div class="jsec"><div class="jsechd"><img src="leagues/${lg}.png" alt="">${LEAGUE_NAME[lg]}<span>${rows.length}</span></div><div class="jgrid">${rows.map(x =>
-      `<div class="jrow" data-i="${x.i}"><span class="jn">${x.i + 1}</span><span class="jl">${esc(x.label)}<span class="jt">${esc(x.sub)}</span></span></div>`).join('')}</div></div>` }).join('') || '<p>No coach found.</p>'
+      `<div class="jrow" data-i="${x.i}"><span class="jn">${x.i + 1}</span><span class="jl">${esc(x.label)}<span class="jt">${esc(x.sub)}</span></span></div>`).join('')}</div></div>` }).join('') || (statsSec ? '' : '<p>No coach found.</p>')
 }
 
 initLinks(film)
