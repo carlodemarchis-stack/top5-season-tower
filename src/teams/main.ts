@@ -3,7 +3,7 @@
 // Data: src/data/teams-<LG>-<season>.js (built + verified by scripts/update-teams.mjs); club colours/names from the schedule.
 import '../film/film.css'
 import { initFilm, initHighlight, initTip, initLinks, initNav, initPinnedHead } from '../film/chrome'
-import { loadCoaches, coachChip } from '../film/coach'
+import { loadCoaches, coachChip, stints } from '../film/coach'
 import { rowsOf } from '../film/pitch'
 import { upBox } from '../film/cards'
 import { goalKit, shotsOf, sizeGoalDots, initGoals, GNET } from '../film/goals'
@@ -560,10 +560,44 @@ function chartCard() {
     <div class="tb-hd"><h2>Points per game</h2><span>all ${P.length} clubs · codes coloured by their place in their own league: top four, 5th, 6th, bottom three</span></div>
     <div class="cc-wrap"><div class="cc-grid">${[3, 2, 1].map(v => `<span style="bottom:${(v / 3) * 100}%"><em>${v.toFixed(1)}</em></span>`).join('')}</div>${P.map(col).join('')}</div></div></section>`
 }
-film.innerHTML = P.map(card).join('') + (ALL ? tableCard() + chartCard() : '') + gameCard() + swingCard() + payCard()
+// Team stats: eight numbers, a ranked column each — the top 20 (all of a league's clubs), the club as its 3-letter code
+// in its colour (and its league, in All Leagues); ties share a rank; a row opens the club's card
+function longestRun(t: Dict, r: 'W' | 'L') {
+  let best = 0, cur = 0
+  for (const m of [...t.matches].filter((m: Dict) => m.gf != null).sort((a: Dict, b: Dict) => a.w - b.w)) {
+    cur = (m.gf > m.ga ? 'W' : m.gf < m.ga ? 'L' : 'D') === r ? cur + 1 : 0; best = Math.max(best, cur) }
+  return { n: best, now: !!cur && cur === best }   // now: the run is still going
+}
+function statsCard() {
+  const coachesOf = (t: Dict) => new Set(stints(COACHES_OF[t.lg], t.code, playedOf(t, TEAMS_OF[t.lg][t.code] || {})).map(s => s.id)).size
+  const per = (n: number, t: Dict) => t.played ? n / t.played : 0
+  type Col = { title: string, sub: string, v: (t: Dict) => number, show: (t: Dict) => string, low?: boolean, now?: (t: Dict) => boolean }
+  const COLS: Col[] = [
+    { title: 'Goals', sub: 'scored', v: t => t.GF, show: t => String(t.GF) },
+    { title: 'Per game', sub: 'scored', v: t => per(t.GF, t), show: t => per(t.GF, t).toFixed(2) },
+    { title: 'Conceded', sub: 'fewest', v: t => t.GA, show: t => String(t.GA), low: true },
+    { title: 'Per game', sub: 'conceded, fewest', v: t => per(t.GA, t), show: t => per(t.GA, t).toFixed(2), low: true },
+    { title: 'Scorers', sub: 'players with a goal', v: t => (t.scorers || []).filter((s: Dict) => s.G > 0).length, show: t => String((t.scorers || []).filter((s: Dict) => s.G > 0).length) },
+    ...(SEASON === '2026-27' ? [{ title: 'Coaches', sub: 'on the bench', v: (t: Dict) => coachesOf(t), show: (t: Dict) => String(coachesOf(t)) }] : []),
+    { title: 'Wins', sub: 'longest run', v: t => longestRun(t, 'W').n, show: t => String(longestRun(t, 'W').n), now: t => longestRun(t, 'W').now },
+    { title: 'Defeats', sub: 'longest run', v: t => longestRun(t, 'L').n, show: t => String(longestRun(t, 'L').n), now: t => longestRun(t, 'L').now },
+  ]
+  const N = Math.min(20, P.length)
+  const col = (c: Col) => {
+    const L = P.filter(t => t.played).map(t => ({ t, v: c.v(t) })).sort((a, b) => (c.low ? a.v - b.v : b.v - a.v) || a.t.rank - b.t.rank).slice(0, N)
+    const rows = L.map((x, i) => { const club = TEAMS_OF[x.t.lg][x.t.code] || {}, bg = club.primary || '#555', fg = lum(bg) > 0.55 ? '#15181d' : '#fff'
+      const rk = L.findIndex(y => y.v === x.v) + 1, on = c.now?.(x.t)
+      return `<a class="tsr" data-i="${x.t.rank - 1}" title="${esc(nameOf(x.t))}${ALL ? ` · ${LEAGUE_NAME[x.t.lg]}` : ''} · ${c.title.toLowerCase()} ${c.sub}: ${c.show(x.t)}${on ? ' (still going)' : ''}"><span class="tr-rk">${i && L[i - 1].v === x.v ? '' : rk}</span>${ALL ? `<img class="tr-lg" src="leagues/${x.t.lg}.png" alt="">` : ''}<b class="tcode" style="background:${bg};color:${fg}">${esc(club.abbr || x.t.code)}</b><em>${c.show(x.t)}${on ? '<i class="tsn" title="still going">●</i>' : ''}</em></a>` }).join('')
+    return `<div class="tsc-col"><div class="tsh"><b>${c.title}</b><span>${c.sub}</span></div>${rows}</div>`
+  }
+  return `<section class="card tbl" id="t-stats"><div class="tb">
+    <div class="tb-hd"><h2>Team stats</h2><span>${ALL ? `the top ${N} of the five leagues` : `all ${P.length} clubs`} in each column · ties share a rank · <i class="tsn">●</i> a run still going · click a club for its card</span></div>
+    <div class="tsg${ALL ? ' all' : ''}" style="--n:${N};--k:${COLS.length}">${COLS.map(col).join('')}</div></div></section>`
+}
+film.innerHTML = P.map(card).join('') + (ALL ? tableCard() + chartCard() : '') + statsCard() + gameCard() + swingCard() + payCard()
 // the stats cards after the clubs, in film order (the jump list and the top-bar button point at them)
-const STATS = [...(ALL ? ['The table', 'The chart'] : []), 'Game state', 'Comebacks & collapses', 'Push vs payoff']
-const STATS_SUB: Record<string, string> = { 'The table': 'all clubs by points per game', 'The chart': 'points per game as columns', 'Game state': 'minutes leading · level · trailing',
+const STATS = [...(ALL ? ['The table', 'The chart'] : []), 'Team stats', 'Game state', 'Comebacks & collapses', 'Push vs payoff']
+const STATS_SUB: Record<string, string> = { 'The table': 'all clubs by points per game', 'The chart': 'points per game as columns', 'Team stats': 'goals, conceded, scorers, coaches, runs', 'Game state': 'minutes leading · level · trailing',
   'Comebacks & collapses': 'points won from behind · dropped from ahead', 'Push vs payoff': 'share of the pressure vs share of the goals' }
 { // the comebacks explainer's examples, from today's data
   const S = P.map(t => ({ t, s: swings(t) }))
@@ -576,7 +610,7 @@ const STATS_SUB: Record<string, string> = { 'The table': 'all clubs by points pe
   $('ppex').innerHTML = `Right now${ALL ? ' across the five leagues' : ` in ${LEAGUE_NAME[LG]}`}, the most clinical: ${gap.slice(0, 3).map(say).join(', ')}. The most wasteful: ${gap.slice(-3).reverse().map(say).join(', ')}.`
 }
 film.addEventListener('click', e => { const c = (e.target as HTMLElement).closest<HTMLElement>('.cc'); if (c) (window as any).go(+c.dataset.i!) })
-film.addEventListener('click', e => { const r = (e.target as HTMLElement).closest<HTMLElement>('.tr, .gsr, .ppc'); if (r) (window as any).go(+r.dataset.i!) })
+film.addEventListener('click', e => { const r = (e.target as HTMLElement).closest<HTMLElement>('.tr, .gsr, .ppc, .tsr'); if (r) (window as any).go(+r.dataset.i!) })
 const lgUrl = (lg: string) => { const q = new URLSearchParams(location.search); q.set('lg', lg); return location.pathname + '?' + q.toString() + '#1' }   // a top-bar switch starts at card 1
 $('lgs').innerHTML = `<a class="lgb all${ALL ? ' on' : ''}" href="${lgUrl('ALL')}" title="All five leagues in one film, ranked by points per game"><b>All Leagues</b></a>` + LG_ORDER.map(lg => `<a class="lgb${lg === LG ? ' on' : ''}${has(lg) ? '' : ' soon'}" data-lg="${lg}" href="${lgUrl(lg)}" title="${LEAGUE_NAME[lg]}${has(lg) ? ' team cards' : ' — coming soon'}"><img src="leagues/${lg}.png" alt="${LEAGUE_NAME[lg]}"></a>`).join('')
   + `<a class="lgb all stats" id="statsb" href="#" title="The stats cards: ${STATS.join(', ')}" onclick="go(${P.length});return false"><b>Stats</b></a>`
@@ -746,4 +780,4 @@ film.addEventListener('mouseover', e => {
 })
 initGoals(film, () => GOALS_HELP)   // the Goals tab's filters, help, goal cards (src/film/goals.ts)
 initNav('teams', LG, SEASON)
-initFilm({ count: P.length + (ALL ? 5 : 3), key: KEY, onPaint, jumpHTML, self: 'teams.html' })
+initFilm({ count: P.length + (ALL ? 6 : 4), key: KEY, onPaint, jumpHTML, self: 'teams.html' })
