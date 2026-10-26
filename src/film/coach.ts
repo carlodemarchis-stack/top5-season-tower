@@ -1,7 +1,7 @@
 // Head coaches (scripts/update-coaches.mjs, from FotMob — ESPN has none): who was on the bench in each game, each
 // club's coaches this season in order, the chip the team and match cards show, and the coach card that closes each
 // squad film (player.html). Photos are FotMob's 192px head crops → a round portrait, never stretched to a full panel.
-import { RES6, res6, esc, ord, logo, lum, bio, matchHrefOf, cardsHTML, tacSwitch, upBox, type Ctx } from './cards'
+import { RES6, res6, esc, ord, logo, lum, bio, matchHrefOf, cardsHTML, tacSwitch, upBox, n2, type Ctx } from './cards'
 type Dict = Record<string, any>
 export type Stint = { id: string; from: number | null; to: number | null; W: number; D: number; L: number; GF: number; GA: number; CS: number }
 
@@ -187,7 +187,7 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
     const top = Object.entries(mins).sort((a, b) => b[1] - a[1]).slice(0, 8), max = mine.length * 90
     const avgAge = xis.length ? xis.reduce((a, x) => a + x.age, 0) / xis.length : null, young = [...xis].sort((a, b) => a.age - b.age)[0]
     const tile = ([id, m]: [string, number]) => { const p = sq[id], ph = p?.thumb
-      return `<div class="core-t"${plHref(lg, code, id)}>${ph ? `<img src="${ph}" alt="" loading="lazy">` : `<span class="ini">${esc(names[id].split(' ').map(w => w[0]).slice(0, 2).join(''))}</span>`}<b>${esc(short(names[id]))}</b><span class="mb"><i style="width:${Math.round(m / max * 100)}%"></i></span><em>${m}' · ${starts[id] || 0} st</em></div>` }
+      return `<div class="core-t"${plHref(lg, code, id)}>${ph ? `<img src="${ph}" alt="" loading="lazy">` : `<span class="ini">${esc(names[id].split(' ').map(w => w[0]).slice(0, 2).join(''))}</span>`}<b>${esc(short(names[id]))}</b><span class="mb"><i style="width:${Math.round(m / max * 100)}%"></i></span><em>${m}' · ${starts[id] || 0} start${starts[id] === 1 ? '' : 's'}</em></div>` }
     // the head line in the same format as "His team, a game": the title, then big numbers with small labels
     const k = (v: string, l: string) => `<div class="k2"><b>${v}</b><span>${l}</span></div>`
     return `<div class="core-b"><div class="team-b"><div class="sec">His core</div><div class="k2s">${[k(String(Object.keys(mins).length), 'players used'),
@@ -213,7 +213,7 @@ export function coachCard(ctx: Ctx, C: Dict, lg: string, code: string, games: Di
         ${avgMark != null ? `<div class="n"><b>${avgMark.toFixed(2)}</b><span>Avg mark</span></div>` : ''}
         <div class="n"><b>${n('GF')}–${n('GA')}</b><span>For–against</span></div>
         <div class="n"><b${opt.sort === 'gpg' ? ' style="color:var(--c2)"' : ''}>${G ? (n('GF') / G).toFixed(2) : '–'}</b><span>Goals per game</span></div>
-        <div class="n"><b>${n('CS')}</b><span>Clean sheets</span></div>
+        <div class="n"><b>${n('CS')}${G ? n2(G) : ''}</b><span>Clean sheets</span></div>
       </div>
       ${(() => { const grey = S.some(s => !mine.includes(s)), si = !former && H.standIn.length
         const parts = [forms && `His formations: ${forms}`, booked.length && `Booked: ${booked.map(b => `<i class="cd ${b.k}"></i>MD ${b.g.w} ${b.g.ha === 'H' ? 'vs' : 'at'} ${esc(b.g.opp)} ${esc(b.min)}`).join(', ')}`, si && `${H.standIn.map(s => `${esc(C.coaches[s.id].name)} on the bench in ${span(s)}`).join(', ')}: a stand-in, counted in his record`,
