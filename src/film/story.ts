@@ -7,6 +7,7 @@ import { rowsOf } from './pitch'
 import { esc, type Ctx } from './cards'
 import { loadCoaches, stints, headOf, coachOf, surname } from './coach'
 import { initTip } from './chrome'
+import { goalKit, shotsOf, applyGoalFilters, sizeGoalDots, initGoals, GNET } from './goals'
 type Dict = Record<string, any>
 
 const MATCH_FILES = import.meta.glob('../data/matches-*-*-md*.js')
@@ -228,9 +229,31 @@ function coachStoryHTML(ctx: Ctx, lg: string, code: string, cid: string, recs: D
       <span>his XI in every game · ↓ taken off · ⇄ his first change (hover a game for all of them) · <i class="yc"></i><i class="rc"></i> his bookings${lg === 'ITA' ? ' · number: Fantacalcio mark' : ''} · greyed: another coach on the bench</span></div>`
 }
 
+// the Goals view of a player with league goals: the club's goals and how they came (the team card's Goals tab), his part
+// solid in every bar and his goals lit in the net and on the pitch, the rest faded. The club's squad (roles, photos)
+// comes from its team card data, loaded with the shot map the first time the view is used
+const TEAM_FILES = import.meta.glob('../data/teams-*.js')
+const TEAMCARDS: Record<string, Promise<Dict>> = {}
+const teamsOf = (lg: string, season: string) => TEAMCARDS[lg + season] ??= (TEAM_FILES[`../data/teams-${lg}-${season}.js`]?.() ?? Promise.resolve({ TEAMCARDS: { teams: [] } })).then(m => (m as Dict).TEAMCARDS)
+const PLAYER_GOALS_HELP = `<div class="mt-top">How to read it</div><div class="ghl"><p>His goals among his club's. <b>Top</b>: where each goal went in, the goal seen from the shooter's side. <b>Bottom</b>: where every shot of the club was taken from, attacking up — <b>●</b> a goal · <b>○</b> saved · <b>×</b> off target or blocked.</p>
+  <p>His goals are in full colour, his team-mates' faded. In the bars, the faint full bar is the club's season, the solid part his share; shots and xG are his. Hover a goal for its card, click it for the match; <b>click a bar</b> to keep only those of his goals (click again, or anywhere else, to clear). Data: FotMob shot map.</p></div>`
+async function fillGoals(pg: HTMLElement, season: string) {
+  if (pg.dataset.done) return; pg.dataset.done = '1'
+  const [lg, code, id] = pg.dataset.goals!.split('|')
+  pg.innerHTML = '<p class="msload">Loading the shot maps…</p>'
+  const [recs, S, T] = await Promise.all([recsOf(lg, season), shotsOf(lg, season), teamsOf(lg, season)])
+  const club = (T.teams as Dict[]).find(t => t.code === code)
+  const thumbs: Record<string, string> = Object.fromEntries((T.teams as Dict[]).flatMap(t => (t.squad || []).filter((p: Dict) => p.thumb).map((p: Dict) => [String(p.espnId), p.thumb])))
+  const K = goalKit(lg, code, recs, S, club?.squad || [], i => thumbs[i])
+  if (!K.F.some(s => s.out === 'g' && s.pid === id)) { pg.innerHTML = '<p class="none">No shot map for his goals yet.</p>'; return }
+  pg.innerHTML = `${GNET}<div class="gt gtme">${K.kpis('Scored', K.F, 'var(--c2)', 0, '<i class="ghelp" aria-label="How to read it">?</i>', true, id)}${K.col(K.F, 'var(--c2)', 'Scored')}</div>`
+  applyGoalFilters(pg.querySelector<HTMLElement>('.gk')!); requestAnimationFrame(sizeGoalDots)
+}
+
 // the switch: one view for every card of the film, remembered; 't' toggles; a pane is drawn when its card comes into view
+// (Goals: only cards of players with league goals have it — the others show their Season view meanwhile)
 export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view') {
-  const VIEWS = ['season', 'tac', 'heat']
+  const VIEWS = ['season', 'tac', 'heat', 'goals']
   let view = 'season'; try { const v = localStorage.getItem(key) || ''; if (VIEWS.includes(v)) view = v } catch { }
   // a pane is drawn for the view on show (Tactical or Heatmaps), redrawn when the view changes
   const fill = async (pane: HTMLElement) => {
@@ -245,13 +268,16 @@ export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view')
     if (pane.dataset.done === want) pane.innerHTML = storyHTML(ctx, lg, code, id, recs, heat, run)
   }
   const near = (p: HTMLElement) => { const r = p.getBoundingClientRect(); return r.right > -innerWidth && r.left < innerWidth * 2 }
-  const io = new IntersectionObserver(es => { if (view !== 'season') es.forEach(e => e.isIntersecting && fill(e.target as HTMLElement)) }, { rootMargin: '0px 100% 0px 100%' })
+  // the Goals view fills the card's own pane (.pane-pgoals), the others its .pane-story
+  const show = (p: HTMLElement) => { if (view === 'goals') { const g = p.parentElement?.querySelector<HTMLElement>('.pane-pgoals'); if (g) fillGoals(g, ctx.SEASON) } else fill(p) }
+  const io = new IntersectionObserver(es => { if (view !== 'season') es.forEach(e => e.isIntersecting && show(e.target as HTMLElement)) }, { rootMargin: '0px 100% 0px 100%' })
   film.querySelectorAll<HTMLElement>('.pane-story').forEach(p => io.observe(p))
   const set = (v: string) => {
-    view = v; document.body.classList.toggle('view-tac', v !== 'season'); document.body.classList.toggle('view-heat', v === 'heat')
-    film.querySelectorAll<HTMLElement>('.tacsw button').forEach(b => b.classList.toggle('on', b.dataset.view === v))
+    view = v; document.body.classList.toggle('view-tac', v === 'tac' || v === 'heat'); document.body.classList.toggle('view-heat', v === 'heat'); document.body.classList.toggle('view-goals', v === 'goals')
+    // a card without a Goals view (no league goals) shows its Season one meanwhile, its switch saying so
+    film.querySelectorAll<HTMLElement>('.tacsw button').forEach(b => b.classList.toggle('on', b.dataset.view === v || (v === 'goals' && b.dataset.view === 'season' && !b.parentElement!.querySelector('[data-view="goals"]'))))
     try { localStorage.setItem(key, v) } catch { }
-    if (v !== 'season') film.querySelectorAll<HTMLElement>('.pane-story').forEach(p => { if (near(p)) fill(p) })
+    if (v !== 'season') film.querySelectorAll<HTMLElement>('.pane-story').forEach(p => { if (near(p)) show(p) })
   }
   film.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.tacsw button'); if (b) { e.stopPropagation(); set(b.dataset.view!) } })
   // a coach's XIs: hovering a player keeps him alone in every game of the grid, and opens his game's card
@@ -264,7 +290,8 @@ export function initStory(film: HTMLElement, ctx: Ctx, key = 'top5.player.view')
   initTip(film, '.msgrid.xig .msp.xi i[data-pid], .msgrid.xig .msc.st[data-mid]', el => {
     const mid = el.closest<HTMLElement>('[data-mid]')?.dataset.mid
     return XI_TIPS.get(`${mid}|${el.dataset.pid || 'game'}`) || '' }, el => el.closest<HTMLElement>('.msc') || el)   // above the game's opponent + score
-  // 't' cycles Season → Tactical → Heatmaps
+  initGoals(film, () => PLAYER_GOALS_HELP)
+  // 't' cycles Season → Tactical → Heatmaps → Goals
   addEventListener('keydown', e => { if (e.key === 't' && !document.querySelector('.mod.on') && !e.metaKey && !e.ctrlKey && !(e.target as HTMLElement).closest?.('input')) set(VIEWS[(VIEWS.indexOf(view) + 1) % VIEWS.length]) })
   set(view)
 }

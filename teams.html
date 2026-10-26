@@ -220,62 +220,10 @@
     @media (max-width: 1100px){ .rvw{grid-template-columns:1fr} }
     .rv{cursor:pointer}.rv:hover circle{stroke:#15181d}
     .rvleg{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;font-size:11px;color:#8a9099;margin-top:4px}.rvleg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px}
-    /* Goals tab: scored | conceded, each the goal (where they went in) over the half pitch (where every shot came from) */
-    .gt{display:grid;grid-template-columns:150px minmax(0,var(--gw)) minmax(0,var(--gw)) 150px;justify-content:center;gap:clamp(16px,2vw,36px);margin-top:12px;--gw:calc((100vh - var(--gtop,330px)) / .874)}
-    .gcol{min-width:0;align-self:start}
-    /* the side columns: Scored (left), Conceded (right) — the numbers, then small bars */
-    .gk{min-width:0;display:flex;flex-direction:column;gap:clamp(4px,.9vh,8px)}.gk .sec{margin:0}
-    .gkn{display:flex;align-items:baseline;gap:6px}.gkn b{font-size:40px;font-weight:900;line-height:.9;color:#15181d}.gkn span{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8a9099}.gkn em{display:block;font-style:normal;letter-spacing:0;text-transform:none;font-weight:600}
-    .gks{display:flex;flex-direction:column;gap:2px;font-size:12px;color:#5b626c}.gks b{color:#15181d;font-weight:800}.gks em{font-style:normal}.gks .up b{color:#177a41}.gks .dn b{color:#b3323a}
-    .gkb{display:flex;flex-direction:column;gap:clamp(1px,.25vh,3px)}.gkt{font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#9aa0a8}
-    .card .pane-goals .gt{flex:1 1 auto;min-height:0}.gk{align-self:stretch}.gk>.gkb:last-child{margin-top:auto}   /* When at the foot of the screen */   /* When sits at the foot of the column, level with the pitch's bottom line */
-    .gkh .gkr .xt{color:#d92d20}   /* stoppage time (45+, 90+): count and label in red */
-    /* bars as filters, recounted: the solid part = goals in the current selection, the faint ghost = the whole season */
-    .gkr .bw{position:relative;display:block;height:7px;text-decoration:none}.gkr .bw s,.gkr .bw i{position:absolute;left:0;top:0;height:100%;border-radius:2px;min-width:0;transition:width .15s}
-    .gkr .bw s{opacity:0}.gk.filt .gkr .bw s{opacity:.2}
-    .gkh .gkr .cw{position:relative;display:block;width:70%;text-decoration:none}.gkh .gkr .cw s,.gkh .gkr .cw i{position:absolute;left:0;right:0;bottom:0;width:auto;min-height:0;border-radius:2px 2px 0 0;transition:height .15s}
-    .gkh .gkr .cw s{top:0;opacity:0}.gk.filt .gkh .gkr .cw s{opacity:.2}
-    .gk.filt .gkr.zero:not(.on){opacity:.35}
-    .gkh{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;align-items:end;margin-top:2px}   /* When: eight columns */
-    .gkh .gkr{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;margin:0;padding:2px 0;grid-template-columns:none;font-size:9px}
-    .gkh .gkr i{width:70%;min-height:2px;border-radius:2px 2px 0 0}.gkh .gkr b{font-size:10px;line-height:1}.gkh .gkr span{color:#9aa0a8;font-weight:700;white-space:nowrap}
-    .gkr[data-g]{cursor:pointer;border-radius:4px;margin:0 -4px;padding:clamp(0px,.12vh,1px) 4px}.gkr[data-g]:hover{background:#eceef0}
-    .gkr.on{background:#e3e6ea}.gkr.on span{color:#15181d;font-weight:800}   /* the bars as filters */
-    .gm.hid{display:none}.gof{font-style:normal;margin-right:4px}
-    .gkr{display:grid;grid-template-columns:78px 1fr 18px;align-items:center;gap:5px;font-size:11px;color:#5b626c}.gkr span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gkr i{height:7px;border-radius:2px;min-width:2px}.gkr b{text-align:right;color:#15181d;font-weight:800}
-    .gt svg{display:block;width:100%}.gt .gf{margin-bottom:4px}
-    .gt svg .gm{r:calc(7.5px * var(--u,.17));stroke-width:calc(1.6px * var(--u,.17))}   /* one size on screen: --u from sizeGoalDots() */
-    .gt .sec{min-height:16px;display:flex;align-items:center}
-    .gt svg .gst circle{r:calc(9.5px * var(--u,.17));stroke-width:calc(1.6px * var(--u,.17))}.gt svg .gst text{font-size:calc(10px * var(--u,.17));stroke:none}.gt svg .gst.one circle{r:calc(7.5px * var(--u,.17))}   /* several goals from one spot */
-    #mtip.pinned{pointer-events:auto;max-height:62vh;overflow:auto}
-    .gsl{display:flex;flex-direction:column;margin-top:4px}
-    .gsr{display:grid;grid-template-columns:34px minmax(0,1.2fr) minmax(0,1fr) 56px;gap:8px;align-items:baseline;padding:5px 4px;border-top:1px solid var(--line);font-size:12px;color:#3a3f47;text-decoration:none}
-    .gsr b{color:var(--c);font-weight:900}.gsr .nm{font-weight:800;color:#15181d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gsr em{font-style:normal;text-align:right;color:#8a9099}
-    #mtip.pinned .gsr:hover{background:#f5f6f4}
-    .gsm{font-size:10.5px;color:#9aa0a8;margin:6px 0 10px}
     .meta .plk{cursor:pointer}.meta .plk:hover{text-decoration:underline}
-    .gm{cursor:pointer}.gt.lit .gm:not(.on){opacity:.18}.gm.on{stroke:#15181d}   /* hover: one goal, in the net and on the pitch (no size change: no flicker) */
-    /* a goal's card, as wide as the goal it sits on: the scorer's cutout, then the game, his name, three numbers, how it came */
-    #mtip.fit{padding:12px 16px 0 14px}
-    .gtip{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:end}
-    .gtgk{display:flex;flex-direction:column;align-items:center;padding-bottom:10px;opacity:.85}   /* the keeper beaten, small, on the right */
-    .gtgk img{height:52px;width:auto;object-fit:contain}.gtgk span{font-size:11px;font-weight:800;color:#15181d;margin-top:2px}.gtgk em{font-style:normal;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#9aa0a8}
-    .gtip>img{height:104px;width:auto;max-width:96px;object-fit:contain;object-position:bottom;display:block}
-    .gtip>i{width:64px;height:64px;margin-bottom:12px;border-radius:50%;display:grid;place-items:center;background:#f1f2f4;color:#8a9099;font-style:normal;font-weight:900;font-size:20px}
-    .gtip>div{padding-bottom:12px;min-width:0}.gtip .mt-top{margin-bottom:3px}
-    .gtn{font-size:19px;font-weight:900;letter-spacing:-.01em;color:#15181d;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .gtk{display:flex;gap:22px;margin:8px 0 6px}.gtk span{display:flex;flex-direction:column;font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#9aa0a8}
-    .gtk b{font-size:20px;font-weight:900;letter-spacing:0;color:var(--c);line-height:1.05;text-transform:none}
-    .gts{font-size:12px;color:#5b626c}.gts b{color:#15181d}
-    /* the full view: the card on the Scorers column — scorer and keeper on top, the numbers below, wrapping */
-    #mtip.side .gtip{grid-template-columns:auto 1fr;grid-template-areas:"ph gk" "in in";gap:2px 12px}
-    #mtip.side .gtip>img,#mtip.side .gtip>i{grid-area:ph}#mtip.side .gtip>div{grid-area:in}#mtip.side .gtip>.gtgk,#mtip.side .gtip>span{grid-area:gk;justify-self:end}
-    #mtip.side .gtk{flex-wrap:wrap;gap:6px 18px}#mtip.side .gtn{white-space:normal}
-    #mtip.side .gsr{grid-template-columns:30px minmax(0,1.3fr) minmax(0,1fr) 50px;gap:6px}#mtip.side .gsr span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     /* the goals-scored takeover: the whole card */
     .gto-open{display:inline-grid;place-items:center;width:20px;height:20px;margin-left:6px;border-radius:6px;background:#15181d;color:#fff;cursor:pointer;vertical-align:-4px}
     .gto-open svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}.gto-open{background:var(--c2)}.gto-open:hover{background:#15181d}
-    .gk[data-side="Scored"] .gkn b{color:var(--c2)}   /* goals scored: the big number in the club colour, like its bars */
     .gto{position:absolute;inset:0;z-index:30;background:#F5F6F4;display:flex;flex-direction:column}
     .gto[hidden]{display:none}
     .gtob{flex:0 0 46px;display:flex;align-items:center;gap:14px;padding:0 20px;font-size:13px}
@@ -290,10 +238,6 @@
     .gtbig .gkr{grid-template-columns:100px 1fr 22px}.gtbig .gkh .gkr{font-size:10.5px}.gtbig .gkh .gkr b{font-size:12px}
     .gkp{grid-template-columns:24px minmax(0,1fr) 70px 20px !important;height:28px}.gkp img{width:24px;height:24px;object-fit:cover;object-position:50% 15%;border-radius:50%;background:#fff}.gkp .nop{width:24px;height:24px;border-radius:50%;background:#e3e6ea}
     .gkp span{color:#15181d;font-weight:700;font-size:12px}
-    .ghelp{display:inline-grid;place-items:center;width:15px;height:15px;margin-left:7px;border-radius:50%;background:#e3e6ea;color:#5b626c;font-size:10px;font-weight:900;font-style:normal;letter-spacing:0;cursor:help;vertical-align:1px}
-    .ghelp:hover{background:#15181d;color:#fff}
-    .gks .ghelp{width:13px;height:13px;font-size:9px;margin-left:5px}
-    .ghl p{margin:0 0 6px;font-size:11.5px;line-height:1.4;color:#3a3f47}.ghl p:last-child{margin:0}
     /* each column as big as the height allows: goal + pitch are ~0.87 of the width tall, plus the lines around them */
     .pane-goals .none{font-size:12px;color:#9aa0a8}
     @media (max-width: 760px){ .gt{grid-template-columns:1fr} .card .pane-goals{flex:none} }

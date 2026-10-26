@@ -95,7 +95,8 @@ export function avgVote(ctx: Ctx, id: string) {
 // minutes, goals, assists, cards
 // on the club line, right-aligned (it stays in both views); a card without a club line (squad film) floats it top right
 // third: the label of the third view ('Heatmaps'; a coach card's is 'Subs' — the films share one view switch)
-export const tacSwitch = (corner = false, third = 'Heatmaps') => `<div class="tacsw${corner ? ' corner' : ''}" role="tablist"><button data-view="season" role="tab">Season</button><button data-view="tac" role="tab">Tactical</button><button data-view="heat" role="tab">${third}</button></div>`
+// goals: a fourth view, Goals (a player with league goals: src/film/goals.ts)
+export const tacSwitch = (corner = false, third = 'Heatmaps', goals = false) => `<div class="tacsw${corner ? ' corner' : ''}" role="tablist"><button data-view="season" role="tab">Season</button><button data-view="tac" role="tab">Tactical</button><button data-view="heat" role="tab">${third}</button>${goals ? '<button data-view="goals" role="tab">Goals</button>' : ''}</div>`
 
 // ================= the scorer card (outfield players) =================
 export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
@@ -113,7 +114,8 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
     `<span class="g" data-mid="${m.id}"><b>${esc(a.min)}</b> ${m.ha === 'H' ? 'vs' : 'at'} ${esc(m.opp)}${a.to ? ` · for ${esc(a.to)}` : ''}</span>`)).join('')
   const minPerGoal = p.G ? Math.round(p.min / p.G) : null
   const [bigN, bigW] = opt.big || [p.G, `goal${p.G === 1 ? '' : 's'}`]
-  return `<section class="card" id="p-${p.espnId}" style="--c:${c};--c2:${c2};--ink:${ink};--hlink:${hlInk};--ph:${PHOTO_H[p.lg]}">
+  const hasG = !!opt.story && p.G > 0   // his league goals get the Goals view
+  return `<section class="card${hasG ? ' hasg' : ''}" id="p-${p.espnId}" style="--c:${c};--c2:${c2};--ink:${ink};--hlink:${hlInk};--ph:${PHOTO_H[p.lg]}">
     <div class="pan">
       <img class="wm" src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">
       <div class="rk">${opt.badge ?? `#${p.rank}`}</div>
@@ -125,8 +127,8 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
       <div>
         <h1 style="--len:${[...p.name].length};--word:${Math.max(...p.name.split(/[\s-]+/).map((w: string) => [...w].length))}"${opt.href ? ` class="plink" data-href="${opt.href}" title="${esc(p.name)} · his card in the squad"` : ''}>${esc(p.name)}</h1>
       </div>
-      ${opt.noClub ? (opt.story ? tacSwitch(true) : '') : `<div class="club"><span class="clk" data-href="teams.html?lg=${p.lg}&t=${p.team}" title="${esc(club.name || p.team)} · team card"><img src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">${esc(club.name || p.team)}</span>
-        <span class="tl"><b>${t.pos ? ord(t.pos) : '–'}</b> · <b>${t.pts}</b> pts · ${t.W}-${t.D}-${t.L} · GD ${t.GF - t.GA >= 0 ? '+' : ''}${t.GF - t.GA}</span>${opt.story ? tacSwitch() : ''}</div>`}${opt.story ? '<div class="pane-season">' : ''}
+      ${opt.noClub ? (opt.story ? tacSwitch(true, 'Heatmaps', hasG) : '') : `<div class="club"><span class="clk" data-href="teams.html?lg=${p.lg}&t=${p.team}" title="${esc(club.name || p.team)} · team card"><img src="${logo(p.lg, p.team)}" alt="" onerror="this.remove()">${esc(club.name || p.team)}</span>
+        <span class="tl"><b>${t.pos ? ord(t.pos) : '–'}</b> · <b>${t.pts}</b> pts · ${t.W}-${t.D}-${t.L} · GD ${t.GF - t.GA >= 0 ? '+' : ''}${t.GF - t.GA}</span>${opt.story ? tacSwitch(false, 'Heatmaps', hasG) : ''}</div>`}${opt.story ? '<div class="pane-season">' : ''}
       <div class="nums">${opt.nums ?? `
         <div class="n big"><b>${p.G}</b><span>Goals${p.pens ? ` · ${p.pens} pen${p.pens > 1 ? 's' : ''}` : ''}</span></div>
         <div class="n"><b>${p.A}</b><span>Assists</span></div>
@@ -146,7 +148,7 @@ export function scorerCard(ctx: Ctx, p: Dict, opt: CardOpt = {}) {
         : `<div class="glist"><div class="sec">The goals</div><div class="goals"><span style="color:#9aa0a8;font-size:12px">${opt.noGoals}</span></div></div>`
         // his shots on one goal, at the bottom right — when the match reports have them
         return p.at?.length ? `<div class="gsplit">${list}<div class="shotg"><div class="sec">His shots${shotLegend(p.at)}</div>${shotGoal(p.at, c2, p.espnId)}</div></div>` : list })()}
-      ${opt.story ? `</div><div class="pane-story" data-story="${p.lg}|${p.team}|${p.espnId}"></div>` : ''}
+      ${opt.story ? `</div><div class="pane-story" data-story="${p.lg}|${p.team}|${p.espnId}"></div>` : ''}${hasG ? `<div class="pane-pgoals" data-goals="${p.lg}|${p.team}|${p.espnId}"></div>` : ''}
     </div>
   </section>`
 }
