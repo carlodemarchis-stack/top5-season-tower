@@ -84,7 +84,7 @@ kbd{font:inherit;font-size:11px;background:var(--pan);border:1px solid var(--lin
 /* left: club-colour panel with the photo */
 .pan{position:relative;overflow:hidden;background:var(--c);color:var(--ink)}
 .pan::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(0,0,0,.28));pointer-events:none}
-.pan .wm{position:absolute;left:-12%;top:6%;width:78%;opacity:.16;filter:grayscale(1) brightness(3)}
+.pan .wm{position:absolute;left:-12%;top:6%;width:78%;opacity:.42;filter:grayscale(1) contrast(1.5);mix-blend-mode:soft-light}   /* the crest as a tone of the panel colour: its lights lighter, its darks darker — every crest's own drawing shows, none a flat white shape */
 /* panel: full-size photo, small rank top-left, the goal count big top-right BEHIND the player */
 .pan{--rk:clamp(34px,4.2vw,60px)}
 .pan .rk{position:absolute;left:22px;top:16px;z-index:2;font-weight:900;font-size:var(--rk);line-height:.9;letter-spacing:-.04em}
