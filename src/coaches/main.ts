@@ -4,9 +4,10 @@
 // Data: src/data/coaches-<LG>-<season>.js (scripts/update-coaches.mjs, FotMob), the match cards, the team cards (table),
 // the schedules (fixtures, colours); Serie A adds the coach's Fantacalcio mark (votes-ITA `c`).
 import '../film/film.css'
+import '../film/statcols.css'
 import { initFilm, initHighlight, initLinks, initNav, initHScroll, initSort, readSort } from '../film/chrome'
-import { esc, LEAGUE_NAME, fitBios, type Ctx } from '../film/cards'
-import { loadCoaches, coachCard, stints, headOf, coachHref, ageOf } from '../film/coach'
+import { esc, LEAGUE_NAME, fitBios, lum, type Ctx } from '../film/cards'
+import { loadCoaches, coachCard, stints, headOf, coachHref, ageOf, surname } from '../film/coach'
 import { teamLineOf } from '../film/season'
 import { initStory } from '../film/story'
 type Dict = Record<string, any>
@@ -32,7 +33,7 @@ const MARKS: Dict = ((await VOTE_FILES[`../data/votes-ITA-${SEASON}.js`]?.()) as
 const CTX: Ctx = { TEAMS, SEASON, VOTES: {} }
 
 // ---------- every coach of every club this season, with his record there ----------
-type Entry = { lg: string; code: string; id: string; former: boolean; G: number; P: number; GD: number; ppg: number; gpg: number; age: number | null; played: Dict[]; recs: Dict[]; teamLine: Dict; squad: Dict[] }
+type Entry = { lg: string; code: string; id: string; former: boolean; G: number; P: number; GD: number; ppg: number; gpg: number; gapg: number; CS: number; used: number; age: number | null; played: Dict[]; recs: Dict[]; teamLine: Dict; squad: Dict[] }
 const ENTRIES: Entry[] = []
 for (const lg of FULL) {
   const C = COACHES[lg]; if (!C) continue
@@ -46,8 +47,14 @@ for (const lg of FULL) {
       if (id !== H.id && S.filter(s => s.id === id).every(s => H.standIn.includes(s))) continue   // a stand-in: his games are the head coach's
       const mine = S.filter(s => s.id === id || (id === H.id && H.standIn.includes(s))), G = mine.reduce((a, s) => a + s.W + s.D + s.L, 0)
       const former = id !== H.id; if (former && G < MIN_GAMES) continue   // a one- or two-game stand-in gets no card
-      const P = mine.reduce((a, s) => a + 3 * s.W + s.D, 0), GD = mine.reduce((a, s) => a + s.GF - s.GA, 0), GF = mine.reduce((a, s) => a + s.GF, 0)
-      ENTRIES.push({ lg, code, id, former, G, P, GD, ppg: G ? P / G : 0, gpg: G ? GF / G : 0, age: ageOf(C.coaches[id]?.dob), played, recs, teamLine, squad: t.squad || [] })
+      const P = mine.reduce((a, s) => a + 3 * s.W + s.D, 0), GD = mine.reduce((a, s) => a + s.GF - s.GA, 0), GF = mine.reduce((a, s) => a + s.GF, 0), GA = mine.reduce((a, s) => a + s.GA, 0)
+      // the players he has used: everyone who started or came on in his games (his stints' matchdays)
+      const his = recs.filter(M => mine.some(s => s.from != null && M.md >= s.from && M.md <= s.to!)), used = new Set<string>()
+      for (const M of his) { const T = M.h === code ? M.home : M.away, ids = new Set((T.players as Dict[]).map(p => String(p.id)))
+        for (const p of T.players as Dict[]) if (p.st) used.add(String(p.id))
+        for (const x of (M.subs || []) as Dict[]) if (ids.has(String(x.on))) used.add(String(x.on)) }
+      ENTRIES.push({ lg, code, id, former, G, P, GD, ppg: G ? P / G : 0, gpg: G ? GF / G : 0, gapg: G ? GA / G : 0, CS: mine.reduce((a, s) => a + s.CS, 0), used: used.size,
+        age: ageOf(C.coaches[id]?.dob), played, recs, teamLine, squad: t.squad || [] })
     }
   }
 }
@@ -68,9 +75,34 @@ const card = (e: Entry, i: number) => coachCard(CTX, COACHES[e.lg], e.lg, e.code
   { who: e.id, badge: `#${i + 1}`, id: `c-${e.lg}-${e.code}-${e.id}`, href: e.former ? undefined : coachHref(e.lg, e.code), squad: e.squad, sort: SORT })
 
 // ---------- the film and its top bar ----------
+// ---------- the closing card: Coach stats — six numbers, a ranked column each (the top 20), every row his club's code
+// in its colour + his name; rates only for three games or more; a row opens his card ----------
+function statsCard() {
+  type Col = { title: string, sub: string, v: (e: Entry) => number | null, show: (e: Entry) => string, low?: boolean }
+  const rated = (f: (e: Entry) => number) => (e: Entry) => e.G >= MIN_GAMES ? f(e) : null
+  const COLS: Col[] = [
+    { title: 'Points', sub: 'per game', v: rated(e => e.ppg), show: e => e.ppg.toFixed(2) },
+    { title: 'Scored', sub: 'goals per game', v: rated(e => e.gpg), show: e => e.gpg.toFixed(2) },
+    { title: 'Conceded', sub: 'per game, fewest', v: rated(e => e.gapg), show: e => e.gapg.toFixed(2), low: true },
+    { title: 'Clean sheets', sub: 'games without conceding', v: e => e.CS || null, show: e => String(e.CS) },
+    { title: 'Players used', sub: 'started or came on', v: e => e.used || null, show: e => String(e.used) },
+    { title: 'Youngest', sub: 'age', v: e => e.age, show: e => String(e.age), low: true },
+  ]
+  const N = Math.min(20, P.length), all = LIST === 'ALL'
+  const col = (c: Col) => {
+    const L = P.map((e, i) => ({ e, i, v: c.v(e) })).filter(x => x.v != null).sort((a, b) => (c.low ? a.v! - b.v! : b.v! - a.v!) || a.i - b.i).slice(0, N)
+    const rows = L.map((x, k) => { const club = TEAMS[x.e.lg][x.e.code] || {}, bg = club.primary || '#555', fg = lum(bg) > 0.55 ? '#15181d' : '#fff', nm = nameOf(x.e)
+      return `<a class="tsr" data-i="${x.i}" title="${esc(nm)} · ${esc(club.name || x.e.code)}${x.e.former ? ' (former)' : ''}${all ? ` · ${LEAGUE_NAME[x.e.lg]}` : ''} · ${c.title.toLowerCase()} ${c.sub}: ${c.show(x.e)} · ${x.e.G} game${x.e.G === 1 ? '' : 's'}"><span class="tr-rk">${k && L[k - 1].v === x.v ? '' : L.findIndex(y => y.v === x.v) + 1}</span>${all ? `<img class="tr-lg" src="leagues/${x.e.lg}.png" alt="">` : ''}<b class="tcode" style="background:${bg};color:${fg}">${esc(club.abbr || x.e.code)}</b><span class="tnm${x.e.former ? ' fm' : ''}">${esc(surname(COACHES[x.e.lg].coaches[x.e.id]))}</span><em>${c.show(x.e)}</em></a>` }).join('')
+    return `<div class="tsc-col"><div class="tsh"><b>${c.title}</b><span>${c.sub}</span></div>${rows}</div>`
+  }
+  return `<section class="card tbl" id="c-stats"><div class="tb">
+    <div class="tb-hd"><h2>Coach stats</h2><span>${all ? `the top ${N} of the five leagues` : `${LEAGUE_NAME[LIST]}'s coaches`} in each column · rates for ${MIN_GAMES} games or more · ties share a rank · grey: left during the season · click a coach for his card</span></div>
+    <div class="tsg co${all ? ' all' : ''}" style="--n:${N};--k:${COLS.length}">${COLS.map(col).join('')}</div></div></section>`
+}
 const $ = (id: string) => document.getElementById(id)!
 const film = $('film')
-film.innerHTML = P.map(card).join('')
+film.innerHTML = P.map(card).join('') + statsCard()
+film.addEventListener('click', e => { const r = (e.target as HTMLElement).closest<HTMLElement>('.tsr'); if (r) (window as any).go(+r.dataset.i!) })
 const listUrl = (l: string) => { const q = new URLSearchParams(location.search); l === 'ALL' ? q.delete('lg') : q.set('lg', l); const qs = q.toString(); return location.pathname + (qs ? '?' + qs : '') + '#1' }   // a top-bar switch starts at card 1
 // a league not loaded counts from its coaches file alone: every current coach + anyone else on its benches 3+ times
 function countOf(lg: string) {
@@ -88,6 +120,7 @@ $('cnote').innerHTML = `${P.length} coaches${LIST === 'ALL' ? ' of the five leag
 
 function onPaint(i: number) {
   const e = P[i]
+  if (!e) { $('ctx').innerHTML = `${LIST === 'ALL' ? 'Coaches' : `${LEAGUE_NAME[LIST]} coaches`} ${SEASON.replace('-', '/')} · <b>coach stats</b>`; return }
   $('ctx').innerHTML = `${LIST === 'ALL' ? 'Coaches' : `${LEAGUE_NAME[LIST]} coaches`} ${SEASON.replace('-', '/')} · by ${SORTS[SORT]} · <b>${esc(nameOf(e))}</b> · ${esc(club(e))}${e.former ? ' (former)' : ''} · ${sortVal(e)}`
   if (LIST === 'ALL') $('lgs').querySelectorAll<HTMLElement>('.lgb[data-lg]').forEach(b => b.classList.toggle('cur', b.dataset.lg === e.lg))
   const meta = (n: string, v: string) => document.querySelector(`meta[name="agwas:${n}"]`)?.setAttribute('content', v)
@@ -115,4 +148,4 @@ initStory(film, CTX)   // Season | Tactical
 // Order by (src/film/chrome.ts): a new order keeps the coach on screen
 initSort({ store: 'top5.coaches.sort', sorts: SORTS, notes: { age: 'youngest first' }, current: SORT, list: P, inOrder: k => { SORT = k; return listOf(LIST) },
   same: (a, b) => a.lg === b.lg && a.code === b.code && a.id === b.id })
-initFilm({ label: i => nameOf(P[i]), count: P.length, key: 'top5.coaches.card' + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'coaches.html' })
+initFilm({ label: i => P[i] ? nameOf(P[i]) : 'Coach stats', count: P.length + 1, key: 'top5.coaches.card' + (LIST === 'ALL' ? '' : '.' + LIST), onPaint, jumpHTML, self: 'coaches.html' })

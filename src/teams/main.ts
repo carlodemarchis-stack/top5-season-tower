@@ -2,6 +2,7 @@
 // or all five leagues in one film ranked by points per game (?lg=ALL), so leagues of 18 and 20 clubs compare fairly.
 // Data: src/data/teams-<LG>-<season>.js (built + verified by scripts/update-teams.mjs); club colours/names from the schedule.
 import '../film/film.css'
+import '../film/statcols.css'
 import { initFilm, initHighlight, initTip, initLinks, initNav, initPinnedHead } from '../film/chrome'
 import { loadCoaches, coachChip, stints } from '../film/coach'
 import { rowsOf } from '../film/pitch'
