@@ -4,7 +4,7 @@
 import '../film/film.css'
 import '../film/statcols.css'
 import { initFilm, initHighlight, initTip, initLinks, initNav, initPinnedHead } from '../film/chrome'
-import { loadCoaches, coachChip, stints } from '../film/coach'
+import { loadCoaches, coachChip, stints, headOf } from '../film/coach'
 import { rowsOf } from '../film/pitch'
 import { upBox } from '../film/cards'
 import { goalKit, shotsOf, sizeGoalDots, initGoals, GNET } from '../film/goals'
@@ -570,7 +570,13 @@ function longestRun(t: Dict, r: 'W' | 'L') {
   return { n: best, now: !!cur && cur === best }   // now: the run is still going
 }
 function statsCard() {
-  const coachesOf = (t: Dict) => new Set(stints(COACHES_OF[t.lg], t.code, playedOf(t, TEAMS_OF[t.lg][t.code] || {})).map(s => s.id)).size
+  // the club's real coaches this season: the head coach + those who left — not a stand-in on the bench for a game or two
+  // while the head coach is banned or away (Domenichini for Spalletti), nor an interim of a game or two between two
+  // coaches (fewer than 3 games, not there from the start) — the coach film's rule for Fired
+  const coachesOf = (t: Dict) => { const C = COACHES_OF[t.lg], S = stints(C, t.code, playedOf(t, TEAMS_OF[t.lg][t.code] || {})), H = headOf(C, t.code, S), real = new Set([H.id])
+    for (const id of new Set(S.map(s => s.id))) { const mine = S.filter(s => s.id === id); if (id === H.id || mine.every(s => H.standIn.includes(s))) continue
+      if (mine.reduce((a, s) => a + s.W + s.D + s.L, 0) >= 3 || mine[0].from === S[0]?.from) real.add(id) }
+    return real.size }
   const per = (n: number, t: Dict) => t.played ? n / t.played : 0
   type Col = { title: string, sub: string, v: (t: Dict) => number, show: (t: Dict) => string, low?: boolean, now?: (t: Dict) => boolean, min?: number }
   const COLS: Col[] = [
@@ -579,7 +585,7 @@ function statsCard() {
     { title: 'Conceded', sub: 'fewest', v: t => t.GA, show: t => String(t.GA), low: true },
     { title: 'Per game', sub: 'conceded, fewest', v: t => per(t.GA, t), show: t => per(t.GA, t).toFixed(2), low: true },
     { title: 'Scorers', sub: 'players with a goal', v: t => (t.scorers || []).filter((s: Dict) => s.G > 0).length, show: t => String((t.scorers || []).filter((s: Dict) => s.G > 0).length) },
-    ...(SEASON === '2026-27' ? [{ title: 'Coaches', sub: 'clubs that changed', v: (t: Dict) => coachesOf(t), show: (t: Dict) => String(coachesOf(t)), min: 2 }] : []),
+    ...(SEASON === '2026-27' ? [{ title: 'Coaches', sub: 'clubs that changed (stand-ins aside)', v: (t: Dict) => coachesOf(t), show: (t: Dict) => String(coachesOf(t)), min: 2 }] : []),
     { title: 'Wins', sub: 'longest run', v: t => longestRun(t, 'W').n, show: t => String(longestRun(t, 'W').n), now: t => longestRun(t, 'W').now },
     { title: 'Defeats', sub: 'longest run', v: t => longestRun(t, 'L').n, show: t => String(longestRun(t, 'L').n), now: t => longestRun(t, 'L').now },
   ]
