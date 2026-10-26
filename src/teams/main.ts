@@ -95,7 +95,7 @@ function card(t: Dict) {
       ${strip(t, club)}
       <div class="s2"><div class="sec">When they score${goalLegend(t)}</div>${goalLine(t)}</div>
       <div class="duo"><div class="s2"><div class="sec">Position<span class="gsum">now <b>${t.pos ? ord(t.pos) : '–'}</b> · best <b>${t.posPath.length ? ord(Math.min(...t.posPath.map((x: number[]) => x[1]))) : '–'}</b></span></div>${posLine(t, club)}</div>
-      <div class="s2"><div class="sec">Scorers</div><div class="slist">${scorerChips(t)}</div></div></div>
+      <div class="s2"><div class="sec">Scorers${(n => n ? `<span class="scn"><b>${n}</b> player${n === 1 ? '' : 's'}</span>` : '')((t.scorers || []).filter((s: Dict) => s.G > 0).length)}</div><div class="slist">${scorerChips(t)}</div></div></div>
       </div>
       <div class="pane pane-squad">${squadGrid(t)}</div>
       <div class="pane pane-tac"></div>
