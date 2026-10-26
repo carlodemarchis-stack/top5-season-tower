@@ -346,11 +346,11 @@ body:not(.view-heat) .coachc .pane-subs,body.view-heat .coachc .pane-story{displ
 .hsc:hover{background:#15181d;color:#fff}
 .hsc.off{display:none}
 /* scorer card bottom: the goals list left, his shots on one goal right */
-.gsplit{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,240px);gap:clamp(16px,2vw,30px);flex:1 1 auto;min-height:0}
+.gsplit{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,320px);gap:clamp(16px,2vw,30px);flex:1 1 auto;min-height:0}
 .gsplit>.glist{min-height:0}
 .shotg{display:flex;flex-direction:column;min-height:0}
 .shotg .sec{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px}.shotg .sec .gsum{margin-left:0;justify-content:flex-start}
-.shotg svg{width:100%;height:auto;max-height:200px;flex:0 1 auto;min-height:0}
+.shotg svg{width:100%;height:100%;max-height:200px;flex:1 1 0;min-height:0}   /* the height left under the legend: the drawing scales to fit it (never cropped) */
 @media (max-width: 760px){ .gsplit{grid-template-columns:1fr} }
 /* phones: the card body scrolls, so the goals, assists and shots take their full height instead of shrinking to fit */
 @media (max-width: 760px){ .card .gsplit,.card .glist,.card .goals,.card .shotg{flex:none;min-height:auto;overflow:visible} }
