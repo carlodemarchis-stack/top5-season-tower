@@ -23,3 +23,9 @@
 .tsr.fm em{color:#9aa0a8}   /* a coach who left: his number grey too, like his name */
 .tsr .tnm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tsr .tnm.fm{color:#8a9099;font-weight:600}
 @media (max-width: 760px){ .card.tbl{grid-template-rows:1fr} .card.tbl .tb{overflow-y:auto} .tsg{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:18px;flex:none} .tsc-col{grid-template-rows:none} .tsr{height:26px} .tsg.co{grid-template-columns:1fr} }
+/* the scorers film's Finishing card: a small club badge, then the player and his funnel (shots · on target · goals) */
+.tsg.fin .tsr{grid-template-columns:1.6em 30px minmax(0,1fr) auto auto}.tsg.fin.all .tsr{grid-template-columns:1.6em 14px 30px minmax(0,1fr) auto auto}
+.tsg.fin .tcode{font-size:8.5px;height:min(15px,70%);border-radius:3px;letter-spacing:0}
+.tsg.fin .tr-lg{width:14px;height:14px}
+.tsr .tfn{font-size:10px;font-weight:600;color:#9aa0a8;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tsg.fin .tnm{font-size:.92em;letter-spacing:-.01em}.tsg.fin .tsr{gap:5px}

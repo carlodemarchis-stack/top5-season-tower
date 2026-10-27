@@ -56,15 +56,16 @@ function finishingInner() {
     { title: 'Non-penalty', sub: 'goals − xG, penalties aside', v: p => ok(p) && x(p) ? x(p)!.npg - x(p)!.npxg : null, show: p => sgn(x(p)!.npg - x(p)!.npxg), xg: true },
   ]
   const all = LIST === 'ALL', N = Math.min(20, P.filter(ok).length)
+  const short = (n: string) => { const w = n.trim().split(/\s+/); return w.length > 1 ? `${w[0][0]}. ${w.slice(1).join(' ')}` : n }   // G. Varela: room for his numbers
   const col = (c: Col) => {
     if (c.xg && !XG) return `<div class="tsc-col"><div class="tsh"><b>${c.title}</b><span>${c.sub}</span></div><p class="tsnone">loading the shot maps…</p></div>`
     const L = P.map((p, i) => ({ p, i, v: c.v(p) })).filter(r => r.v != null).sort((a, b) => (c.low ? a.v! - b.v! : b.v! - a.v!) || a.i - b.i).slice(0, N)
     const rows = L.map((r, k) => { const club = TEAMS[r.p.lg][r.p.team] || {}, bg = club.primary || '#555', fg = lum(bg) > 0.55 ? '#15181d' : '#fff'
-      return `<a class="tsr" data-i="${r.i}" title="${esc(r.p.name)} · ${esc(club.name || r.p.team)}${all ? ` · ${LEAGUE_NAME[r.p.lg]}` : ''} · ${r.p.G} goals from ${r.p.shots} shots, ${r.p.sog} on target${x(r.p) ? ` · xG ${x(r.p)!.xg.toFixed(1)}` : ''}"><span class="tr-rk">${k && c.show(L[k - 1].p) === c.show(r.p) ? '' : L.findIndex(y => c.show(y.p) === c.show(r.p)) + 1}</span>${all ? `<img class="tr-lg" src="leagues/${r.p.lg}.png" alt="">` : ''}<b class="tcode" style="background:${bg};color:${fg}">${esc(club.abbr || r.p.team)}</b><span class="tnm">${esc(r.p.name)}</span><em>${c.show(r.p)}</em></a>` }).join('')
+      return `<a class="tsr" data-i="${r.i}" title="${esc(r.p.name)} · ${esc(club.name || r.p.team)}${all ? ` · ${LEAGUE_NAME[r.p.lg]}` : ''} · ${r.p.G} goals from ${r.p.shots} shots, ${r.p.sog} on target${x(r.p) ? ` · xG ${x(r.p)!.xg.toFixed(1)}` : ''}"><span class="tr-rk">${k && c.show(L[k - 1].p) === c.show(r.p) ? '' : L.findIndex(y => c.show(y.p) === c.show(r.p)) + 1}</span>${all ? `<img class="tr-lg" src="leagues/${r.p.lg}.png" alt="">` : ''}<b class="tcode" style="background:${bg};color:${fg}">${esc(club.abbr || r.p.team)}</b><span class="tnm">${esc(short(r.p.name))}</span><span class="tfn">${r.p.shots} · ${r.p.sog} · ${r.p.G}</span><em>${c.show(r.p)}</em></a>` }).join('')
     return `<div class="tsc-col"><div class="tsh"><b>${c.title}</b><span>${c.sub}</span></div>${rows}</div>`
   }
-  return `<div class="tb"><div class="tb-hd"><h2>Finishing</h2><span>shots → on target → goals · the ${all ? 'top 50' : 'top'} scorers with ${MIN_SHOTS} shots or more (${P.filter(ok).length}) · ties share a rank · click a player for his card</span></div>
-    <div class="tsg co${all ? ' all' : ''}" style="--n:${N};--k:${COLS.length}">${COLS.map(c => col(c)).join('')}</div></div>`
+  return `<div class="tb"><div class="tb-hd"><h2>Finishing</h2><span>shots → on target → goals (the small numbers by each name) · the ${all ? 'top 50' : 'top'} scorers with ${MIN_SHOTS} shots or more (${P.filter(ok).length}) · ties share a rank · click a player for his card</span></div>
+    <div class="tsg co fin${all ? ' all' : ''}" style="--n:${N};--k:${COLS.length}">${COLS.map(c => col(c)).join('')}</div></div>`
 }
 const $ = (id: string) => document.getElementById(id)!
 const film = $('film')
