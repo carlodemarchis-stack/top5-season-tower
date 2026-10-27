@@ -250,9 +250,12 @@ async function fillGoals(pg: HTMLElement, season: string) {
   // each a filter like the bars (data-gm: the goal's match)
   const by = new Map<string, Dict[]>()
   for (const s of K.F) if (s.out === 'g' && s.pid === id) { if (!by.has(s.mid)) by.set(s.mid, []); by.get(s.mid)!.push(s) }
+  // the games he played (started or came on), for "7 of 10 games"
+  const played = recs.filter(M => { if (M.h !== code && M.a !== code) return false; const T = M.h === code ? M.home : M.away
+    return (T.players as Dict[]).some(x => String(x.id) === id && (x.st || (M.subs as Dict[] || []).some(s => String(s.on) === id))) }).length
   const games = [...by.values()].sort((a, b) => a[0].md - b[0].md).map(G => { const s = G[0], [bg, fg] = RES6[res6(s.gf, s.ga)], n = G.length
     return `<div class="gkr gkm" data-g="gm" data-v="${s.mid}" data-n="${n}" title="MD ${s.md} · ${s.ha === 'H' ? 'vs' : 'at'} ${esc(s.opp)} ${s.gf}-${s.ga}: ${n} goal${n === 1 ? '' : 's'} — show only these"><i style="background:${bg};color:${fg}">${s.gf}-${s.ga}</i><span>${s.ha === 'H' ? '' : '@'}${esc(s.opp)}</span><b>${n}</b></div>` }).join('')
-  pg.innerHTML = `${GNET}<div class="gt gtme">${K.kpis('Scored', K.F, 'var(--c2)', 0, '<i class="ghelp" aria-label="How to read it">?</i>', true, id)}${K.col(K.F, 'var(--c2)', 'Scored')}<div class="gk gkms" data-side="Scored"><div class="sec">Scored in</div><div class="gkb">${games}</div></div></div>`
+  pg.innerHTML = `${GNET}<div class="gt gtme">${K.kpis('Scored', K.F, 'var(--c2)', 0, '<i class="ghelp" aria-label="How to read it">?</i>', true, id)}${K.col(K.F, 'var(--c2)', 'Scored')}<div class="gk gkms" data-side="Scored"><div class="sec">Scored in<span class="gkmn"><b>${by.size}</b> of ${played} game${played === 1 ? '' : 's'}</span></div><div class="gkb">${games}</div></div></div>`
   applyGoalFilters(pg.querySelector<HTMLElement>('.gk')!); requestAnimationFrame(sizeGoalDots)
 }
 
