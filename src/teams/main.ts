@@ -239,6 +239,8 @@ async function fillGoals() {
 // meeting played from the club to it (bowed towards the middle, so it never runs under another dot) ----------
 const RV_RES = (gf?: number, ga?: number) => gf == null ? '#d9dde1' : gf > ga! ? '#2f9e58' : gf < ga! ? '#dc5c5e' : '#EAB308'
 const RVTIPS = new Map<string, string>()
+// a crest that is nearly all white (Juventus) vanishes on a white disc: it sits on a dark one
+const PALE_CREST = new Set(['JUV']), disc = (code: string) => PALE_CREST.has(code) ? '#15181d' : '#fff'
 function rivalsPane(t: Dict) {
   const table = [...CARDS_OF[t.lg].teams].sort((a: Dict, b: Dict) => a.pos - b.pos), N = table.length, C = 260, R = 190, rr = 21
   const club = TEAMS_OF[t.lg][t.code] || {}, played: Record<string, Dict> = Object.fromEntries(t.matches.map((m: Dict) => [m.id, m]))
@@ -251,7 +253,7 @@ function rivalsPane(t: Dict) {
     const [x, y, ang] = at(i)
     if (o.code === t.code) {   // the club: its crest at its place, its code and points outside it (in its colour)
       const lx = C + (R + 44) * Math.cos(ang), ly = C + (R + 44) * Math.sin(ang), cs = Math.cos(ang), an = cs > .25 ? 'start' : cs < -.25 ? 'end' : 'middle', ddy = Math.abs(cs) <= .25 ? (Math.sin(ang) < 0 ? -2 : 10) : 4
-      dots += `<circle cx="${x}" cy="${y}" r="27" fill="#fff" stroke="${club.primary || '#555'}" stroke-width="3"/><image href="${logo(t.code, t.lg)}" x="${x - 20}" y="${y - 20}" width="40" height="40"/>
+      dots += `<circle cx="${x}" cy="${y}" r="27" fill="${disc(t.code)}" stroke="${club.primary || '#555'}" stroke-width="3"/><image href="${logo(t.code, t.lg)}" x="${x - 20}" y="${y - 20}" width="40" height="40"/>
         <text x="${lx}" y="${ly + ddy}" text-anchor="${an}" font-size="11.5" font-weight="900" fill="${club.primary || '#15181d'}">${o.code}<tspan font-weight="700"> · ${o.pts} pts</tspan></text>`; return }
     const h = by[o.code]?.H || {}, a = by[o.code]?.A || {}
     const arc = (k: number) => { const mx = (me[0] + x) / 2, my = (me[1] + y) / 2; return `M${me[0]} ${me[1]}Q${mx + (C - mx) * k} ${my + (C - my) * k} ${x} ${y}` }
@@ -266,7 +268,7 @@ function rivalsPane(t: Dict) {
     // crest and code outside the dot, along its radius
     const cx = C + (R + rr + 14) * Math.cos(ang), cy = C + (R + rr + 14) * Math.sin(ang), tx = C + (R + rr + 30) * Math.cos(ang), ty = C + (R + rr + 30) * Math.sin(ang), cos = Math.cos(ang)
     const anchor = cos > .25 ? 'start' : cos < -.25 ? 'end' : 'middle', dy = Math.abs(cos) <= .25 ? (Math.sin(ang) < 0 ? -2 : 9) : 3.5
-    dots += `<circle cx="${cx}" cy="${cy}" r="10.5" fill="#fff"/><image href="${logo(o.code, t.lg)}" x="${cx - 9}" y="${cy - 9}" width="18" height="18"/><text x="${tx + (anchor === 'start' ? -4 : anchor === 'end' ? 4 : 0)}" y="${ty + dy}" text-anchor="${anchor}" font-size="10" font-weight="800" fill="#5b626c">${o.code}<tspan font-weight="600" fill="#8a9099"> · ${o.pts} pts</tspan></text>`
+    dots += `<circle cx="${cx}" cy="${cy}" r="10.5" fill="${disc(o.code)}"/><image href="${logo(o.code, t.lg)}" x="${cx - 9}" y="${cy - 9}" width="18" height="18"/><text x="${tx + (anchor === 'start' ? -4 : anchor === 'end' ? 4 : 0)}" y="${ty + dy}" text-anchor="${anchor}" font-size="10" font-weight="800" fill="#5b626c">${o.code}<tspan font-weight="600" fill="#8a9099"> · ${o.pts} pts</tspan></text>`
   })
   // beside the circle, the club's games as a list: first half on the left, second on the right (as the league's
   // everyone-vs-everyone view): match day, home/away, opponent, score or date; hover a row to light that club
