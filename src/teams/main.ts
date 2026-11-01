@@ -569,42 +569,56 @@ function longestRun(t: Dict, r: 'W' | 'L') {
     cur = (m.gf > m.ga ? 'W' : m.gf < m.ga ? 'L' : 'D') === r ? cur + 1 : 0; best = Math.max(best, cur) }
   return { n: best, now: !!cur && cur === best }   // now: the run is still going
 }
-function statsCard() {
-  // the club's real coaches this season: the head coach + those who left — not a stand-in on the bench for a game or two
+// the club's real coaches this season: the head coach + those who left — not a stand-in on the bench for a game or two
   // while the head coach is banned or away (Domenichini for Spalletti), nor an interim of a game or two between two
   // coaches (fewer than 3 games, not there from the start) — the coach film's rule for Fired
   const coachesOf = (t: Dict) => { const C = COACHES_OF[t.lg], S = stints(C, t.code, playedOf(t, TEAMS_OF[t.lg][t.code] || {})), H = headOf(C, t.code, S), real = new Set([H.id])
     for (const id of new Set(S.map(s => s.id))) { const mine = S.filter(s => s.id === id); if (id === H.id || mine.every(s => H.standIn.includes(s))) continue
       if (mine.reduce((a, s) => a + s.W + s.D + s.L, 0) >= 3 || mine[0].from === S[0]?.from) real.add(id) }
     return real.size }
-  const per = (n: number, t: Dict) => t.played ? n / t.played : 0
-  type Col = { title: string, sub: string, v: (t: Dict) => number, show: (t: Dict) => string, low?: boolean, now?: (t: Dict) => boolean, min?: number }
-  const COLS: Col[] = [
+const per = (n: number, t: Dict) => t.played ? n / t.played : 0
+// a column: its value per club (best first; low: smallest first), shown as; min / max: only clubs within (e.g. 0–1 defeats)
+type SCol = { title: string, sub: string, v: (t: Dict) => number, show: (t: Dict) => string, low?: boolean, now?: (t: Dict) => boolean, min?: number, max?: number }
+const STATS1: SCol[] = [
     { title: 'Goals', sub: 'scored', v: t => t.GF, show: t => String(t.GF) },
     { title: 'Per game', sub: 'scored', v: t => per(t.GF, t), show: t => per(t.GF, t).toFixed(2) },
     { title: 'Conceded', sub: 'fewest', v: t => t.GA, show: t => String(t.GA), low: true },
     { title: 'Per game', sub: 'conceded, fewest', v: t => per(t.GA, t), show: t => per(t.GA, t).toFixed(2), low: true },
     { title: 'Scorers', sub: 'players with a goal', v: t => (t.scorers || []).filter((s: Dict) => s.G > 0).length, show: t => String((t.scorers || []).filter((s: Dict) => s.G > 0).length) },
-    ...(SEASON === '2026-27' ? [{ title: 'Coaches', sub: 'clubs that changed (stand-ins aside)', v: (t: Dict) => coachesOf(t), show: (t: Dict) => String(coachesOf(t)), min: 2 }] : []),
+    ...(SEASON === '2026-27' ? [{ title: 'Coaches', sub: 'this season (stand-ins aside)', v: (t: Dict) => coachesOf(t), show: (t: Dict) => String(coachesOf(t)) }] : []),
     { title: 'Wins', sub: 'longest run', v: t => longestRun(t, 'W').n, show: t => String(longestRun(t, 'W').n), now: t => longestRun(t, 'W').now },
     { title: 'Defeats', sub: 'longest run', v: t => longestRun(t, 'L').n, show: t => String(longestRun(t, 'L').n), now: t => longestRun(t, 'L').now },
-  ]
+]
+// the second card: defence, style, home / away, form
+const ppgOn = (t: Dict, ha: string) => { const M = t.matches.filter((m: Dict) => m.gf != null && m.ha === ha); return M.length ? M.reduce((a: number, m: Dict) => a + (m.gf > m.ga ? 3 : m.gf === m.ga ? 1 : 0), 0) / M.length : 0 }
+const form5 = (t: Dict) => [...t.matches].filter((m: Dict) => m.gf != null).sort((a: Dict, b: Dict) => b.w - a.w).slice(0, 5).reduce((a: number, m: Dict) => a + (m.gf > m.ga ? 3 : m.gf === m.ga ? 1 : 0), 0)
+const shotsPg = (t: Dict) => { const M = t.matches.filter((m: Dict) => m.gf != null && m.sh != null); return M.length ? M.reduce((a: number, m: Dict) => a + m.sh, 0) / M.length : 0 }
+const STATS2: SCol[] = [
+  { title: 'Clean sheets', sub: 'games without conceding', v: t => t.cs, show: t => String(t.cs) },
+  { title: 'Defeats', sub: 'only 0 or 1 so far', v: t => t.L, show: t => String(t.L), low: true, max: 1 },
+  { title: 'Possession', sub: 'average a game', v: t => t.avg?.poss ?? 0, show: t => `${Math.round(t.avg?.poss ?? 0)}%` },
+  { title: 'Shots', sub: 'per game', v: shotsPg, show: t => shotsPg(t).toFixed(1) },
+  { title: 'At home', sub: 'points per game', v: t => ppgOn(t, 'H'), show: t => ppgOn(t, 'H').toFixed(2) },
+  { title: 'Away', sub: 'points per game', v: t => ppgOn(t, 'A'), show: t => ppgOn(t, 'A').toFixed(2) },
+  { title: 'Form', sub: 'points, last 5 games', v: form5, show: t => String(form5(t)) },
+]
+function statsCard(id: string, title: string, COLS: SCol[]) {
   const N = Math.min(20, P.length)
-  const col = (c: Col) => {
-    const L = P.filter(t => t.played).map(t => ({ t, v: c.v(t) })).filter(x => c.min == null || x.v >= c.min).sort((a, b) => (c.low ? a.v - b.v : b.v - a.v) || a.t.rank - b.t.rank).slice(0, N)
+  const col = (c: SCol) => {
+    const L = P.filter(t => t.played).map(t => ({ t, v: c.v(t) })).filter(x => (c.min == null || x.v >= c.min) && (c.max == null || x.v <= c.max)).sort((a, b) => (c.low ? a.v - b.v : b.v - a.v) || a.t.rank - b.t.rank).slice(0, N)
     const rows = L.map((x, i) => { const club = TEAMS_OF[x.t.lg][x.t.code] || {}, bg = club.primary || '#555', fg = lum(bg) > 0.55 ? '#15181d' : '#fff'
       const rk = L.findIndex(y => y.v === x.v) + 1, on = c.now?.(x.t)
       return `<a class="tsr" data-i="${x.t.rank - 1}" title="${esc(nameOf(x.t))}${ALL ? ` · ${LEAGUE_NAME[x.t.lg]}` : ''} · ${c.title.toLowerCase()} ${c.sub}: ${c.show(x.t)}${on ? ' (still going)' : ''}"><span class="tr-rk">${i && L[i - 1].v === x.v ? '' : rk}</span>${ALL ? `<img class="tr-lg" src="leagues/${x.t.lg}.png" alt="">` : ''}<b class="tcode" style="background:${bg};color:${fg}">${esc(club.abbr || x.t.code)}</b><em>${on ? '<i class="tsn" title="still going">●</i>' : ''}${c.show(x.t)}</em></a>` }).join('')
     return `<div class="tsc-col"><div class="tsh"><b>${c.title}</b><span>${c.sub}</span></div>${rows}</div>`
   }
-  return `<section class="card tbl" id="t-stats"><div class="tb">
-    <div class="tb-hd"><h2>Team stats</h2><span>${ALL ? `the top ${N} of the five leagues` : `all ${P.length} clubs`} in each column · ties share a rank · <i class="tsn">●</i> a run still going · click a club for its card</span></div>
+  return `<section class="card tbl" id="${id}"><div class="tb">
+    <div class="tb-hd"><h2>${title}</h2><span>${ALL ? `the top ${N} of the five leagues` : `all ${P.length} clubs`} in each column · ties share a rank${COLS.some(c => c.now) ? ' · <i class="tsn">●</i> a run still going' : ''} · click a club for its card</span></div>
     <div class="tsg${ALL ? ' all' : ''}" style="--n:${N};--k:${COLS.length}">${COLS.map(col).join('')}</div></div></section>`
 }
-film.innerHTML = P.map(card).join('') + (ALL ? tableCard() + chartCard() : '') + statsCard() + gameCard() + swingCard() + payCard()
+film.innerHTML = P.map(card).join('') + (ALL ? tableCard() + chartCard() : '') + statsCard('t-stats', 'Team stats', STATS1) + statsCard('t-stats2', 'More team stats', STATS2) + gameCard() + swingCard() + payCard()
 // the stats cards after the clubs, in film order (the jump list and the top-bar button point at them)
-const STATS = [...(ALL ? ['The table', 'The chart'] : []), 'Team stats', 'Game state', 'Comebacks & collapses', 'Push vs payoff']
-const STATS_SUB: Record<string, string> = { 'The table': 'all clubs by points per game', 'The chart': 'points per game as columns', 'Team stats': 'goals, conceded, scorers, coaches, runs', 'Game state': 'minutes leading · level · trailing',
+const STATS = [...(ALL ? ['The table', 'The chart'] : []), 'Team stats', 'More team stats', 'Game state', 'Comebacks & collapses', 'Push vs payoff']
+const STATS_SUB: Record<string, string> = { 'The table': 'all clubs by points per game', 'The chart': 'points per game as columns', 'Team stats': 'goals, conceded, scorers, coaches, runs', 'More team stats': 'clean sheets, defeats, possession, shots, home, away, form', 'Game state': 'minutes leading · level · trailing',
   'Comebacks & collapses': 'points won from behind · dropped from ahead', 'Push vs payoff': 'share of the pressure vs share of the goals' }
 { // the comebacks explainer's examples, from today's data
   const S = P.map(t => ({ t, s: swings(t) }))
@@ -787,4 +801,4 @@ film.addEventListener('mouseover', e => {
 })
 initGoals(film, () => GOALS_HELP)   // the Goals tab's filters, help, goal cards (src/film/goals.ts)
 initNav('teams', LG, SEASON)
-initFilm({ count: P.length + (ALL ? 6 : 4), key: KEY, onPaint, jumpHTML, self: 'teams.html' })
+initFilm({ count: P.length + (ALL ? 7 : 5), key: KEY, onPaint, jumpHTML, self: 'teams.html' })
