@@ -29,9 +29,9 @@
 .gt svg .gst circle{r:calc(9.5px * var(--u,.17));stroke-width:calc(1.6px * var(--u,.17))}.gt svg .gst text{font-size:calc(10px * var(--u,.17));stroke:none}.gt svg .gst.one circle{r:calc(7.5px * var(--u,.17))}   /* several goals from one spot */
 #mtip.pinned{pointer-events:auto;max-height:62vh;overflow:auto}
 .gsl{display:flex;flex-direction:column;margin-top:4px}
-.gsr{display:grid;grid-template-columns:34px minmax(0,1.2fr) minmax(0,1fr) 56px;gap:8px;align-items:baseline;padding:5px 4px;border-top:1px solid var(--line);font-size:12px;color:#3a3f47;text-decoration:none}
-.gsr b{color:var(--c);font-weight:900}.gsr .nm{font-weight:800;color:#15181d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gsr em{font-style:normal;text-align:right;color:#8a9099}
-#mtip.pinned .gsr:hover{background:#f5f6f4}
+.gsrow{display:grid;grid-template-columns:34px minmax(0,1.2fr) minmax(0,1fr) 56px;gap:8px;align-items:baseline;padding:5px 4px;border-top:1px solid var(--line);font-size:12px;color:#3a3f47;text-decoration:none}
+.gsrow b{color:var(--c);font-weight:900}.gsrow .nm{font-weight:800;color:#15181d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gsrow em{font-style:normal;text-align:right;color:#8a9099}
+#mtip.pinned .gsrow:hover{background:#f5f6f4}
 .gsm{font-size:10.5px;color:#9aa0a8;margin:6px 0 10px}
 .gm{cursor:pointer}.gt.lit .gm:not(.on){opacity:.18}.gm.on{stroke:#15181d}   /* hover: one goal, in the net and on the pitch (no size change: no flicker) */
 /* a goal's card, as wide as the goal it sits on: the scorer's cutout, then the game, his name, three numbers, how it came */
@@ -50,7 +50,7 @@
 #mtip.side .gtip{grid-template-columns:auto 1fr;grid-template-areas:"ph gk" "in in";gap:2px 12px}
 #mtip.side .gtip>img,#mtip.side .gtip>i{grid-area:ph}#mtip.side .gtip>div{grid-area:in}#mtip.side .gtip>.gtgk,#mtip.side .gtip>span{grid-area:gk;justify-self:end}
 #mtip.side .gtk{flex-wrap:wrap;gap:6px 18px}#mtip.side .gtn{white-space:normal}
-#mtip.side .gsr{grid-template-columns:30px minmax(0,1.3fr) minmax(0,1fr) 50px;gap:6px}#mtip.side .gsr span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mtip.side .gsrow{grid-template-columns:30px minmax(0,1.3fr) minmax(0,1fr) 50px;gap:6px}#mtip.side .gsrow span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ghelp{display:inline-grid;place-items:center;width:15px;height:15px;margin-left:7px;border-radius:50%;background:#e3e6ea;color:#5b626c;font-size:10px;font-weight:900;font-style:normal;letter-spacing:0;cursor:help;vertical-align:1px}
 .ghelp:hover{background:#15181d;color:#fff}
 .gks .ghelp{width:13px;height:13px;font-size:9px;margin-left:5px}
