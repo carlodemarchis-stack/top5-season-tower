@@ -578,7 +578,7 @@ function longestRun(t: Dict, r: 'W' | 'L') {
     return real.size }
 const per = (n: number, t: Dict) => t.played ? n / t.played : 0
 // a column: its value per club (best first; low: smallest first), shown as; min / max: only clubs within (e.g. 0–1 defeats)
-type SCol = { title: string, sub: string, v: (t: Dict) => number, show: (t: Dict) => string, low?: boolean, now?: (t: Dict) => boolean, min?: number, max?: number }
+type SCol = { title: string, sub: string, v: (t: Dict) => number, show: (t: Dict) => string, low?: boolean, now?: (t: Dict) => boolean, min?: number, max?: number, of?: boolean }   // of: a count of games, shown out of the games played (5/9)
 const STATS1: SCol[] = [
     { title: 'Goals', sub: 'scored', v: t => t.GF, show: t => String(t.GF) },
     { title: 'Per game', sub: 'scored', v: t => per(t.GF, t), show: t => per(t.GF, t).toFixed(2) },
@@ -586,16 +586,16 @@ const STATS1: SCol[] = [
     { title: 'Per game', sub: 'conceded, fewest', v: t => per(t.GA, t), show: t => per(t.GA, t).toFixed(2), low: true },
     { title: 'Scorers', sub: 'players with a goal', v: t => (t.scorers || []).filter((s: Dict) => s.G > 0).length, show: t => String((t.scorers || []).filter((s: Dict) => s.G > 0).length) },
     ...(SEASON === '2026-27' ? [{ title: 'Coaches', sub: 'this season (stand-ins aside)', v: (t: Dict) => coachesOf(t), show: (t: Dict) => String(coachesOf(t)) }] : []),
-    { title: 'Wins', sub: 'longest run', v: t => longestRun(t, 'W').n, show: t => String(longestRun(t, 'W').n), now: t => longestRun(t, 'W').now },
-    { title: 'Defeats', sub: 'longest run', v: t => longestRun(t, 'L').n, show: t => String(longestRun(t, 'L').n), now: t => longestRun(t, 'L').now },
+    { of: true, title: 'Wins', sub: 'longest run', v: t => longestRun(t, 'W').n, show: t => String(longestRun(t, 'W').n), now: t => longestRun(t, 'W').now },
+    { of: true, title: 'Defeats', sub: 'longest run', v: t => longestRun(t, 'L').n, show: t => String(longestRun(t, 'L').n), now: t => longestRun(t, 'L').now },
 ]
 // the second card: defence, style, home / away, form
 const ppgOn = (t: Dict, ha: string) => { const M = t.matches.filter((m: Dict) => m.gf != null && m.ha === ha); return M.length ? M.reduce((a: number, m: Dict) => a + (m.gf > m.ga ? 3 : m.gf === m.ga ? 1 : 0), 0) / M.length : 0 }
 const form5 = (t: Dict) => [...t.matches].filter((m: Dict) => m.gf != null).sort((a: Dict, b: Dict) => b.w - a.w).slice(0, 5).reduce((a: number, m: Dict) => a + (m.gf > m.ga ? 3 : m.gf === m.ga ? 1 : 0), 0)
 const shotsPg = (t: Dict) => { const M = t.matches.filter((m: Dict) => m.gf != null && m.sh != null); return M.length ? M.reduce((a: number, m: Dict) => a + m.sh, 0) / M.length : 0 }
 const STATS2: SCol[] = [
-  { title: 'Clean sheets', sub: 'games without conceding', v: t => t.cs, show: t => String(t.cs) },
-  { title: 'Defeats', sub: 'only 0 or 1 so far', v: t => t.L, show: t => String(t.L), low: true, max: 1 },
+  { of: true, title: 'Clean sheets', sub: 'games without conceding', v: t => t.cs, show: t => String(t.cs) },
+  { of: true, title: 'Defeats', sub: 'only 0 or 1 so far', v: t => t.L, show: t => String(t.L), low: true, max: 1 },
   { title: 'Possession', sub: 'average a game', v: t => t.avg?.poss ?? 0, show: t => `${Math.round(t.avg?.poss ?? 0)}%` },
   { title: 'Shots', sub: 'per game', v: shotsPg, show: t => shotsPg(t).toFixed(1) },
   { title: 'At home', sub: 'points per game', v: t => ppgOn(t, 'H'), show: t => ppgOn(t, 'H').toFixed(2) },
@@ -608,7 +608,7 @@ function statsCard(id: string, title: string, COLS: SCol[]) {
     const L = P.filter(t => t.played).map(t => ({ t, v: c.v(t) })).filter(x => (c.min == null || x.v >= c.min) && (c.max == null || x.v <= c.max)).sort((a, b) => (c.low ? a.v - b.v : b.v - a.v) || a.t.rank - b.t.rank).slice(0, N)
     const rows = L.map((x, i) => { const club = TEAMS_OF[x.t.lg][x.t.code] || {}, bg = club.primary || '#555', fg = lum(bg) > 0.55 ? '#15181d' : '#fff'
       const rk = L.findIndex(y => y.v === x.v) + 1, on = c.now?.(x.t)
-      return `<a class="tsr" data-i="${x.t.rank - 1}" title="${esc(nameOf(x.t))}${ALL ? ` · ${LEAGUE_NAME[x.t.lg]}` : ''} · ${c.title.toLowerCase()} ${c.sub}: ${c.show(x.t)}${on ? ' (still going)' : ''}"><span class="tr-rk">${i && L[i - 1].v === x.v ? '' : rk}</span>${ALL ? `<img class="tr-lg" src="leagues/${x.t.lg}.png" alt="">` : ''}<b class="tcode" style="background:${bg};color:${fg}">${esc(club.abbr || x.t.code)}</b><em>${on ? '<i class="tsn" title="still going">●</i>' : ''}${c.show(x.t)}</em></a>` }).join('')
+      return `<a class="tsr" data-i="${x.t.rank - 1}" title="${esc(nameOf(x.t))}${ALL ? ` · ${LEAGUE_NAME[x.t.lg]}` : ''} · ${c.title.toLowerCase()} ${c.sub}: ${c.show(x.t)}${on ? ' (still going)' : ''}"><span class="tr-rk">${i && L[i - 1].v === x.v ? '' : rk}</span>${ALL ? `<img class="tr-lg" src="leagues/${x.t.lg}.png" alt="">` : ''}<b class="tcode" style="background:${bg};color:${fg}">${esc(club.abbr || x.t.code)}</b><em>${on ? '<i class="tsn" title="still going">●</i>' : ''}${c.show(x.t)}${c.of ? `<i class="tof">/${x.t.played}</i>` : ''}</em></a>` }).join('')
     return `<div class="tsc-col"><div class="tsh"><b>${c.title}</b><span>${c.sub}</span></div>${rows}</div>`
   }
   return `<section class="card tbl" id="${id}"><div class="tb">
