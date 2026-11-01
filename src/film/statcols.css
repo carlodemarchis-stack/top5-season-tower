@@ -29,4 +29,5 @@
 .tsg.fin .tr-lg{width:14px;height:14px}
 .tsr .tfn{font-size:10px;font-weight:600;color:#9aa0a8;white-space:nowrap;font-variant-numeric:tabular-nums}
 .tsg.fin .tnm{font-size:.92em;letter-spacing:-.01em}.tsg.fin .tsr{gap:5px}
-.tsr em .tof{font-style:normal;font-weight:600;font-size:.78em;color:#a3a8b0;margin-left:1px}   /* out of the games played: 5/9 */
+.tsr em.of{display:grid;grid-template-columns:auto 1.75em;justify-content:end;align-items:baseline}.tsr em.of>span{text-align:right}   /* the number and its /N: two right-aligned columns */
+.tsr em .tof{font-style:normal;font-weight:600;font-size:.78em;color:#a3a8b0;text-align:right}   /* out of the games played: 5/9 */
