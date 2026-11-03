@@ -43,7 +43,7 @@ export function polyChart(box: HTMLElement, data: { teams: PolyTeam[]; ms: PolyM
   for (const m of data.ms) if (m.gi != null) { const { i, j, gi, gj } = m; if (gi > gj!) { REC[i].w++; REC[j].l++ } else if (gi < gj!) { REC[i].l++; REC[j].w++ } else { REC[i].d++; REC[j].d++ } }
   const gL = el('g', {}), gN = el('g', {}); sv.append(gL, gN)
   const pairs: Record<string, PolyMatch[]> = {}; for (const m of data.ms) (pairs[Math.min(m.i, m.j) + '-' + Math.max(m.i, m.j)] ||= []).push(m)
-  const lines: { ln: Element[]; t: number[] }[] = []
+  const lines: { ln: Element[]; t: number[]; c?: string[] }[] = []   // c: each half's own colour, and the whole line from i's / j's side
   const showTip = (e: MouseEvent, h: string) => { const r = wrap.getBoundingClientRect(); tip.innerHTML = h; tip.hidden = false; tip.style.left = Math.min(e.clientX - r.left + 12, r.width - tip.offsetWidth - 4) + 'px'; tip.style.top = (e.clientY - r.top + 12) + 'px' }
   for (const ms of Object.values(pairs)) {
     const played = ms.filter(m => m.gi != null).sort((a, b) => a.md - b.md), show = played.length ? played : [ms[0]]
@@ -54,14 +54,17 @@ export function polyChart(box: HTMLElement, data: { teams: PolyTeam[]; ms: PolyM
       const x = m.gi, y = m.gj!, w = 1.6 + Math.min(Math.abs(x - y), 6) * .55
       const l1 = el('line', { x1: a.x, y1: a.y, x2: mid.x, y2: mid.y, stroke: shade(x, y), 'stroke-width': w, 'stroke-linecap': 'round', 'stroke-opacity': .9 })
       const l2 = el('line', { x1: mid.x, y1: mid.y, x2: b.x, y2: b.y, stroke: shade(y, x), 'stroke-width': w, 'stroke-linecap': 'round', 'stroke-opacity': .9 })
-      gL.append(l1, l2); lines.push({ ln: [l1, l2], t: [m.i, m.j] })
+      gL.append(l1, l2); lines.push({ ln: [l1, l2], t: [m.i, m.j], c: [shade(x, y), shade(y, x)] })
       for (const l of [l1, l2]) { l.addEventListener('mousemove', e => showTip(e as MouseEvent, `${esc(T[m.i].n)} <b>${x}–${y}</b> ${esc(T[m.j].n)} · MD ${m.md}`)); l.addEventListener('mouseleave', () => { tip.hidden = true }) }
     })
   }
   const dim = (on: (t: number[]) => boolean) => { for (const o of lines) { const v = on(o.t); for (const x of o.ln) x.setAttribute('opacity', v ? '1' : '.06') } }
+  // a club in focus: its lines all in ITS result colour, end to end (else each half in its own club's colour)
+  const side = (i: number | null) => { for (const o of lines) { if (!o.c) continue; const k = i == null ? -1 : o.t.indexOf(i)
+    o.ln.forEach((x, h) => x.setAttribute('stroke', k < 0 ? o.c![h] : o.c![k])) } }
   const api: PolyApi = {
-    focus: i => { dim(t => i == null || t.includes(i)); gN.querySelectorAll('.poly-team').forEach((g, k) => g.classList.toggle('on', k === i)) },
-    pair: (i, j) => dim(t => i == null || (t.includes(i) && t.includes(j!))),
+    focus: i => { dim(t => i == null || t.includes(i)); side(i); gN.querySelectorAll('.poly-team').forEach((g, k) => g.classList.toggle('on', k === i)) },
+    pair: (i, j) => { dim(t => i == null || (t.includes(i) && t.includes(j!))); side(i) },
   }
   T.forEach((t, i) => {
     const p = P[i], r = 9 + Math.sqrt(t.pts) * 2.4, g = el('g', { class: 'poly-team' })
