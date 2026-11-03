@@ -66,8 +66,10 @@ export function polyChart(box: HTMLElement, data: { teams: PolyTeam[]; ms: PolyM
     focus: i => { dim(t => i == null || t.includes(i)); side(i); gN.querySelectorAll('.poly-team').forEach((g, k) => g.classList.toggle('on', k === i)) },
     pair: (i, j) => { dim(t => i == null || (t.includes(i) && t.includes(j!))); side(i) },
   }
+  // every club's pie the same size: as big as the gap to its neighbours on the polygon allows (ring included, a little air)
+  const PR = Math.max(8, Math.min(28, R * Math.sin(Math.PI / N) - 11))
   T.forEach((t, i) => {
-    const p = P[i], r = 9 + Math.sqrt(t.pts) * 2.4, g = el('g', { class: 'poly-team' })
+    const p = P[i], r = PR, g = el('g', { class: 'poly-team' })
     g.append(el('circle', { class: 'ring', cx: p.x, cy: p.y, r: r + 4, fill: '#fff', stroke: '#15181d', 'stroke-width': 0 }))
     pie(g, p.x, p.y, r, REC[i], PC)
     // outside the pie, along its radius: the crest, then the code and points (as on the team cards' Rivals tab)
