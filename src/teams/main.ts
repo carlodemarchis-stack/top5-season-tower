@@ -277,7 +277,19 @@ function rivalsPane(t: Dict) {
   const row = (g: Dict) => { const m = played[g.id], d = typeof g.et === 'string' ? g.et.match(/^\d{4}-(\d{2})-(\d{2})/) : null, o = TEAMS_OF[t.lg][g.opp] || {}
     return `<div class="rvr${m ? '' : ' rvtp'}" data-rv="${t.code}-${g.opp}"${m ? ` data-href="matches.html?lg=${t.lg}&md=${g.w}&m=${g.id}"` : ''}><span class="md">${g.w}</span><span class="ha">${g.ha === 'H' ? 'vs' : '→'}</span><img src="${logo(g.opp, t.lg)}" alt="" loading="lazy"><span class="nm">${esc(o.name || g.opp)}</span>${m ? `<b style="background:${RV_RES(m.gf, m.ga)}">${m.gf}–${m.ga}</b>` : `<em>${d ? `${+d[2]} ${MO[+d[1] - 1]}` : ''}</em>`}</div>` }
   const list = (gs: Dict[], lb: string) => `<div class="rvl"><div class="sec">${lb}</div>${gs.map(row).join('')}</div>`
-  return `<div class="rvw">${list(all.slice(0, half), `First half · MD 1–${half}`)}<div class="rvc"><svg class="rvs" viewBox="-60 -10 640 540">${arcs}${dots}</svg>
+  // W-D-L weighted by the opponents' current points: each game counts the opponent's points ÷ the league average (a
+  // win over the leaders more than one, over the bottom club a fraction) — in the circle's empty bottom-right corner
+  const others = table.filter((o: Dict) => o.code !== t.code), avgPts = others.reduce((a: number, o: Dict) => a + o.pts, 0) / (others.length || 1)
+  const wt = { W: 0, D: 0, L: 0 }, real = { W: 0, D: 0, L: 0 }; let oppSum = 0, nG = 0
+  for (const g of all) { const m = played[g.id]; if (!m || m.gf == null) continue; const o = others.find((x: Dict) => x.code === g.opp); if (!o) continue
+    const k = m.gf > m.ga ? 'W' : m.gf === m.ga ? 'D' : 'L', w = avgPts ? o.pts / avgPts : 1; wt[k] += w; real[k]++; oppSum += o.pts; nG++ }
+  const f1 = (v: number) => v.toFixed(1), wPts = 3 * wt.W + wt.D
+  const weighted = nG && avgPts ? `<g class="rvwt" text-anchor="end"><title>Each game counts the opponent's points now ÷ the league average (${f1(avgPts)}): a win over a club on twice the average counts as two, over one on half the average as half. Weighted points = 3 × weighted wins + weighted draws. Opponents so far averaged ${f1(oppSum / nG)} pts.</title>
+      <text x="578" y="474" font-size="8.5" font-weight="800" letter-spacing="1.2" fill="#9aa0a8">WEIGHTED W–D–L ⓘ</text>
+      <text x="578" y="494" font-size="19" font-weight="900" fill="#15181d">${f1(wt.W)}–${f1(wt.D)}–${f1(wt.L)}</text>
+      <text x="578" y="508" font-size="9.5" font-weight="600" fill="#5b626c">${f1(wPts)} pts · actual ${real.W}–${real.D}–${real.L}</text>
+      <text x="578" y="521" font-size="9" font-weight="600" fill="#9aa0a8">opp. avg ${f1(oppSum / nG)} · league ${f1(avgPts)}</text></g>` : ''
+  return `<div class="rvw">${list(all.slice(0, half), `First half · MD 1–${half}`)}<div class="rvc"><svg class="rvs" viewBox="-60 -10 640 540">${arcs}${dots}${weighted}</svg>
     <div class="rvleg"><span><i style="background:#2f9e58"></i>won</span><span><i style="background:#EAB308"></i>drew</span><span><i style="background:#dc5c5e"></i>lost</span><span><i style="background:#d9dde1"></i>to play</span><span>each club: left half at home, right half away · the table, 1st at the top · hover a club, click for its card</span></div></div>${list(all.slice(half), `Second half · MD ${half + 1}–${all.length}`)}</div>`
 }
 function fillRivals() {
