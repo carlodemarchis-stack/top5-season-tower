@@ -1545,7 +1545,7 @@ export class SeasonTower extends React.Component<Props, State> {
                   <button onClick={() => this.setState({ creditsOpen: false })} aria-label="Close" style={{ border: 'none', background: '#F1F2F4', borderRadius: '8px', width: '28px', height: '28px', fontSize: '15px', cursor: 'pointer', color: '#5c616b' }}>✕</button>
                 </div>
                 <div style={{ fontSize: '13px', lineHeight: 1.6, color: '#3a3f47', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div>Made with passion by <a href="https://dataviz.aguywithascarf.com" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>A Guy With A Scarf</a> — <a href="https://www.linkedin.com/in/carlodemarchis" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>Carlo De Marchis</a>.</div>
+                  <div>Made with passion by <a href="https://aguywithascarf.com/" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>A Guy With A Scarf</a> — <a href="https://www.linkedin.com/in/carlodemarchis" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>Carlo De Marchis</a>.</div>
                   <div><b>The idea.</b> A league table tells you <i>where</i> a team stands. This tower tells you <i>how it got there</i>. It gives the <b>W‑D‑L shape of a season more prominence than the usual views</b> — every match is a coloured block, wins and won‑side draws stacking up, losses and dropped draws pulling down — so two teams on the same points can look completely different.</div>
                   <div><b>Why draws sit on both sides.</b> A tie is <b>+1 point earned</b> yet <b>2 points let slip</b>, so it's drawn above <i>and</i> below the baseline — the honest cost of a result that's neither win nor loss.</div>
                   <div><b>Data.</b> Final scores for all five leagues come from{' '}
@@ -1559,7 +1559,7 @@ export class SeasonTower extends React.Component<Props, State> {
           {/* ---------- credit ---------- */}
           <div style={{ position: 'fixed', ...(v.layout === 'towers' && !v.overview ? { left: '14px' } : { right: '14px' }), bottom: '9px', zIndex: 30, fontSize: '10px', fontWeight: 600, color: '#9298a1', letterSpacing: '.2px' }}>
             Produced with passion by{' '}
-            <a href="https://dataviz.aguywithascarf.com" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>A Guy With A Scarf</a>
+            <a href="https://aguywithascarf.com/" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>A Guy With A Scarf</a>
             {' · '}
             <a href="https://www.linkedin.com/in/carlodemarchis" target="_blank" rel="noopener noreferrer" style={{ color: '#0B8A3D', fontWeight: 700, textDecoration: 'none' }}>Carlo De Marchis</a>
             {' · '}
