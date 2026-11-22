@@ -1739,9 +1739,16 @@ export class SeasonTower extends React.Component<Props, State> {
     // longest points bar ends (points bar = Pts units long in both views). A game in hand (an earlier matchday the rest
     // have already played) sits straight after the club's own points, before the aligned slots.
     const PU = layout === 'rows' ? ROW_U : DRAWH, PS = layout === 'rows' ? pendW : PENDH
-    const firstPend: Record<number, number> = {}
-    for (const e of list) if (e.pend.length) { const f = Math.min(...e.pend.map((g: any) => g.w)); firstPend[f] = (firstPend[f] || 0) + 1 }
-    const anchorW = Number(Object.keys(firstPend).sort((a, b) => firstPend[+b] - firstPend[+a] || +a - +b)[0] || 0)   // the next matchday for most clubs
+    // The first aligned slot = the matchday in progress: the latest one with at least half its games played (its
+    // missing games stay in the aligned slots), or the next one with a game still to play. Older postponed games are in hand.
+    const mdTot: Record<number, number> = {}, mdPl: Record<number, number> = {}
+    for (const e of list) {
+      for (const g of [...e.wins, ...e.draws, ...e.losses]) { mdPl[g.w] = (mdPl[g.w] || 0) + 1; mdTot[g.w] = (mdTot[g.w] || 0) + 1 }
+      for (const g of e.pend) mdTot[g.w] = (mdTot[g.w] || 0) + 1
+    }
+    const curW = Math.max(0, ...Object.keys(mdPl).map(Number).filter(w => mdPl[w] * 2 >= mdTot[w]))
+    const pendWs = list.flatMap((e: any) => e.pend.map((g: any) => g.w)).filter((w: number) => w >= curW)
+    const anchorW = pendWs.length ? Math.min(...pendWs) : 0
     const leadPx = (e: any) => e.Pts * PU + e.pend.filter((g: any) => g.w < anchorW).length * PS
     const slot0 = Math.max(0, ...list.map(leadPx))
     // a club's upcoming games in matchday order, with spacers ({ gap: px }) so matchday N lands in the same slot for everyone
