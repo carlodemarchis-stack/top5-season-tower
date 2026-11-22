@@ -1735,6 +1735,23 @@ export class SeasonTower extends React.Component<Props, State> {
     const rowsDroppedW = maxDropPx + 2
     if (layout === 'rows') this._droppedW = rowsDroppedW
 
+    // Upcoming games line up by MATCHDAY across clubs: each matchday gets a fixed slot, and the slots start where the
+    // longest points bar ends (points bar = Pts units long in both views). A game in hand (an earlier matchday the rest
+    // have already played) sits straight after the club's own points, before the aligned slots.
+    const PU = layout === 'rows' ? ROW_U : DRAWH, PS = layout === 'rows' ? pendW : PENDH
+    const firstPend: Record<number, number> = {}
+    for (const e of list) if (e.pend.length) { const f = Math.min(...e.pend.map((g: any) => g.w)); firstPend[f] = (firstPend[f] || 0) + 1 }
+    const anchorW = Number(Object.keys(firstPend).sort((a, b) => firstPend[+b] - firstPend[+a] || +a - +b)[0] || 0)   // the next matchday for most clubs
+    const leadPx = (e: any) => e.Pts * PU + e.pend.filter((g: any) => g.w < anchorW).length * PS
+    const slot0 = Math.max(0, ...list.map(leadPx))
+    // a club's upcoming games in matchday order, with spacers ({ gap: px }) so matchday N lands in the same slot for everyone
+    const pendSeq = (e: any): any[] => {
+      const ps = [...e.pend].sort((a: any, b: any) => a.w - b.w), out: any[] = ps.filter((g: any) => g.w < anchorW)
+      let next = anchorW, gap = slot0 - leadPx(e)
+      for (const g of ps) { if (g.w < anchorW) continue; gap += (g.w - next) * PS; if (gap > 0.5) out.push({ gap }); gap = 0; out.push(g); next = g.w + 1 }
+      return out
+    }
+
     // today's local date (YYYY-MM-DD) — an unplayed fixture kicking off today gets a gentle pulsing inner ring
     const now = new Date()
     const TODAY = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -1856,7 +1873,7 @@ export class SeasonTower extends React.Component<Props, State> {
         // draws 1u → upcoming). LEFT of it = points dropped (draws 2u far left → losses 3u nearest).
         const wins = [...e.wins].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'win'))
         const d1 = [...e.draws].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'draw'))
-        const pend = [...e.pend].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'pend'))
+        const pend = pendSeq(e).map((g: any, i: number) => g.gap != null ? { key: t.abbr + '-gap' + i, spacer: true, style: `flex:0 0 ${g.gap}px;width:${g.gap}px;height:${rowH}px;` } : mkCell(e, g, 'pend'))
         const won = [...wins, ...d1, ...pend]
         const d2 = [...e.draws].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'drawlost'))
         const losses = [...e.losses].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'loss'))
@@ -1876,7 +1893,7 @@ export class SeasonTower extends React.Component<Props, State> {
       // TOWERS (vertical). ABOVE (bottom→top): wins 3u → draws 1u → upcoming. BELOW: losses 3u → draws 2u.
       const winC = [...e.wins].sort((a, b) => b.w - a.w).map(g => mkCell(e, g, 'win'))
       const drawUp = [...e.draws].sort((a, b) => b.w - a.w).map(g => mkCell(e, g, 'draw'))
-      const pendC = [...e.pend].sort((a, b) => b.w - a.w).map(g => mkCell(e, g, 'pend'))
+      const pendC = pendSeq(e).reverse().map((g: any, i: number) => g.gap != null ? { key: t.abbr + '-gap' + i, spacer: true, style: `flex:0 0 ${g.gap}px;height:${g.gap}px;` } : mkCell(e, g, 'pend'))
       const above = [...pendC, ...drawUp, ...winC]
       const lossC = [...e.losses].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'loss'))
       const drawDn = [...e.draws].sort((a, b) => a.w - b.w).map(g => mkCell(e, g, 'drawlost'))
@@ -2016,6 +2033,7 @@ export class SeasonTower extends React.Component<Props, State> {
 // One tower cell, single line: "TOR: 2-1" / "@JUV: 3-1" (opponent + score), score on its own
 // for very short cells, opponent only for pending fixtures.
 function Cell({ c }: { c: Dict }) {
+  if (c.spacer) return <div style={css(c.style)} aria-hidden />   // empty matchday slot (keeps upcoming games aligned)
   if (c.towerPend) return c.domPend ? (
     // DOMESTIC (original): matchday number (dim) over the opponent
     <div style={css(c.style)} title={c.title} onClick={c.onClick}>
